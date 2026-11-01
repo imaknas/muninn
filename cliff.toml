@@ -8,7 +8,6 @@ header = """
 
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
-
 """
 body = """
 ## {% if version %}{{ version }} ({{ timestamp | date(format="%Y-%m-%d") }}){% else %}Unreleased{% endif %}
@@ -30,8 +29,14 @@ assistant you talk to in one conversation, on your phone or in a browser:
 - {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}{% if commit.breaking %} (**breaking:** {{ commit.breaking_description }}){% endif %}
 {%- endfor %}
 {% endfor %}
+
 """
-trim = true
+trim = false
+# one blank line before each version and between its parts, whatever the template's own spacing
+postprocessors = [
+  { pattern = '\n(## )', replace = "\n\n$1" },
+  { pattern = '\n{3,}', replace = "\n\n" },
+]
 
 [git]
 conventional_commits = true
