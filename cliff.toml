@@ -12,6 +12,18 @@ fixes, speed-ups and reverts are listed.
 """
 body = """
 ## {% if version %}{{ version }} ({{ timestamp | date(format="%Y-%m-%d") }}){% else %}Unreleased{% endif %}
+{% if not previous.version %}
+The first release; development before it happened in a private repository. Muninn is an always-on personal
+assistant you talk to in one conversation, on your phone or in a browser:
+
+- keeps track of what you are working towards (goals, deadlines, to-dos from your projects) and brings up what waits
+  on you, once, at a sensible moment;
+- reads what you let it (mail, calendar, what you do on your computers, where you are) and acts where it can, each
+  step undoable: calendar blocks, status changes, application packets and forms, reply drafts;
+- works with Anthropic, any OpenAI-compatible service or a local Ollama model, and keeps what must stay on your
+  machine on it;
+- talks with your projects' agents over Principal Handoff 0.4, where only you settle what is yours.
+{% endif %}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim }}
 {% for commit in commits %}
