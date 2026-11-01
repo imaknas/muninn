@@ -1,18 +1,15 @@
 # A release, when a version tag (vX.Y.Z) is pushed: the package is built from that tag with its web app, the GitHub
 # release is made with the notes git cliff generates, and the same files are published to PyPI as muninn-ai through
 # Trusted Publishing: no token is kept anywhere, PyPI trusts this workflow (registered once on PyPI as the project's
-# publisher, environment "pypi"). A tag already pushed is released with "Run workflow" and its name.
+# publisher, environment "pypi", which only a v* tag may deploy to). A tag already pushed is released with "Run
+# workflow", using the workflow from that tag. The actions are pinned to commits: the job that publishes trusts them.
 # Nothing runs while the repository is private: publishing to PyPI would make the code public.
 name: Release
 
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "The tag to release (vX.Y.Z), already pushed"
-        required: true
+  workflow_dispatch:  # run from the tag ("Use workflow from": vX.Y.Z)
 
 permissions:
   contents: read
@@ -20,20 +17,20 @@ permissions:
 jobs:
   build:
     name: package
-    if: ${{ !github.event.repository.private }}
+    if: ${{ !github.event.repository.private && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      TAG: ${{ inputs.tag || github.ref_name }}
+      TAG: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
-          ref: ${{ inputs.tag || github.ref }}
-      - uses: actions/setup-node@v5
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
         with:
           node-version: 22
           cache: npm
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6.8.0
         with:
           python-version: "3.13"
       - name: the tag is the package's version
@@ -44,7 +41,7 @@ jobs:
       - run: uv build -o dist
       - name: the package carries the web app
         run: unzip -l dist/*.whl | grep -q 'muninn/adapters/web/static/app.js'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: dist
           path: dist/
@@ -57,18 +54,18 @@ jobs:
     permissions:
       contents: write
     env:
-      TAG: ${{ inputs.tag || github.ref_name }}
+      TAG: ${{ github.ref_name }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: dist
           path: dist/
-      - uses: orhun/git-cliff-action@v4
+      - uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff  # v4.9.1
         with:
           args: --current --strip header
         env:
@@ -90,8 +87,8 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3

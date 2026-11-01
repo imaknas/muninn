@@ -92,7 +92,8 @@ Pushing the tag does the rest (`.github/workflows/release.yml`): the package is 
 the GitHub release is made with the notes `git cliff` generates, and the same files are published to PyPI as
 `muninn-ai`, which is where `muninn upgrade` looks for the latest stable release (a pre-release or a yanked version is
 never taken). PyPI trusts the workflow itself (Trusted Publishing, environment `pypi`), so no token is kept anywhere. A
-tag already pushed is released from the Actions tab: Release → Run workflow, with the tag's name.
+tag already pushed is released from the Actions tab: Release → Run workflow, using the workflow from that tag (the
+`pypi` environment accepts only `v*` tags).
 
 ## Privacy
 
