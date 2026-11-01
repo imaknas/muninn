@@ -1,4 +1,4 @@
-"""Conversation text from Claude Code transcripts, for reflection.
+"""Conversation text from coding-agent sessions (Claude Code, Codex), for reflection.
 
 Keeps what the user typed and the assistant's written replies, in sessions
 where the user actually took part. Leaves out tool calls and their output
@@ -16,7 +16,8 @@ from typing import Any, Sequence
 
 from muninn.core.models import Turn
 
-from .claude_code import is_human_prompt, repo_name
+from .agent_activity import repo_name
+from .agent_sessions import FORMATS, SessionFormat, format_of
 
 MAX_TURN_CHARS = 4000
 INJECTED = re.compile(
@@ -32,25 +33,19 @@ def clean(text: str) -> str:
     return text
 
 
-def message_text(content: Any) -> str:
-    """Only plain text blocks: no tool_use, tool_result, thinking or images."""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        return "\n".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text")
-    return ""
-
-
 class TranscriptTextSource:
-    def __init__(self, roots: Sequence[Path], workspace_roots: Sequence[Path], lookback: timedelta = timedelta(days=60)):
+    def __init__(self, roots: Sequence[Path], workspace_roots: Sequence[Path], lookback: timedelta = timedelta(days=60),
+                 formats: tuple[SessionFormat, ...] = FORMATS):
         self._roots = [Path(r).expanduser() for r in roots]
         self._ws = [Path(r).expanduser() for r in workspace_roots]
         self._lookback = lookback
+        self._formats = formats
 
     def collect(self, cursor: Any, now: datetime) -> tuple[list[Turn], Any]:
         cursor = cursor if isinstance(cursor, dict) else {}
         offsets: dict[str, int] = dict(cursor.get("files", {}))
         attended: set[str] = set(cursor.get("attended", []))
+        contexts: dict[str, dict[str, Any]] = dict(cursor.get("contexts") or {})  # what a file's later lines leave out
         cutoff = now - self._lookback
         turns: list[Turn] = []
         seen: set[str] = set()
@@ -58,8 +53,6 @@ class TranscriptTextSource:
             if not root.is_dir():
                 continue
             for f in root.rglob("*.jsonl"):
-                if "subagents" in f.parts:
-                    continue  # agents' own side work
                 key = str(f)
                 seen.add(key)
                 try:
@@ -74,11 +67,21 @@ class TranscriptTextSource:
                     continue
                 if start == st.st_size:
                     continue
-                offsets[key] = self._read(f, start, cutoff, attended, turns)
+                known = format_of(f, self._formats)
+                if known is None or known[0].side_work(f):  # no agent's format, or an agent's own side work
+                    offsets[key] = st.st_size
+                    continue
+                fmt, ctx = known
+                ctx = contexts.get(key, ctx) if start else ctx
+                offsets[key] = self._read(f, start, cutoff, attended, turns, fmt, ctx)
+                if ctx:
+                    contexts[key] = ctx
         offsets = {k: v for k, v in offsets.items() if k in seen}
-        return turns, {"files": offsets, "attended": sorted(attended)[-5000:]}
+        return turns, {"files": offsets, "attended": sorted(attended)[-5000:],
+                       "contexts": {k: v for k, v in contexts.items() if k in seen}}
 
-    def _read(self, f: Path, start: int, cutoff: datetime, attended: set[str], out: list[Turn]) -> int:
+    def _read(self, f: Path, start: int, cutoff: datetime, attended: set[str], out: list[Turn], fmt: SessionFormat,
+              ctx: dict[str, Any]) -> int:
         with f.open("rb") as fh:
             fh.seek(start)
             pos = start
@@ -90,31 +93,22 @@ class TranscriptTextSource:
                     e = json.loads(raw)
                 except ValueError:
                     continue
-                kind, sid, ts_s = e.get("type"), e.get("sessionId"), e.get("timestamp")
-                if kind not in ("user", "assistant") or not (sid and ts_s):
+                line = fmt.line(e, ctx) if isinstance(e, dict) else None
+                if line is None or line.role is None or line.ts < cutoff:
                     continue
-                try:
-                    ts = datetime.fromisoformat(ts_s.replace("Z", "+00:00"))
-                except ValueError:
-                    continue
-                if ts < cutoff:
-                    continue
-                if kind == "user":
-                    if not is_human_prompt(e):
-                        continue
-                    attended.add(sid)
-                elif sid not in attended:
+                if line.role == "user":
+                    attended.add(line.session)
+                elif line.session not in attended:
                     continue  # replies in sessions the user never typed into
-                text = clean(message_text((e.get("message") or {}).get("content")))
+                text = clean(line.text)
                 if not text:
                     continue
-                cwd = e.get("cwd") or ""
                 out.append(Turn(
-                    key=f"{sid}:{e.get('uuid') or ts_s}",
-                    session=sid,
-                    ts=ts,
-                    role=kind,
-                    project=repo_name(cwd, self._ws) if cwd else None,
+                    key=f"{line.session}:{line.key}",
+                    session=line.session,
+                    ts=line.ts,
+                    role=line.role,
+                    project=repo_name(line.cwd, self._ws) if line.cwd else None,
                     text=text,
                 ))
             return pos

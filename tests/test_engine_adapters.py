@@ -11,7 +11,8 @@ from starlette.testclient import TestClient
 from conftest import ZH, TZ, at, make_harness
 from muninn.adapters.channels.webpush import VapidKeys
 from muninn.adapters.plans_yaml import YamlPlanRepo
-from muninn.adapters.sources.claude_code import ClaudeCodeSource, is_human_prompt
+from muninn.adapters.sources.agent_activity import AgentActivitySource
+from muninn.adapters.sources.agent_sessions import is_human_prompt
 from muninn.adapters.sources.git import GitSource
 from muninn.adapters.web.app import create_app
 from muninn.adapters.web.devices import DeviceRegistry
@@ -169,7 +170,7 @@ def test_claude_source_counts_only_attended_activity(tmp_path):
         _line(type="assistant", timestamp=iso(t0 + timedelta(minutes=40)), cwd=cwd, sessionId="s1", message={"content": secret}),
     ]
     (proj / "s.jsonl").write_text("".join(lines))
-    src = ClaudeCodeSource([tmp_path / "projects"], [ws])
+    src = AgentActivitySource([tmp_path / "projects"], [ws])
     found, cursor = src.collect(None, t0 + timedelta(hours=1))
     assert [o.payload["repo"] for o in found] == ["resume"]
     assert found[0].payload["human_turns"] == 1 and found[0].payload["events"] == 2
@@ -353,7 +354,7 @@ def test_attribution_api(web):
 def test_home_directory_is_not_a_project(tmp_path):
     from pathlib import Path
 
-    from muninn.adapters.sources.claude_code import repo_name
+    from muninn.adapters.sources.agent_activity import repo_name
 
     assert repo_name("/Users/someone", []) is None
     assert repo_name(str(Path.home()), []) is None

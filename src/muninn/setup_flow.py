@@ -30,7 +30,7 @@ from muninn.llm_config import Implementation, ProviderContext, llm_setup
 PROBE = ("Answer with the single word OK.", "Are you there?")
 # where people keep their code, and where a coding agent keeps its sessions: offered on the settings page when found
 WORK_FOLDERS = ("workspace", "code", "projects", "src", "dev", "Developer", "repos", "GitHub")
-SESSION_FOLDERS = (".claude/projects",)
+SESSION_FOLDERS = (".claude/projects", ".codex/sessions")
 SOURCES = ("workspace_roots", "transcript_roots")
 CHOICES = {
     "anthropic": {"needs_key": True, "base_url": None},

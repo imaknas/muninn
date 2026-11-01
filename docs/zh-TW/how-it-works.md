@@ -47,9 +47,11 @@ sources ──► attribution ──► store ──► drift rules ──► co
 - **git**:commit 時間、repo 目錄名稱、依副檔名統計的檔案/行數,
   以及 `Co-Authored-By` trailer 有沒有寫到 AI 助理(有的話算
   `agent_commit`,不算親手做的時間)。不取訊息、路徑或 diff。
-- **Claude Code 對話紀錄**:時間戳、工作目錄和 session id;
+- **程式 agent 的對話紀錄**(Claude Code 在 `~/.claude/projects`,Codex 在 `~/.codex/sessions`;
+  是哪個 agent 的檔案從第一行看出來):時間戳、工作目錄和 session id;
   只有*有人在場*的活動才算(一則人下的 prompt 加上之後的 10 分鐘),
-  所以 agent 自己跑的時間不算你的時間。不取訊息內文。
+  所以 agent 自己跑的時間不算你的時間。Codex 的 session 只有在 Codex 自己的命令列或編輯器裡開的才算,
+  別的程式開的(`codex exec`、自訂的用戶端)或 sub-agent 都不算。不取訊息內文。
 - **電腦活動**(`src/muninn/contracts/activity.v1.md`):電腦上的收集器送來的東西;
   Mac 收集器(`src/muninn/collectors/mac`,用設定頁上那一行指令安裝)送出非 AFK 時的
   ActivityWatch 視窗活動(跟瀏覽器擴充功能重疊的 Chrome 視窗會帶

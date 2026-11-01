@@ -245,7 +245,7 @@ export const pages: Words["pages"] = {
   foldersOff: "No folders chosen to read yet",
   foldersWhy: "Only times and counts (which project, when, how many lines), never what is in them",
   projectFolders: "Project folders (git activity)",
-  sessionFolders: "Coding-agent sessions (Claude Code)",
+  sessionFolders: "Coding-agent sessions (Claude Code, Codex)",
   noFolders: "None yet",
   remove: "Remove",
   addFound: "Add",

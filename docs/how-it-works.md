@@ -54,9 +54,13 @@ sources ──► attribution ──► store ──► drift rules ──► co
 - **git**: commit time, repo directory name, per-extension file/line counts,
   and whether a `Co-Authored-By` trailer names an AI assistant (those count as
   `agent_commit`, not as hands-on time). No messages, paths or diffs.
-- **Claude Code transcripts**: timestamps, working directory and session id;
-  only *attended* activity counts (a human prompt and the 10 minutes after
-  it), so an agent running on its own is not the user's time. No message text.
+- **Coding-agent sessions** (Claude Code in `~/.claude/projects`, Codex in
+  `~/.codex/sessions`; which agent a file is from is read from its first line):
+  timestamps, working directory and session id; only *attended* activity
+  counts (a human prompt and the 10 minutes after it), so an agent running on
+  its own is not the user's time. A Codex session counts only when it was
+  started in Codex's own command line or editor client, not by another program
+  (`codex exec`, a custom client) or as a sub-agent. No message text.
 - **Computer activity** (`src/muninn/contracts/activity.v1.md`): what a collector on a
   computer sends; the Mac collector (`src/muninn/collectors/mac`, installed with
   the line on the settings page) sends ActivityWatch

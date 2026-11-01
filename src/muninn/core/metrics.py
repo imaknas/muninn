@@ -14,13 +14,13 @@ from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from typing import Protocol
 
-from .models import DomainPlan, Goal, Observation
+from .models import AGENT_ACTIVITY_KINDS, DomainPlan, Goal, Observation
 from .ports import ObservationStore
 from .timewin import local
 
 HOURS_CORRECTION = "hours_correction"
 # Activity the user did not report but was observed doing.
-PASSIVE_ACTIVITY_KINDS = ("commit", "claude_activity", "window")
+PASSIVE_ACTIVITY_KINDS = ("commit", *AGENT_ACTIVITY_KINDS, "window")
 OFFLINE_ACTIVITY = "offline"  # time away from the keyboard the user said counts for a goal (offline_time.py)
 
 

@@ -17,7 +17,7 @@ from .attribution import Attributor, is_generic_window, window_key
 from .cases import CaseFeedback
 from .llm_router import LLMRequest, LLMRouter
 from .metrics import span_of
-from .models import ActionRecord, Confirmation, DomainPlan, Observation, Sensitivity
+from .models import AGENT_ACTIVITY_KINDS, ActionRecord, Confirmation, DomainPlan, Observation, Sensitivity
 from .privacy import UNDERSTANDING_DOMAIN, Cleared
 from .timewin import local
 from .ports import ActionLog, Clock, ConfirmationStore, ObservationStore, StateStore
@@ -130,7 +130,7 @@ class WindowLabels:
             if o.kind != "window" or not is_generic_window(o.payload):
                 continue
             near: dict[tuple[str, str | None], int] = {}
-            for x in self._store.observations(o.ts - pad, span_of(o)[1] + pad, kinds=("claude_activity", "commit")):
+            for x in self._store.observations(o.ts - pad, span_of(o)[1] + pad, kinds=(*AGENT_ACTIVITY_KINDS, "commit")):
                 if x.domain:
                     near[(x.domain, x.goal)] = near.get((x.domain, x.goal), 0) + 1
             if not near:

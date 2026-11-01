@@ -29,6 +29,10 @@ class Sensitivity(enum.IntEnum):
     def label(self) -> str:
         return self.name.lower()
 
+# a coding agent's session the user took part in: Claude Code's under the kind it always had, any other agent's (Codex
+# …) under one kind, with the agent in the payload, so a new agent needs no new kind
+AGENT_ACTIVITY_KINDS = ("claude_activity", "agent_activity")
+
 
 @dataclass(frozen=True)
 class Observation:

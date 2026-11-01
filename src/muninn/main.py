@@ -50,7 +50,7 @@ from muninn.adapters.microsoft.graph import GraphBusy, GraphMailbox, MicrosoftOA
 from muninn.adapters.plans_yaml import YamlPlanRepo
 from muninn.adapters.local_projects import LocalProjects
 from muninn.adapters.project_records import FileProjectRecords
-from muninn.adapters.sources.claude_code import ClaudeCodeSource
+from muninn.adapters.sources.agent_activity import AgentActivitySource
 from muninn.adapters.sources.conversations import TranscriptTextSource
 from muninn.adapters.sources.git import GitSource
 from muninn.adapters.store_sqlite import SqliteStore, StoreTooNew
@@ -258,7 +258,7 @@ def build(config: Config, *, dry_run: bool = False) -> App:
     ws = cfg.paths("workspace_roots")
     sources = [
         GitSource(ws, cfg.git_authors(), exclude=cfg["git_exclude"]),
-        ClaudeCodeSource(cfg.paths("transcript_roots"), ws),
+        AgentActivitySource(cfg.paths("transcript_roots"), ws),
     ]
     quiet_start, quiet_end = cfg.quiet_hours
     night_start, night_end = cfg.late_night

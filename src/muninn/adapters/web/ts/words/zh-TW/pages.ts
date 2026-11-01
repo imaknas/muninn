@@ -241,7 +241,7 @@ export const pages = {
   foldersOff: "還沒選要讀的資料夾",
   foldersWhy: "只讀時間和數量(哪個專案、幾點、改了幾行),不讀內容",
   projectFolders: "專案資料夾(git 活動)",
-  sessionFolders: "程式 agent 的對話紀錄(Claude Code)",
+  sessionFolders: "程式 agent 的對話紀錄(Claude Code、Codex)",
   noFolders: "還沒有",
   remove: "移除",
   addFound: "加入",
