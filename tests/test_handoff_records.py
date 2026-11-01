@@ -397,3 +397,18 @@ def test_under_his_standing_permission_an_agents_claim_is_settled_as_delegated_a
     [s] = [r for r in out(h) if r["type"] == "settled"]
     assert s["authority"] == {"kind": "delegated", "decider": "muninn", "under": f"muninn:mandate:{m['id']}",
                               "chain": [h.engine.parties.principal, "muninn"]} and "adopts" not in s
+
+
+@pytest.mark.parametrize("order", ["small first", "big first"])
+def test_an_id_sent_twice_with_other_content_keeps_the_greater_form_whatever_came_first(order, caplog):
+    h = make_harness(at(2026, 10, 22, 10))
+    small, big = raised("task-pots-1", "Buy a pot"), raised("task-pots-1", "Buy two pots")
+    assert ph.canonical(big) > ph.canonical(small)
+    bad = {**raised("task-pots-1", "Buy three pots"), "terms_rev": 0}  # invalid: never kept, never in the way
+    first, second = (small, big) if order == "small first" else (big, small)
+    h.engine.records_in.receive([bad, first])
+    h.engine.records_in.receive([second])
+    [kept] = [r for r in h.store.records_of("acts", P, "task-pots-1") if r["type"] == "raised"]
+    assert kept["terms"]["text"] == "Buy two pots"
+    assert h.engine.tasks.get("task-pots-1")["title"] == "Buy two pots"  # what is shown follows the record kept
+    assert "again with other content" in caplog.text

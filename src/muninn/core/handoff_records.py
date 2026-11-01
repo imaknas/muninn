@@ -140,12 +140,19 @@ class Inbox:
                 out.append({"id": r.get("id"), "status": "invalid", "errors": errs})
                 continue
             ext = ph.name(r["ext"])
+            same = [x for x in self._store.records_of(ext, r["project"], r["key"])
+                    if (x.get("origin"), x.get("type"), x.get("id")) == (r["origin"], r["type"], r["id"])]
             got = self._store.add_record(ext, r, self._clock.now(), lambda x: ph.canonical(ph.converted(x)))
             if got != "duplicate":
                 self._versions.heard(r["project"], ext, str(spoke))
+            if got in ("replaced", "kept") and same and _differs(same[0], r):
+                log.warning("%s sent record %s (%s, %s) again with other content: the greater form is kept (core section"
+                            " 10), %s", r["project"], r["id"], r["type"], r["origin"], "this one" if got == "replaced" else "the one held")
             if got == "new":
                 self._apply(ph.converted(r))
-            out.append({"id": r["id"], "status": "duplicate" if got == "duplicate" else "accepted"})
+            elif got == "replaced" and r["type"] in ("raised", "amended") and self._current_terms(ext, r):
+                self._terms(ph.converted(r))  # what is shown follows the record kept, not the one that came first
+            out.append({"id": r["id"], "status": "accepted" if got in ("new", "replaced") else "duplicate"})
         return out
 
     def _apply(self, r: dict[str, Any]) -> None:
@@ -192,6 +199,20 @@ class Inbox:
                                      "text": str(answer.get("text") or answer.get("option") or said or self.words("handoff_records.answered"))}])
 
 
+    def _current_terms(self, ext: str, r: dict[str, Any]) -> bool:
+        """The record's terms are the item's latest: no need record with a higher terms_rev is held."""
+        revs = [x.get("terms_rev", 0) for x in self._store.records_of(ext, r["project"], r["key"])
+                if x.get("type") in ("raised", "amended") and x.get("origin") == "requester"]
+        return r.get("terms_rev", 0) >= max(revs, default=0)
+
+    def _terms(self, r: dict[str, Any]) -> None:
+        """An item's terms as the record now kept says them (its words, and a task's date)."""
+        terms = r.get("terms") or {}
+        if r["ext"] == ph.label(ACTS):
+            self._tasks.amended(r["key"], r["project"], terms["text"], terms.get("due"))
+        else:
+            self._messages.amend_question(r["key"], terms["text"])
+
     def _replaced(self, r: dict[str, Any]) -> bool:
         """The act is withdrawn as replaced: its requester's current need record says so."""
         needs = [ph.converted(x) for x in self._store.records_of(ACTS, r["project"], r["key"])
@@ -206,6 +227,13 @@ class Inbox:
         active = [x["relation"]["target"] for x in rels if x["relation"].get("active", True)
                   and not any(y.get("supersedes") and x["id"] in y["supersedes"] for y in rels)]
         return str(active[0]["key"]) if len(active) == 1 and "key" in active[0] else None
+
+
+def _differs(held: dict[str, Any], new: dict[str, Any]) -> bool:
+    """Other content, not only another time (a record made again after a crash differs only in ts)."""
+    def bare(x: dict[str, Any]) -> str:
+        return ph.canonical({k: v for k, v in ph.converted(x).items() if k != "ts"})
+    return bare(held) != bare(new)
 
 
 class OutStore(HandoffStore, RecordStore, StateStore, Protocol):

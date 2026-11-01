@@ -734,10 +734,13 @@ class SqliteStore:
                 db.execute("INSERT INTO ph_records (ext, project, origin, type, id, key, record, received) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                            (record["ext"], *scope[:4], record["key"], text, _ts(at)))
                 return "new"
-            if canonical(record) > canonical(json.loads(old["record"])):  # an id reused: the greater form, whatever came first
+            mine, held = canonical(record), canonical(json.loads(old["record"]))
+            if mine == held:
+                return "duplicate"
+            if mine > held:  # an id reused: the greater form, whatever came first
                 db.execute("UPDATE ph_records SET ext = ?, record = ? WHERE seq = ?", (record["ext"], text, old["seq"]))
                 return "replaced"
-            return "duplicate"
+            return "kept"
 
     def _records_by_type(self) -> None:
         """A record's id is unique per origin and type (core section 10), and a record is kept as it came, under its

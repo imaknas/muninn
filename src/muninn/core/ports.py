@@ -651,8 +651,8 @@ class RecordStore(Protocol):
 
     def add_record(self, ext: str, record: dict[str, Any], at: datetime, canonical: Callable[[dict[str, Any]], str]) -> str:
         """Keeps the record, as it came, among those of the extension named `ext` (whatever its version): "new";
-        already held: "duplicate"; its id held with other content: the greater canonical form is kept ("replaced"
-        when that is this one). `canonical` reads both in one version."""
+        already held: "duplicate"; its id held with other content: the greater canonical form is kept, this one
+        ("replaced") or the one held ("kept"). `canonical` reads both in one version."""
         ...
 
     def records_of(self, ext: str, project: str, key: str) -> list[dict[str, Any]]:

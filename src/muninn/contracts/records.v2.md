@@ -30,7 +30,10 @@ extension names it in 0.4.
 
 Body `{"records": [<record>, …]}`, read as I-JSON (a member name twice makes that record invalid, alone). Each record
 is checked on its own; the reply lists, per record, `{"id", "status"}` with `status` one of `accepted`, `duplicate`
-(its `(ext name, project, origin, type, id)` is already held, in whichever version), `unsupported` (an extension Muninn does not implement: consumed,
+(its `(ext name, project, origin, type, id)` is already held, in whichever version). An id sent again with other
+content keeps the form whose RFC 8785 serialisation is greater, whichever came first (core section 10): what the user
+sees follows the record kept, and the reuse is said in Muninn's log unless only `ts` differs. A record that fails
+validation is never kept and blocks no valid one with its id, `unsupported` (an extension Muninn does not implement: consumed,
 not acted on) or `invalid` (with `errors`). Posting again is safe.
 
 | Record | What Muninn does |
