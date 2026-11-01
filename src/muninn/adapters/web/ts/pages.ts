@@ -7,7 +7,7 @@ import { afterTalk, confirmationCard, connectAccount, copy } from "./cards.js";
 import { cloudFirst, cloudName, handleError, loadToday, reader, render, state } from "./shell.js";
 import { setTopic } from "./talk.js";
 import { LANGUAGE_NAMES, LANGUAGES, w, type Lang } from "./words.js";
-import type { ActivitySetup, Confirmation, Connection, HealthSetup, List, LocationSetup, Mail, Me, Prepared, Reflection, Requests, Settings, SetupPair, SetupSaved, TrackerRow, Undoable, HttpsState, HttpsMade } from "./types.js";
+import type { ActivitySetup, Confirmation, Connection, FormFillingState, GoogleSetup, HealthSetup, List, LocationSetup, Mail, Me, Prepared, Reflection, Requests, Settings, SetupPair, SetupSaved, SourceKey, Sources, TrackerRow, Undoable, HttpsState, HttpsMade } from "./types.js";
 
 // ── Application packet, reply draft ──────────────────────────────────────
 
@@ -192,6 +192,120 @@ export async function markDone(domain: string, id: string): Promise<void> {
 
 // ── Settings ────────────────────────────────────────────────────────────
 
+// a value to paste somewhere else: its label, how it is shown (shortened, or hidden), and a button that copies it
+const copyRow = (label: string, shown: string, value: string, what: string) => el("div", { class: "decided-row" }, el("span", {}, label),
+  el("span", { class: "acts" }, el("span", { class: "mono muted" }, shown), el("button", { type: "button", class: "btn small", onclick: () => copy(value, what) }, w.pages.copy)));
+
+const statusLine = (ok: boolean, head: string, line: string) => el("div", { class: "status" },
+  el("span", { class: `icon ${ok ? "" : "warn"}` }, svg(ok ? ICON.check : ICON.warn)), el("div", {}, el("b", {}, head), el("span", {}, line)));
+
+// a setting saved: Muninn starts again with it (the page waits, then draws `after`), or says to start it
+async function savedThen(r: SetupSaved, at: HTMLElement, after: () => Promise<void>): Promise<void> {
+  if (!r.restarting) { at.replaceChildren(el("p", { class: "note" }, w.pages.restartYourself)); return; }
+  at.replaceChildren(el("p", { class: "sub" }, w.pages.restarting));
+  await backUp();
+  await after();
+}
+
+const failed = (at: HTMLElement, err: unknown) => at.append(el("p", { class: "error" }, err instanceof Error ? err.message : String(err)));
+
+// the folders Muninn reads activity from: project folders (git) and a coding agent's sessions, chosen here
+function sourcesSection(): HTMLElement {
+  const body = el("div", {});
+  const draw = async () => {
+    const s = await api<Sources>("/api/settings/sources");
+    const chosen: Record<SourceKey, string[]> = { workspace_roots: [...s.workspace_roots], transcript_roots: [...s.transcript_roots] };
+    const save = el("button", { type: "button", class: "btn primary block", disabled: true, onclick: async () => {
+      save.disabled = true;
+      try { await savedThen(await api<SetupSaved>("/api/settings/sources", chosen), body, draw); } catch (err) { save.disabled = false; failed(body, err); }
+    } }, w.pages.saveAndRestart);
+    const group = (key: SourceKey, title: string, example: string) => {
+      const box = el("div", { class: "tracker" });
+      const redraw = () => {
+        const input = el("input", { placeholder: example, "aria-label": title }) as HTMLInputElement;
+        const add = (path: string) => { if (path.trim() && !chosen[key].includes(path.trim())) chosen[key].push(path.trim()); save.disabled = false; redraw(); };
+        box.replaceChildren(...kids([el("b", {}, title),
+          chosen[key].length ? null : el("p", { class: "muted" }, w.pages.noFolders),
+          ...chosen[key].map((path) => el("div", { class: "decided-row" }, el("span", { class: "mono" }, path),
+            el("button", { type: "button", class: "btn small", onclick: () => { chosen[key] = chosen[key].filter((x) => x !== path); save.disabled = false; redraw(); } }, w.pages.remove))),
+          ...s.suggested[key].filter((path) => !chosen[key].includes(path)).map((path) => el("div", { class: "decided-row" },
+            el("span", { class: "mono muted" }, path),
+            el("button", { type: "button", class: "btn small", onclick: () => add(path) }, w.pages.addFound))),
+          el("div", { class: "decided-row" }, input, el("button", { type: "button", class: "btn small", onclick: () => add(input.value) }, w.pages.addFolder))]));
+      };
+      redraw();
+      return box;
+    };
+    const on = s.workspace_roots.length + s.transcript_roots.length > 0;
+    body.replaceChildren(statusLine(on, on ? w.pages.foldersOn : w.pages.foldersOff, w.pages.foldersWhy),
+      group("workspace_roots", w.pages.projectFolders, "~/code"), group("transcript_roots", w.pages.sessionFolders, "~/.claude/projects"), save);
+  };
+  void draw().catch((err) => failed(body, err));
+  return el("section", { class: "card", "aria-label": w.pages.folders }, body);
+}
+
+// Google's mail and calendar need a sign-in client of the user's own: how to make one in Google Cloud, step by step,
+// and the file it gives, checked and kept here
+function googleSection(g: GoogleSetup): HTMLElement {
+  const body = el("div", {});
+  const link = (href: string, label: string) => el("a", { href, target: "_blank", rel: "noopener" }, label);
+  if (!g.callback || !g.privacy) {
+    body.replaceChildren(statusLine(false, w.pages.googleSetup, w.pages.googleNeedsHttps));
+  } else {
+    const file = el("input", { type: "file", accept: ".json,application/json", "aria-label": w.pages.googleFile }) as HTMLInputElement;
+    const gmail = el("input", { type: "checkbox", checked: true }) as HTMLInputElement;
+    const use = el("button", { type: "button", class: "btn primary block", onclick: async () => {
+      const chosen = file.files?.[0];
+      if (!chosen) { failed(body, new Error(w.pages.googleFile)); return; }
+      use.disabled = true;
+      try {
+        const r = await api<SetupSaved>("/api/settings/google", { client: await chosen.text(), gmail: gmail.checked });
+        await savedThen(r, body, async () => { location.reload(); });  // back with the client: "Link Google" takes over
+      } catch (err) { use.disabled = false; failed(body, err); }
+    } }, w.pages.googleUse);
+    const gcp = "https://console.cloud.google.com";
+    body.replaceChildren(statusLine(false, w.pages.googleSetup, w.pages.googleWhy),
+      el("ol", { class: "plain steps" },
+        el("li", {}, w.pages.googleProject, " ", link(`${gcp}/projectcreate`, w.pages.open)),
+        el("li", {}, w.pages.googleApis, " ", link(`${gcp}/apis/library/gmail.googleapis.com`, "Gmail API"), " · ",
+          link(`${gcp}/apis/library/calendar-json.googleapis.com`, "Google Calendar API")),
+        el("li", {}, w.pages.googleBranding, " ", link(`${gcp}/auth/branding`, w.pages.open),
+          copyRow(w.pages.homePage, g.privacy.replace(/\/privacy$/, "").replace(/^https:\/\//, ""), g.privacy.replace(/\/privacy$/, ""), w.pages.homePage),
+          copyRow(w.pages.privacyPage, "…/privacy", g.privacy, w.pages.privacyPage)),
+        el("li", {}, w.pages.googleAudience, " ", link(`${gcp}/auth/audience`, w.pages.open)),
+        el("li", {}, w.pages.googleClient, " ", link(`${gcp}/auth/clients`, w.pages.open),
+          copyRow(w.pages.redirectUri, "…/oauth/google/callback", g.callback, w.pages.redirectUri)),
+        el("li", {}, w.pages.googleChoose, file, el("label", { class: "choice" }, gmail, " ", w.pages.gmailToo))),
+      use);
+  }
+  return el("section", { class: "card", "aria-label": w.pages.googleSetup }, body);
+}
+
+// filling in application forms: the browser that does it, added from here (it takes minutes; the page asks how it goes)
+function formFillingSection(): HTMLElement {
+  const body = el("div", {});
+  const draw = async (): Promise<void> => {
+    const f = await api<FormFillingState>("/api/settings/form-filling");
+    if (f.state === "installing") {
+      body.replaceChildren(statusLine(false, w.pages.formFilling, w.pages.formFillingInstalling));
+      setTimeout(() => { void draw().catch((err) => failed(body, err)); }, 3000);
+      return;
+    }
+    if (f.state === "restarting") { await savedThen({ ok: true, restarting: true }, body, draw); return; }
+    if (f.state === "restart_yourself") { body.replaceChildren(el("p", { class: "note" }, w.pages.restartYourself)); return; }
+    if (f.ready) { body.replaceChildren(statusLine(true, w.pages.formFillingOn, w.pages.formFillingWhy)); return; }
+    const add = el("button", { type: "button", class: "btn primary block", onclick: async () => {
+      add.disabled = true;
+      try { await api<FormFillingState>("/api/settings/form-filling", {}); await draw(); } catch (err) { add.disabled = false; failed(body, err); }
+    } }, w.pages.formFillingAdd);
+    body.replaceChildren(...kids([statusLine(false, w.pages.formFillingOff, w.pages.formFillingWhy),
+      f.state === "failed" ? el("p", { class: "error" }, w.pages.formFillingFailed(f.said || "")) : null,
+      f.refused ? el("p", { class: "note" }, f.refused) : add]));
+  };
+  void draw().catch((err) => failed(body, err));
+  return el("section", { class: "card", "aria-label": w.pages.formFilling }, body);
+}
+
 // `questions`: the open questions on top (the desktop asks them in its inbox instead)
 export async function renderSettings({ questions = true }: { questions?: boolean } = {}): Promise<Child[]> {
   const [t, conf, decided, me, settings, sub] = await Promise.all([
@@ -225,6 +339,8 @@ export async function renderSettings({ questions = true }: { questions?: boolean
   }
 
   const conns = await api<Record<string, Connection>>("/api/connections");
+  const google = await api<GoogleSetup>("/api/settings/google");
+  if (google.settable && !google.configured) out.push(googleSection(google));
   const purpose: Record<string, string> = { google: w.pages.googlePurpose, microsoft: w.pages.microsoftPurpose(cloudFirst()) };
   for (const [name, c] of Object.entries(conns)) {
     if (!c.configured && !c.authorized) continue;
@@ -237,9 +353,6 @@ export async function renderSettings({ questions = true }: { questions?: boolean
       el("button", { type: "button", class: c.authorized ? "btn block" : "btn primary block", onclick: () => connectAccount(name) },
         c.authorized ? w.pages.relink : w.pages.link(label))));
   }
-
-  const copyRow = (label: string, shown: string, value: string, what: string) => el("div", { class: "decided-row" }, el("span", {}, label),
-    el("span", { class: "acts" }, el("span", { class: "mono muted" }, shown), el("button", { type: "button", class: "btn small", onclick: () => copy(value, what) }, w.pages.copy)));
 
   const loc = await api<LocationSetup>("/api/setup/location");
   const from = loc.apps.find((a) => a.name === loc.last_app);
@@ -255,6 +368,8 @@ export async function renderSettings({ questions = true }: { questions?: boolean
       el("details", { class: "fold", ...(a.link ? {} : { open: "" }) }, el("summary", {}, a.link ? w.pages.manualFallback : w.pages.manual(a.label)),
         a.note ? el("p", { class: "note" }, a.note) : null,
         a.fields.map((f) => copyRow(f.label, shown(f), f.value, f.label)))))));
+
+  out.push(sourcesSection(), formFillingSection());
 
   const act = await api<ActivitySetup>("/api/setup/activity");
   out.push(el("section", { class: "card", "aria-label": w.pages.activity },

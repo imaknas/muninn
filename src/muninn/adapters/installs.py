@@ -1,8 +1,10 @@
 """Where a release comes from, how this Muninn was installed and how it runs in the background: the pieces
-`muninn upgrade` (upgrade.py) is given, one implementation each."""
+`muninn upgrade` (upgrade.py) is given, one implementation each. The installation also adds an optional part
+(an extra, such as the browser that fills application forms) and keeps the ones there through an upgrade."""
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import re
 import shutil
@@ -66,41 +68,78 @@ class WheelFile:
 # ── how this Muninn was installed ─────────────────────────────────────────
 
 
+def with_extras(spec: str, extras: tuple[str, ...]) -> str:
+    """A release's spec asking for the extras too: muninn-ai==1.2 → muninn-ai[autofill]==1.2; a package file's path
+    or address → muninn-ai[autofill] @ <its address>."""
+    if not extras:
+        return spec
+    named = f"{PACKAGE}[{','.join(extras)}]"
+    if spec.startswith(PACKAGE):
+        return named + spec[len(PACKAGE):]
+    return f"{named} @ {spec if '://' in spec else Path(spec).resolve().as_uri()}"
+
+
 class UvTool:
-    """Installed by the installer (or `uv tool install muninn-ai`): it replaces itself."""
+    """Installed by the installer (or `uv tool install muninn-ai`): it replaces itself, keeping the extras it has."""
 
     kind = "uv tool"
 
-    def __init__(self, uv: str, python: str, run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
-        self._uv, self._python, self._run = uv, python, run
+    def __init__(self, uv: str, python: str, extras: tuple[str, ...] = (), executable: str = sys.executable,
+                 run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
+        """`extras`: the optional parts installed now; `executable`: this installation's Python."""
+        self._uv, self._python, self._extras, self._executable, self._run = uv, python, extras, executable, run
 
     def refusal(self) -> str | None:
         return None
 
+    def extra_refusal(self) -> str | None:
+        return None
+
     def install(self, spec: str) -> None:
+        # --refresh-package: uv keeps the index's list of releases for a while, so a release minutes old is otherwise
+        # "unsatisfiable" though PyPI already says it is out
+        self._call([self._uv, "tool", "install", "--force", "--refresh-package", PACKAGE, "--python", self._python,
+                    with_extras(spec, self._extras)], "uv")
+
+    def add_extra(self, extra: str, version: str, then: list[str] | None = None) -> None:
+        """This version again with `extra` too; `then`: what to run with this installation's Python after (the
+        browser the extra drives, say)."""
+        self._extras = tuple(dict.fromkeys((*self._extras, extra)))
+        self._call([self._uv, "tool", "install", "--force", "--python", self._python, with_extras(f"{PACKAGE}=={version}", self._extras)], "uv")
+        if then:
+            self._call([self._executable, *then], then[-1])
+
+    def _call(self, argv: list[str], what: str) -> None:
         try:
-            # --refresh-package: uv keeps the index's list of releases for a while, so a release minutes old is
-            # otherwise "unsatisfiable" though PyPI already says it is out
-            done = self._run([self._uv, "tool", "install", "--force", "--refresh-package", PACKAGE, "--python", self._python, spec],
-                             capture_output=True, text=True, timeout=INSTALL_TIMEOUT_S)
+            done = self._run(argv, capture_output=True, text=True, timeout=INSTALL_TIMEOUT_S)
         except (OSError, subprocess.SubprocessError) as e:
-            raise UpgradeError(f"uv could not run ({e})") from None
+            raise UpgradeError(f"{what} could not run ({e})") from None
         if done.returncode != 0:
-            said = [line.strip() for line in (done.stderr or done.stdout or "uv failed").splitlines() if line.strip()]
+            said = [line.strip() for line in (done.stderr or done.stdout or f"{what} failed").splitlines() if line.strip()]
             raise UpgradeError(" ".join(said)[-400:])
 
 
 class Refused:
-    """An install that does not replace itself: what upgrades it instead."""
+    """An install that does not replace itself: what upgrades it instead (`why`), and what adds an optional part to
+    it instead (`extra_why`)."""
 
-    def __init__(self, kind: str, why: str):
-        self.kind, self._why = kind, why
+    def __init__(self, kind: str, why: str, extra_why: str | None = None):
+        self.kind, self._why, self._extra_why = kind, why, extra_why or why
 
     def refusal(self) -> str | None:
         return self._why
 
+    def extra_refusal(self) -> str | None:
+        return self._extra_why
+
     def install(self, spec: str) -> None:
         raise UpgradeError(self._why)
+
+    def add_extra(self, extra: str, version: str, then: list[str] | None = None) -> None:
+        raise UpgradeError(self._extra_why)
+
+
+EXTRAS = {"autofill": "playwright"}  # each optional part, by a module only it brings
 
 
 def installation(prefix: Path = Path(sys.prefix), package_dir: Path = Path(__file__).resolve().parents[1],
@@ -108,18 +147,26 @@ def installation(prefix: Path = Path(sys.prefix), package_dir: Path = Path(__fil
     """How the running Muninn was installed, read from where it runs."""
     env = dict(os.environ) if env is None else env
     if env.get("MUNINN_CONTAINER"):
-        return Refused("container", "this Muninn runs in a container: upgrade it with docker compose pull && docker compose up -d")
+        return Refused("container", "this Muninn runs in a container: upgrade it with docker compose pull && docker compose up -d",
+                       "this Muninn runs in a container, which has no browser to fill forms in: for that, install Muninn on "
+                       "a computer with the one-line installer")
     root = package_dir.parents[1]  # <checkout>/src/muninn
     if (root / ".git").exists() and (root / "pyproject.toml").is_file():
         return Refused("checkout", f"this Muninn runs from a source checkout ({root}): install the released package "
-                                   f"instead (uv tool install {PACKAGE}), or check out the release's tag there")
+                                   f"instead (uv tool install {PACKAGE}), or check out the release's tag there",
+                       f"this Muninn runs from a source checkout ({root}): run uv sync --extra autofill and "
+                       f"uv run playwright install chromium there")
     if (prefix / "uv-receipt.toml").is_file():
         uv = which("uv") or next((str(p) for p in (Path.home() / ".local/bin/uv", Path.home() / ".cargo/bin/uv") if p.is_file()), None)
         if uv is None:
-            return Refused("uv tool", "uv, which installed this Muninn, is not found: install uv, then run muninn upgrade again")
-        return UvTool(uv, f"{sys.version_info.major}.{sys.version_info.minor}")
+            return Refused("uv tool", "uv, which installed this Muninn, is not found: install uv, then run muninn upgrade again",
+                           "uv, which installed this Muninn, is not found: install uv, then try again")
+        extras = tuple(x for x, module in EXTRAS.items() if importlib.util.find_spec(module) is not None)
+        return UvTool(uv, f"{sys.version_info.major}.{sys.version_info.minor}", extras)
     return Refused("other", f"this Muninn was not installed by the installer: upgrade it the way it was installed "
-                            f"(pip install --upgrade {PACKAGE})")
+                            f"(pip install --upgrade {PACKAGE})",
+                   f"this Muninn was not installed by the installer: add form filling the way it was installed "
+                   f"(pip install '{PACKAGE}[autofill]', then playwright install chromium)")
 
 
 # ── how it runs in the background ─────────────────────────────────────────

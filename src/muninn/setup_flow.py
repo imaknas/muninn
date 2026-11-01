@@ -1,4 +1,5 @@
-"""First-run setup from the browser: which provider answers, its key, its models, and the phone's pairing.
+"""Setting Muninn up from the browser: first which provider answers, its key, its models, and the phone's pairing;
+then, from the settings page, the folders it reads activity from and the Google client it connects with.
 
 The key goes to a file of its own in the secrets directory (only its owner reads it) before anything else; the
 config gets only where it is ({secret: <file>}); no response, log line or URL carries it. Config is rewritten in
@@ -10,6 +11,7 @@ says to.
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 from pathlib import Path
@@ -26,6 +28,10 @@ from muninn.llm_config import Implementation, ProviderContext, llm_setup
 # what the setup page offers: impl → how it is asked for (the page names each in its language)
 # what a model chosen in setup is asked once, to see it answers at all (not a decision point: nothing is decided on it)
 PROBE = ("Answer with the single word OK.", "Are you there?")
+# where people keep their code, and where a coding agent keeps its sessions: offered on the settings page when found
+WORK_FOLDERS = ("workspace", "code", "projects", "src", "dev", "Developer", "repos", "GitHub")
+SESSION_FOLDERS = (".claude/projects",)
+SOURCES = ("workspace_roots", "transcript_roots")
 CHOICES = {
     "anthropic": {"needs_key": True, "base_url": None},
     "openai": {"needs_key": True, "base_url": "https://api.openai.com/v1"},
@@ -34,10 +40,12 @@ CHOICES = {
 
 
 class Setup:
-    def __init__(self, cfg: Config, impls: Mapping[str, Implementation], restart: Callable[[], bool], token: str | None = None):
+    def __init__(self, cfg: Config, impls: Mapping[str, Implementation], restart: Callable[[], bool], token: str | None = None,
+                 home: Path | None = None):
         """`restart()`: starts Muninn again with the new settings, saying whether it will (False: the user must);
-        `token`: the one-time setup token printed at start, while no device is paired."""
-        self._cfg, self._impls, self._restart, self.token = cfg, impls, restart, token
+        `token`: the one-time setup token printed at start, while no device is paired; `home`: the user's home
+        folder, where folders to read are looked for (None: none are suggested)."""
+        self._cfg, self._impls, self._restart, self.token, self._home = cfg, impls, restart, token, home
 
     def state(self) -> dict[str, Any]:
         llm = self._cfg["llm"]
@@ -63,13 +71,17 @@ class Setup:
         return name, spec
 
     def _write_key(self, name: str, key: str) -> None:
+        self._write_secret(f"{name}-api-key", key.strip() + "\n")
+
+    def _write_secret(self, name: str, text: str) -> None:
+        """A file in the secrets folder that only its owner reads."""
         folder = self._cfg.secrets_dir
         folder.mkdir(parents=True, exist_ok=True)
         folder.chmod(0o700)
-        path = folder / f"{name}-api-key"
+        path = folder / name
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as f:
-            f.write(key.strip() + "\n")
+            f.write(text)
         path.chmod(0o600)
 
     def models(self, choice: Mapping[str, Any]) -> list[str]:
@@ -142,14 +154,103 @@ class Setup:
         self._rewrite(lambda doc: doc.__setitem__("language", code))
         return self._restart()
 
+    # ── the settings page: folders to read, the Google client ──────────────────
+
+    def sources(self) -> dict[str, Any]:
+        """The folders Muninn reads activity from, as config says now (saved, though maybe not running yet), and the
+        usual ones found in the home folder that are not listed."""
+        doc = self._doc()
+        now = {k: [str(x) for x in (doc.get(k) or [])] for k in SOURCES}
+        found = {"workspace_roots": WORK_FOLDERS, "transcript_roots": SESSION_FOLDERS}
+
+        def suggested(key: str) -> list[str]:
+            if self._home is None:
+                return []
+            listed = {str(self._expand(x)) for x in now[key]}
+            return [self._shown(d) for d in (self._home / n for n in found[key]) if d.is_dir() and str(d) not in listed]
+        return {**now, "suggested": {k: suggested(k) for k in SOURCES}}
+
+    def _expand(self, path: str) -> Path:
+        """A folder as written (~/… under the home folder) as it is on this computer."""
+        if self._home is not None and (path == "~" or path.startswith("~/")):
+            return self._home / path[2:]
+        return Path(path).expanduser()
+
+    def _shown(self, folder: Path) -> str:
+        """A folder as config writes it: under the home folder as ~/…, so the config moves with the user."""
+        if self._home is not None and folder.is_relative_to(self._home):
+            return "~/" + str(folder.relative_to(self._home))
+        return str(folder)
+
+    def set_sources(self, folders: Mapping[str, Any]) -> bool:
+        """The folders to read activity from (each an existing folder), written into config; then Muninn starts again
+        to read them, or False when the user has to start it."""
+        words = language(self._cfg.language)
+        clean: dict[str, list[str]] = {}
+        for key in SOURCES:
+            out: list[str] = []
+            for raw in folders.get(key) or []:
+                path = str(raw).strip()
+                if not path:
+                    continue
+                if not self._expand(path).is_dir():
+                    raise ValueError(words("setup_flow.no_folder", path=path))
+                if path not in out:
+                    out.append(path)
+            clean[key] = out
+
+        def change(doc: Any) -> None:
+            for key, paths in clean.items():
+                doc[key] = paths
+        self._rewrite(change)
+        return self._restart()
+
+    def google_callback(self) -> str | None:
+        """Where Google sends the user back after signing in: Muninn's HTTPS address (none yet: Google cannot)."""
+        return f"{self._cfg.public_url.rstrip('/')}/oauth/google/callback" if self._cfg.public_url else None
+
+    def google_client(self, text: str, gmail: bool) -> bool:
+        """The OAuth client file the user downloaded from Google, checked for what signing in will need (a web
+        application, with Muninn's address to come back to) and kept in the secrets folder; with `gmail`, a Gmail
+        account to read is added unless one is listed. Then Muninn starts again, or False when the user has to."""
+        words = language(self._cfg.language)
+        callback = self.google_callback()
+        if callback is None:
+            raise ValueError(words("setup_flow.google_needs_https"))
+        try:
+            raw = json.loads(text)
+        except ValueError:
+            raise ValueError(words("setup_flow.google_not_json")) from None
+        if isinstance(raw, dict) and "installed" in raw:
+            raise ValueError(words("setup_flow.google_desktop"))
+        web = raw.get("web") if isinstance(raw, dict) else None
+        if not isinstance(web, dict) or not web.get("client_id") or not web.get("client_secret"):
+            raise ValueError(words("setup_flow.google_not_client"))
+        if callback not in (web.get("redirect_uris") or []):
+            raise ValueError(words("setup_flow.google_redirect", uri=callback))
+        self._write_secret("google_client.json", json.dumps({"web": web}, indent=1) + "\n")
+        if gmail:
+            def change(doc: Any) -> None:
+                accounts = doc.get("mail_accounts") or []
+                if not any((a or {}).get("provider", "gmail") == "gmail" for a in accounts):
+                    doc["mail_accounts"] = [*accounts, {"name": "personal", "kind": "personal", "provider": "gmail"}]
+            self._rewrite(change)
+        return self._restart()
+
+    def _doc(self) -> Any:
+        path = self._cfg.data_dir / "config.yaml"
+        y = YAML()
+        y.preserve_quotes = True
+        doc = y.load(path.read_text(encoding="utf-8")) if path.exists() else None
+        return doc if doc is not None else y.load("{}")
+
     def _rewrite(self, change: Callable[[Any], None]) -> None:
         """config.yaml changed by `change` in place (what else it says and its comments kept), through a temporary
         file; nothing is written when `change` refuses."""
         path = self._cfg.data_dir / "config.yaml"
         y = YAML()
         y.preserve_quotes = True
-        doc = y.load(path.read_text(encoding="utf-8")) if path.exists() else None
-        doc = doc if doc is not None else y.load("{}")
+        doc = self._doc()
         change(doc)
         out = io.StringIO()
         y.dump(doc, out)

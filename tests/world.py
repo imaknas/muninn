@@ -21,6 +21,7 @@ from muninn.adapters.project_records import FileProjectRecords
 from muninn.adapters.uploads import FileUploads
 from muninn.adapters.web.app import create_app
 from muninn.main import IMPLS, LOCATION_APPS
+from muninn.form_filling import FormFilling
 from muninn.setup_flow import Setup
 from muninn.adapters.web.devices import DeviceRegistry
 from muninn.config import Config
@@ -63,6 +64,16 @@ class Calendar:
 
     def own_events(self, start, end):
         return [e for e in self.blocks if e.start < end and e.end > start]
+
+
+class NoInstall:
+    """An installation that adds an extra by doing nothing (the real one runs uv and downloads a browser)."""
+
+    def extra_refusal(self):
+        return None
+
+    def add_extra(self, extra, version, then=None):
+        pass
 
 
 class Connection:
@@ -158,13 +169,14 @@ class World:
         day = DayView(e.store, self.h.clock, e.tz, e.plans.load, e.metrics, e.stays_between, self.calendar, words=e.words)
         (tmp / "resume-en.md").write_text("Go and TypeScript, 8 years.\n", encoding="utf-8")
         self.connections = {"google": Connection("google", authorized=True), "microsoft": Connection("microsoft")}
+        (tmp / "config.yaml").write_text("public_url: https://muninn.example.ts.net\n", encoding="utf-8")  # as the app's own
         settings = settings_view(Config.load(tmp), ComposerConfig(tz=e.tz))
         app = create_app(e, keys, "tok", self.devices, settings_view=settings,
                          document_files=lambda: {"resume-en": tmp / "resume-en.md"}, connections=self.connections,
                          messages=e.messages, lease_runner=self.runner, permissions=self.desk, day_view=day,
                          uploads=FileUploads(tmp / "uploads", words=e.words), location_apps=LOCATION_APPS,
                          setup=ListedSetup(Config.load(tmp), IMPLS, restart=lambda: False), public_url="https://muninn.example.ts.net",
-                         tailscale=FakeTailscale())
+                         tailscale=FakeTailscale(), form_filling=FormFilling(NoInstall(), "0.0.0", lambda: False, lambda: False, thread=lambda work: work()))
         self.client = TestClient(app, base_url="https://testserver")
         r = self.client.post("/api/pair", json={"code": self.devices.new_pairing_code(), "name": "test phone"})
         assert r.status_code == 200, r.text

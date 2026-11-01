@@ -266,6 +266,13 @@ export interface SetupSaved { ok: boolean; restarting: boolean }
 export interface HttpsState { ready: boolean; url?: string; why?: string; said?: string }
 export interface HttpsMade { url: string; restarting: boolean }
 export interface SetupPair { code: string; url: string; qr: string }  // qr: an SVG of the URL, for the phone's camera
+// the folders Muninn reads activity from (as config says now) and the usual ones found on this computer, not listed
+export type SourceKey = "workspace_roots" | "transcript_roots";
+export interface Sources { workspace_roots: string[]; transcript_roots: string[]; suggested: Record<SourceKey, string[]> }
+// what making a Google client needs: the address Google sends back to and the privacy page it asks for (both null
+// without an HTTPS address), whether a client is kept, and whether it can be set here at all
+export interface GoogleSetup { callback: string | null; privacy: string | null; configured: boolean; settable: boolean }
+export interface FormFillingState { state: "idle" | "installing" | "failed" | "restarting" | "restart_yourself"; ready?: boolean; said?: string; refused?: string | null }
 
 export interface Api {
   "POST /api/pair": Ok;
@@ -280,6 +287,12 @@ export interface Api {
   "GET /api/me": Me;
   "GET /api/settings": Settings;
   "POST /api/settings/language": SetupSaved;
+  "GET /api/settings/sources": Sources;
+  "POST /api/settings/sources": SetupSaved;
+  "GET /api/settings/google": GoogleSetup;
+  "POST /api/settings/google": SetupSaved;
+  "GET /api/settings/form-filling": FormFillingState;
+  "POST /api/settings/form-filling": FormFillingState;
   "GET /api/today": Today;
   "GET /api/day": Day;
   "GET /api/goal-days": GoalDays;

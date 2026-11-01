@@ -31,7 +31,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
 from conftest import TZ, at, make_harness  # noqa: E402
-from world import Calendar, FakeTailscale, ListedSetup  # noqa: E402
+from world import Calendar, FakeTailscale, ListedSetup, NoInstall  # noqa: E402
+from muninn.form_filling import FormFilling  # noqa: E402
 
 from muninn.adapters.channels.webpush import VapidKeys  # noqa: E402
 from muninn.adapters.uploads import FileUploads  # noqa: E402
@@ -91,11 +92,14 @@ class Muninn:
         self.uploads = FileUploads(tmp / "uploads", words=e.words)
         port = _free_port()
         self.url = f"{'https' if https else 'http'}://127.0.0.1:{port}"
-        self.setup = ListedSetup(Config.load(tmp), IMPLS, restart=lambda: False, token=SETUP_TOKEN)
+        if https:  # the address it serves at is the one config gives it, as the app's own is
+            (tmp / "config.yaml").write_text(f"public_url: {self.url}\n", encoding="utf-8")
+        self.setup = ListedSetup(Config.load(tmp), IMPLS, restart=lambda: False, token=SETUP_TOKEN, home=tmp)
+        self.form_filling = FormFilling(NoInstall(), "0.0.0", lambda: False, lambda: False, thread=lambda work: work())
         app = create_app(e, keys, "tok", self.devices, messages=e.messages, lease_runner=self.runner, permissions=self.desk,
                          day_view=day, uploads=self.uploads, location_apps=LOCATION_APPS, setup=self.setup,
                          public_url=self.url if https else None, tailscale=FakeTailscale(),
-                         settings_view=settings)
+                         settings_view=settings, form_filling=self.form_filling)
         self.app = app
         keyfile, certfile = _cert(tmp) if https else (None, None)
         self.server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning",

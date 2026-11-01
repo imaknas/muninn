@@ -36,6 +36,7 @@ NAS 或伺服器:`docker compose up -d`(見 [compose.yaml](https://github.com/im
 1. 在設定頁選一個模型、貼上它的金鑰:Claude、任何有 OpenAI 式 API 的服務,或用 Ollama 跑的本機模型。
 2. 直接在那個瀏覽器裡開始跟它說話。
 3. 要用手機:打開設定 → 配對手機。電腦上有 Tailscale 的話,Muninn 會在你的 tailnet 上給自己一個 HTTPS 位址;掃碼即可。
+4. 其他也都在設定頁:要讀的資料夾、連結 Google(郵件和行事曆,一步一步帶你做)、加上填表功能。
 
 `muninn upgrade` 升到最新版,`muninn check` 告訴你設定裡哪裡照寫的跑不起來,`muninn backup DIR` 備份你的資料。
 

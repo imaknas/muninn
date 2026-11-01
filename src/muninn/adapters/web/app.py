@@ -51,6 +51,7 @@ from muninn.core.models import Attachment, InboxItem
 from muninn.core.conversation import FEED
 from muninn.core.lease import PermissionDesk, talk_lines
 from muninn.core.ports import CloudLoginLost, LocationApp, PushMessage, RunnerError, SessionRunner, Uploads
+from muninn.form_filling import FormFilling
 from muninn.setup_flow import Setup, qr_svg
 from muninn.core.project_messages import VERSION as MESSAGES_VERSION, ProjectMessages
 from muninn.core.sidecar import Sidecar, aside
@@ -122,6 +123,7 @@ def create_app(
     setup: Setup | None = None,
     tailscale: Any = None,
     port: int = 18795,
+    form_filling: FormFilling | None = None,
 ) -> Starlette:
     """`settings_view`: read-only facts about notification rules for the PWA.
     `messages`: what the projects post for the user; without it the
@@ -132,7 +134,8 @@ def create_app(
     `day_view`: today as a timeline and goals day by day (the wide screen);
     without it those routes answer empty. `setup`: first-run setup (which model, its key, pairing the phone); open
     to the one-time token printed at start until a device is paired, then to paired devices only. `tailscale`: what
-    gives Muninn (on `port`) an HTTPS address for the phone from the settings page (adapters/tailscale.py)."""
+    gives Muninn (on `port`) an HTTPS address for the phone from the settings page (adapters/tailscale.py).
+    `form_filling`: adds the browser that fills in application forms, from the settings page (form_filling.py)."""
     settings_view = settings_view or {}
     words = engine.words  # what the server says itself (errors, the pages a sign-in returns to)
     lock = threading.RLock()  # engine calls touch YAML files; serialize them (re-entrant: a lease's thread
@@ -867,6 +870,54 @@ def create_app(
         restarting = await run_in_threadpool(setup.set_language, str(data.get("language") or ""))
         return JSONResponse({"ok": True, "restarting": restarting})
 
+    @authed
+    async def sources_get(request: Request) -> Response:
+        """The folders Muninn reads activity from, and the usual ones found on this computer that it does not."""
+        if setup is None:
+            return JSONResponse({"error": "settings cannot be changed here"}, status_code=404)
+        return JSONResponse(await run_in_threadpool(setup.sources))
+
+    @authed
+    @guarded
+    async def sources_set(request: Request) -> Response:
+        if setup is None:
+            return JSONResponse({"error": "settings cannot be changed here"}, status_code=404)
+        restarting = await run_in_threadpool(setup.set_sources, await body(request))
+        return JSONResponse({"ok": True, "restarting": restarting})
+
+    @authed
+    async def google_get(request: Request) -> Response:
+        """What setting up a Google client needs here: the address Google sends the user back to, and whether a
+        client is kept already. Never the client itself: it holds its secret."""
+        client = connections.get("google")
+        callback = setup.google_callback() if setup is not None else None
+        return JSONResponse({"callback": callback, "privacy": f"{public_url.rstrip('/')}/privacy" if public_url else None,
+                             "configured": bool(client is not None and client.configured), "settable": setup is not None})
+
+    @authed
+    @guarded
+    async def google_set(request: Request) -> Response:
+        """The client file the user downloaded from Google, checked and kept; then Muninn starts again to use it."""
+        if setup is None:
+            return JSONResponse({"error": "settings cannot be changed here"}, status_code=404)
+        data = await body(request)
+        restarting = await run_in_threadpool(setup.google_client, str(data.get("client") or ""), bool(data.get("gmail")))
+        return JSONResponse({"ok": True, "restarting": restarting})
+
+    @authed
+    async def form_filling_get(request: Request) -> Response:
+        if form_filling is None:
+            return JSONResponse({"error": "form filling cannot be added here"}, status_code=404)
+        return JSONResponse(await run_in_threadpool(form_filling.state))
+
+    @authed
+    @guarded
+    async def form_filling_start(request: Request) -> Response:
+        if form_filling is None:
+            return JSONResponse({"error": "form filling cannot be added here"}, status_code=404)
+        await body(request)
+        return JSONResponse(await run_in_threadpool(form_filling.start))
+
     def ingest_authorized(request: Request) -> bool:
         """Bearer token, or HTTP Basic with the token as password (what phone
         trackers such as OwnTracks can send)."""
@@ -1355,6 +1406,12 @@ def create_app(
         Route("/api/me", me),
         Route("/api/settings", settings),
         Route("/api/settings/language", settings_language, methods=["POST"]),
+        Route("/api/settings/sources", sources_get),
+        Route("/api/settings/sources", sources_set, methods=["POST"]),
+        Route("/api/settings/google", google_get),
+        Route("/api/settings/google", google_set, methods=["POST"]),
+        Route("/api/settings/form-filling", form_filling_get),
+        Route("/api/settings/form-filling", form_filling_start, methods=["POST"]),
         Route("/api/today", today),
         Route("/api/day", day),
         Route("/api/goal-days", goal_days),

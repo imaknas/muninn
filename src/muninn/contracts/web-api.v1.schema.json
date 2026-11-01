@@ -48,6 +48,24 @@
   "POST /api/settings/language": {
    "$ref": "#/$defs/SetupSaved"
   },
+  "GET /api/settings/sources": {
+   "$ref": "#/$defs/Sources"
+  },
+  "POST /api/settings/sources": {
+   "$ref": "#/$defs/SetupSaved"
+  },
+  "GET /api/settings/google": {
+   "$ref": "#/$defs/GoogleSetup"
+  },
+  "POST /api/settings/google": {
+   "$ref": "#/$defs/SetupSaved"
+  },
+  "GET /api/settings/form-filling": {
+   "$ref": "#/$defs/FormFillingState"
+  },
+  "POST /api/settings/form-filling": {
+   "$ref": "#/$defs/FormFillingState"
+  },
   "GET /api/today": {
    "$ref": "#/$defs/Today"
   },
@@ -1161,6 +1179,39 @@
     "error"
    ]
   },
+  "FormFillingState": {
+   "type": "object",
+   "properties": {
+    "state": {
+     "enum": [
+      "idle",
+      "installing",
+      "failed",
+      "restarting",
+      "restart_yourself"
+     ]
+    },
+    "ready": {
+     "type": "boolean"
+    },
+    "said": {
+     "type": "string"
+    },
+    "refused": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "state"
+   ]
+  },
   "Goal": {
    "type": "object",
    "properties": {
@@ -1260,6 +1311,43 @@
    },
    "required": [
     "goals"
+   ]
+  },
+  "GoogleSetup": {
+   "type": "object",
+   "properties": {
+    "callback": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "privacy": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "configured": {
+     "type": "boolean"
+    },
+    "settable": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "callback",
+    "privacy",
+    "configured",
+    "settable"
    ]
   },
   "HandoffMade": {
@@ -3314,6 +3402,43 @@
     "public_url",
     "has_model",
     "language"
+   ]
+  },
+  "SourceKey": {
+   "enum": [
+    "workspace_roots",
+    "transcript_roots"
+   ]
+  },
+  "Sources": {
+   "type": "object",
+   "properties": {
+    "workspace_roots": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "transcript_roots": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "suggested": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "required": [
+    "workspace_roots",
+    "transcript_roots",
+    "suggested"
    ]
   },
   "StepKind": {

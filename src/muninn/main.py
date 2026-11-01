@@ -56,10 +56,11 @@ from muninn.adapters.sources.git import GitSource
 from muninn.adapters.store_sqlite import SqliteStore, StoreTooNew
 from muninn.core.redact import redact
 from muninn.package import CONTRACTS, version
+from muninn.form_filling import FormFilling
 from muninn.setup_flow import Setup
 from muninn.core.language import Language
 from muninn.languages import CODES, language
-from muninn.adapters import scheduler
+from muninn.adapters import installs, scheduler
 from muninn.core import eval_suite
 from muninn.core import commands as command_prompt, facts as facts_prompt
 from muninn.core.understanding import WORK_SYSTEM
@@ -767,6 +768,13 @@ def first_run_token(cfg: Config, devices: DeviceRegistry) -> str | None:
     return token
 
 
+def form_filling_ready() -> bool:
+    """Whether application forms can be filled in here: the autofill extra, and the browser it drives."""
+    from muninn.adapters.apply import browser
+
+    return browser.available() and browser.installed()
+
+
 def restart_self() -> bool:
     """Starts Muninn again with new settings: under a service manager (the install sets MUNINN_SERVICE), by
     stopping it a moment after the answer goes, so the manager starts it again; otherwise False, the user does."""
@@ -781,7 +789,6 @@ def restart_self() -> bool:
 def upgrade(args: argparse.Namespace) -> int:
     """`muninn upgrade`: wired here, the steps are upgrade.py's. In the old code it installs the release, then the
     new code (run as its own process, since the files under this one were replaced) restarts and checks."""
-    from muninn.adapters import installs
     from muninn.upgrade import Upgrader
 
     try:
@@ -1184,9 +1191,10 @@ def main(argv: list[str] | None = None) -> int:
             day_view=DayView(e.store, e.clock, e.tz, e.plans.load, e.metrics, e.stays_between, e.calendar, words=e.words),
             uploads=FileUploads(app.config.data_dir / "uploads", words=e.words),
             location_apps=LOCATION_APPS,
-            setup=Setup(app.config, IMPLS, restart_self, first_run_token(app.config, app.devices)),
+            setup=Setup(app.config, IMPLS, restart_self, first_run_token(app.config, app.devices), home=Path.home()),
             tailscale=Tailscale(),
             port=app.config.port,
+            form_filling=FormFilling(installs.installation(), version(), form_filling_ready, restart_self),
         )
         try:
             jobs = scheduler.plan(app.config["jobs"])

@@ -40,6 +40,8 @@ On a NAS or a server: `docker compose up -d` (see [compose.yaml](https://github.
 2. Start talking to it, right there in the browser.
 3. For your phone, open Settings → Pair a phone. With Tailscale on the computer, Muninn gives itself an HTTPS address
    on your tailnet; scan the code.
+4. The rest is on the settings page too: the folders it reads activity from, connecting Google (mail and calendar,
+   step by step), and adding form filling.
 
 `muninn upgrade` moves to the latest release, `muninn check` says what in the settings cannot work as written, and
 `muninn backup DIR` copies your data.
