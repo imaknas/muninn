@@ -3,6 +3,18 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.5.0 (2026-11-01)
+
+### New
+
+- Muninn has a logo, a raven's head, on its app icon and at the top of the README
+
+### Fixed
+
+- **records:** A to-do that first came as a v1 message and is raised later reads as the words raised
+- **tasks:** A project changing one item of a merged to-do no longer renames the whole to-do
+- **install:** The one-line install works on Linux without systemd or time zone data, and says when Muninn did not start
+
 ## v0.4.0 (2026-11-01)
 
 ### New
