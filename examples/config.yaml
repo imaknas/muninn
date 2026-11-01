@@ -47,14 +47,13 @@ llm:
   cloud_model: haiku
   understanding_model: sonnet  # what you type (routing, facts, answers)
   claude_binary: claude        # a name on PATH or a path; not found, the newest node under ~/.nvm that has it
-  claude_token_file: ~/.claude/headless-oauth-token  # example: the file `claude setup-token` wrote; unset = the CLI's own login
   # or, instead of cloud/cloud_model/understanding_model/claude_*: providers, one per service. A key is
   # never written here, only where it is: a file in the secrets directory (chmod 600) or an environment variable.
   # providers:
   #   anthropic: {impl: anthropic, key: {secret: anthropic-api-key},
   #               models: {fast: claude-haiku-5-5, standard: claude-sonnet-5-5, strong: claude-opus-5-5},
   #               effort: {fast: low}}   # how hard each tier thinks: low … max; the API bills the thinking (fast is low unless set)
-  #   claude:    {impl: claude, binary: claude, token_file: ~/.claude/headless-oauth-token}
+  #   claude:    {impl: claude, binary: claude}   # the Claude CLI as you are logged in to it (/login), for your own use
   #   openrouter: {impl: openai, base_url: "https://openrouter.ai/api/v1", key: {secret: openrouter-key}, label: OpenRouter,
   #                models: {fast: <a model id there>, standard: <another>}, reads: {<model id>: [images]}}
   #   home:      {impl: ollama, base_url: "http://127.0.0.1:11434",   # location: local is Ollama's own; the local model

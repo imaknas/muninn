@@ -6,7 +6,7 @@ One entry per service, with where its key is and its model for each tier (agent-
       providers:
         anthropic: {impl: anthropic, key: {secret: anthropic-api-key},
                     models: {fast: claude-haiku-5-5, standard: claude-sonnet-5-5, strong: claude-opus-5-5}}
-        claude:    {impl: claude, token_file: ~/.claude/headless-oauth-token}
+        claude:    {impl: claude}
       use: {fast: anthropic, standard: anthropic}
 
 Each provider names its implementation (`impl`), where its key is — `{secret: <name>}`, a file of that name in
