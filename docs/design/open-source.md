@@ -471,6 +471,8 @@ Every step goes through deploy.sh's tests and smoke, and after each one the owne
    - Verify: the owner does a full deploy; on a clean Linux VM, with only one OpenAI-compatible key, pairing and the first conversation complete over HTTPS.
 9. **Go public**
    - What: git archive plus gitleaks dir; create the new repo and turn on CI; repoint the runtime and the development checkout once; archive the old repo. No more history rewriting after that.
+   - Done 11-01, everything but going public: the tree `git archive main` makes (the same tree hash as main) was scanned (gitleaks 8.21.2: no leaks; the private name list: only the vendored NOTICE's attribution), committed once as GitHub's noreply address, and pushed to a new private repository under the old name; the old repository was renamed `muninn-history` (its unmerged branches pushed there first) and archived. The runtime and the development checkout point at the new one, and a deploy from it passed. A request made live by a commit of the old history stays live (the "is it live" check: a commit the history does not know is neither live nor rolled back).
+   - Left for the owner: make the repository public (CI then runs: its jobs skip while the repository is private); publish `muninn-ai` to PyPI (the one-line install fetches it); turn on private vulnerability reporting, which SECURITY.md promises and GitHub offers only on a public repository.
 
 ## 7. Decisions for the owner
 
