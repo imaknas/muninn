@@ -13,6 +13,8 @@ addEventListener("pagehide", () => { leaving = true; });
 addEventListener("pageshow", () => { leaving = false; });  // back again from the browser's cache
 
 export async function api<T>(path: string, body?: unknown): Promise<T> {
+  // nothing is asked once the page is being left: the browser would refuse it, and say so as an error
+  if (leaving && body === undefined) return new Promise<T>(() => {});
   const opts: RequestInit = { credentials: "same-origin", headers: {} };
   if (body !== undefined) {
     opts.method = "POST";
