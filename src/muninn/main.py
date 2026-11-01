@@ -829,8 +829,6 @@ def uninstall(args: argparse.Namespace, say: Callable[[str], None] = print) -> i
     except UpgradeError as e:
         say(str(e))
         return 1
-    if sys.platform.startswith("linux"):
-        say("left as it is: loginctl enable-linger, which other services of yours may need (loginctl disable-linger undoes it)")
     return 0
 
 

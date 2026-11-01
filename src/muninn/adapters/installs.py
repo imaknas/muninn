@@ -215,7 +215,8 @@ class SystemdUser:
         self._run(["systemctl", "--user", "disable", "--now", self._unit], capture_output=True, timeout=TIMEOUT_S)
         self._path.unlink(missing_ok=True)
         self._run(["systemctl", "--user", "daemon-reload"], capture_output=True, timeout=TIMEOUT_S)
-        return f"systemd: {self._unit} stopped and removed"
+        return (f"systemd: {self._unit} stopped and removed (left as it is: loginctl enable-linger, which other services "
+                f"of yours may need; loginctl disable-linger undoes it)")
 
 
 class RunLoop:
