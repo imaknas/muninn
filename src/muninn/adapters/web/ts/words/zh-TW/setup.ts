@@ -34,6 +34,9 @@ export const setup = {
   needsHttps: (port: string) => "手機要透過 HTTPS 連到 Muninn。最省事的是 Tailscale:兩邊都裝好、登入同一個帳號,"
     + `在這台電腦執行 tailscale serve --bg --https=8444 http://127.0.0.1:${port}`
     + ",把它給的網址寫進設定的 public_url,重新啟動 Muninn,再打開設定連結。",
+  useHere: "先在這台電腦的瀏覽器用 Muninn",
+  thisComputer: "這台電腦",
+  phoneLater: "手機之後再配:等 Muninn 有了 HTTPS 位址,從設定頁配對。",
   tryAgain: "設好了,再試一次",
   scan: "用手機的相機掃這個碼,在打開的頁面按「配對」。這個碼 10 分鐘內有效,只能用一次。",
   qrAlt: (url: string) => `配對網址 ${url}`,

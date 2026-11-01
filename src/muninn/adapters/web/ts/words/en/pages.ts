@@ -226,4 +226,11 @@ export const pages: Words["pages"] = {
   paired: "Paired",
   tailscaleOnly: " · only your Tailscale account",
   thisDevice: "This device",
+  pairTitle: "Pair a phone",
+  pairButton: "Show a pairing code",
+  pairScan: "Scan this with the phone's camera and tap \"Pair\" on the page that opens. The code works once, for 10 minutes.",
+  pairByHand: (url: string, code: string) => `If it won't scan, open ${url} on the phone and enter ${code}.`,
+  pairNeedsHttps: (port: string) => "The phone reaches Muninn over HTTPS. The easiest way is Tailscale: install it on both and sign in "
+    + `to the same account, run tailscale serve --bg --https=8444 http://127.0.0.1:${port} on this computer, put the address it `
+    + "gives into the config's public_url, restart Muninn, and come back here.",
 };

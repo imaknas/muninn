@@ -234,7 +234,8 @@ new version, served alongside the old one until readers move.
 
 On macOS or Linux, one line installs Muninn, starts it in the background (it
 runs its own schedule), and opens its setup page: pick a model, paste its key,
-scan the QR code with your phone.
+and start using it in that browser. The phone pairs over HTTPS, by scanning a
+code on the settings page once Muninn has an HTTPS address (see below).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh

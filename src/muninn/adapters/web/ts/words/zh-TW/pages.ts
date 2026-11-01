@@ -222,4 +222,11 @@ export const pages = {
   paired: "已配對",
   tailscaleOnly: " · 限你的 Tailscale 帳號",
   thisDevice: "這台",
+  pairTitle: "配對手機",
+  pairButton: "顯示配對碼",
+  pairScan: "用手機相機掃這個,在打開的頁面按「配對」。這個碼只能用一次,10 分鐘內有效。",
+  pairByHand: (url: string, code: string) => `掃不了的話,在手機打開 ${url},輸入 ${code}。`,
+  pairNeedsHttps: (port: string) => "手機要透過 HTTPS 連到 Muninn。最簡單的是 Tailscale:兩邊都裝、登入同一個帳號,"
+    + `在這台電腦執行 tailscale serve --bg --https=8444 http://127.0.0.1:${port},`
+    + "把它給的網址寫進設定檔的 public_url,重啟 Muninn,再回到這裡。",
 };

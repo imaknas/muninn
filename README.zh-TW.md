@@ -191,7 +191,8 @@ examples/              config.yaml and attribution.yaml templates for data/
 ## 安裝
 
 在 macOS 或 Linux 上,一行指令就會安裝 Muninn、在背景啟動它(它自己跑排程),
-並打開設定頁:選一個模型、貼上它的金鑰、用手機掃 QR code。
+並打開設定頁:選一個模型、貼上它的金鑰,就能在那個瀏覽器開始用。手機要透過 HTTPS 配對:
+等 Muninn 有了 HTTPS 位址(見下面),在設定頁掃一個碼。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh

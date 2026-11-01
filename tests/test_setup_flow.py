@@ -164,3 +164,28 @@ def test_ollama_lists_only_the_models_that_hold_a_conversation(monkeypatch):
     provider = OllamaProvider.__new__(OllamaProvider)
     provider._url = "http://127.0.0.1:11434"
     assert provider.models() == ["old:1b", "qwen2.5:7b"]  # an Ollama too old to say is listed
+
+
+def test_only_a_browser_on_this_computer_pairs_without_https_and_only_its_cookie_is_not_secure(web):
+    client, devices, _, _, _ = web
+    app = client.app
+
+    def asking(host: str, peer: str) -> TestClient:
+        return TestClient(app, base_url=f"http://{host}", client=(peer, 50000))
+
+    spoofed = asking("127.0.0.1:18795", "100.64.0.9")  # says it asks for this computer, but connects from elsewhere
+    assert spoofed.post("/api/setup/pair-here", headers={"X-Setup-Token": TOKEN}, json={}).status_code == 403
+    here = asking("127.0.0.1:18795", "127.0.0.1")
+    code = here.post("/api/setup/pair-here", headers={"X-Setup-Token": TOKEN}, json={}).json()["code"]
+    r = here.post("/api/pair", json={"code": code, "name": "This computer"})
+    assert r.status_code == 200 and "secure" not in r.headers["set-cookie"].lower()
+    proxied = asking("muninn.example.ts.net:8444", "127.0.0.1")  # tailscale serve: from here, for the tailnet name
+    r = proxied.post("/api/pair", json={"code": devices.new_pairing_code(), "name": "phone"})
+    assert r.status_code == 200 and "secure" in r.headers["set-cookie"].lower()
+
+
+def test_a_phone_is_paired_from_the_settings_page_once_there_is_an_https_address(web):
+    client, devices, _, _, _ = web
+    client.post("/api/pair", json={"code": devices.new_pairing_code(), "name": "laptop"})
+    p = client.post("/api/devices/pair", json={}).json()
+    assert p["url"].startswith("https://muninn.example.ts.net/?pair=") and p["code"] and p["qr"].startswith("<svg")

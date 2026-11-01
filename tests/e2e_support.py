@@ -31,14 +31,13 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
 from conftest import TZ, at, make_harness  # noqa: E402
-from world import Calendar  # noqa: E402
+from world import Calendar, ListedSetup  # noqa: E402
 
 from muninn.adapters.channels.webpush import VapidKeys  # noqa: E402
 from muninn.adapters.uploads import FileUploads  # noqa: E402
 from muninn.adapters.web.app import COOKIE, create_app  # noqa: E402
 from muninn.config import Config  # noqa: E402
 from muninn.main import IMPLS, LOCATION_APPS  # noqa: E402
-from muninn.setup_flow import Setup  # noqa: E402
 from muninn.adapters.web.devices import DeviceRegistry  # noqa: E402
 from muninn.core.day_view import DayView  # noqa: E402
 from muninn.core.lease import ChannelLease, PermissionDesk  # noqa: E402
@@ -70,20 +69,13 @@ def _free_port() -> int:
 SETUP_TOKEN = "e2e-setup-token"
 
 
-class ListedSetup(Setup):
-    """Setup whose service lists two models without being asked over the network."""
-
-    def models(self, choice):
-        self._spec(choice)
-        return ["model-small", "model-large"]
-
-
 class Muninn:
     """A running app: `h` is the harness (fake models, clock, store), `url` its address.
     Deep-talk is set up with a fake session runner (`runner`), as on the real server. `settings`: what the settings
     page is told of this installation (main.settings_view), where a test needs some."""
 
-    def __init__(self, tmp: Path, plans=None, lang: str = "zh-TW", settings: dict | None = None):
+    def __init__(self, tmp: Path, plans=None, lang: str = "zh-TW", settings: dict | None = None, https: bool = True):
+        """`https=False`: as a fresh install serves itself, plain http on this computer and no HTTPS address yet."""
         # plan items left unconfirmed, so the review cards show; `plans=[]` is a new user with no domain yet
         self.h = make_harness(at(2026, 10, 22, 10), plans=plans, confirm_all=False, lang=lang)
         keys = VapidKeys(tmp / "secrets" / "vapid.pem")
@@ -98,13 +90,14 @@ class Muninn:
         day = DayView(e.store, self.h.clock, e.tz, e.plans.load, e.metrics, e.stays_between, self.calendar, words=e.words)
         self.uploads = FileUploads(tmp / "uploads", words=e.words)
         port = _free_port()
-        self.url = f"https://127.0.0.1:{port}"
+        self.url = f"{'https' if https else 'http'}://127.0.0.1:{port}"
         self.setup = ListedSetup(Config.load(tmp), IMPLS, restart=lambda: False, token=SETUP_TOKEN)
         app = create_app(e, keys, "tok", self.devices, messages=e.messages, lease_runner=self.runner, permissions=self.desk,
-                         day_view=day, uploads=self.uploads, location_apps=LOCATION_APPS, setup=self.setup, public_url=self.url,
+                         day_view=day, uploads=self.uploads, location_apps=LOCATION_APPS, setup=self.setup,
+                         public_url=self.url if https else None,
                          settings_view=settings)
         self.app = app
-        keyfile, certfile = _cert(tmp)
+        keyfile, certfile = _cert(tmp) if https else (None, None)
         self.server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning",
                                                     ssl_keyfile=keyfile, ssl_certfile=certfile))
         threading.Thread(target=self.server.run, daemon=True).start()

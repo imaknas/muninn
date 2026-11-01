@@ -107,18 +107,41 @@ async function restarted(): Promise<void> {
   await backUp();
 }
 
+// this computer's own browser (the page was opened at 127.0.0.1 or localhost): it can pair without HTTPS
+const onThisComputer = (): boolean => ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname);
+
+async function useHere(token: string): Promise<void> {
+  const { code } = await call<{ code: string }>(token, "/api/setup/pair-here", {});
+  const r = await fetch("/api/pair", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ code, name: w.setup.thisComputer }) });
+  if (!r.ok) throw new Error(w.setup.http(r.status));
+  location.replace("/");  // the app, as this browser now opens it
+}
+
+function hereButton(token: string): HTMLElement | null {
+  if (!onThisComputer()) return null;
+  const b = el("button", { type: "button", class: "btn primary block", onclick: async () => {
+    b.disabled = true;
+    try { await useHere(token); } catch (err) { b.disabled = false; b.after(el("p", { class: "error" }, err instanceof Error ? err.message : String(err))); }
+  } }, w.setup.useHere);
+  return b;
+}
+
 async function pairPhone(token: string, state: SetupState): Promise<void> {
   let pair: SetupPair;
   try {
     pair = await call<SetupPair>(token, "/api/setup/pair", {});
   } catch (err) {
     screen(el("p", { class: "sub" }, w.setup.lastStep),
+      hereButton(token),
+      onThisComputer() ? el("p", { class: "note" }, w.setup.phoneLater) : null,
       el("p", { class: "error" }, err instanceof Error ? err.message : String(err)),
       el("p", { class: "note" }, w.setup.needsHttps(location.port)),
       state.public_url ? null : el("button", { type: "button", class: "link-btn", onclick: () => pairPhone(token, state) }, w.setup.tryAgain));
     return;
   }
   screen(
+    hereButton(token),
     el("p", { class: "sub" }, w.setup.scan),
     el("img", { src: `data:image/svg+xml;base64,${btoa(pair.qr)}`, alt: w.setup.qrAlt(pair.url), class: "pair-qr", width: 240, height: 240 }),
     el("p", { class: "note" }, w.setup.cannotScan, el("code", {}, pair.url.split("?")[0]), w.setup.thenEnter, el("b", {}, pair.code), w.setup.sentenceEnd),

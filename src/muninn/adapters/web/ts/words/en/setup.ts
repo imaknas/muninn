@@ -38,6 +38,9 @@ export const setup: Words["setup"] = {
     + `to the same account, run tailscale serve --bg --https=8444 http://127.0.0.1:${port} on this computer, `
     + "put the address it gives into the config's public_url, restart Muninn, and open the setup link again.",
   tryAgain: "Done, try again",
+  useHere: "Use Muninn in this browser now",
+  thisComputer: "This computer",
+  phoneLater: "The phone can be paired later, from the settings page, once Muninn has an HTTPS address.",
   scan: "Scan this code with the phone's camera and tap \"Pair\" on the page that opens. The code works once, for 10 minutes.",
   qrAlt: (url: string) => `Pairing address ${url}`,
   cannotScan: "If it won't scan, open ",

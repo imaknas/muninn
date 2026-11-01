@@ -1,5 +1,6 @@
 # what the web server says itself (adapters/web/app.py)
 TEXTS = {
+    "not_this_computer": "只有在跑 Muninn 的這台電腦上的瀏覽器,才能不經 HTTPS 直接配對",
     "not_built": "這份 Muninn 是從原始碼裝的,網頁還沒編譯。在原始碼資料夾跑 npm ci && npm run build,再重裝一次;或改裝發布好的套件:uv tool install muninn-ai",
     "connect_refused": "沒有連結成功:{why}",
     "connect_failed": "連結失敗:{why}",

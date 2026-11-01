@@ -1,5 +1,6 @@
 # what the web server says itself (adapters/web/app.py)
 TEXTS = {
+    "not_this_computer": "Only a browser on the computer Muninn runs on can pair without HTTPS",
     "not_built": "This Muninn was installed from source without building its web app. In the source folder run npm ci && npm run build, then install it again; or install the released package: uv tool install muninn-ai",
     "connect_refused": "The account was not connected: {why}",
     "connect_failed": "Connecting failed: {why}",

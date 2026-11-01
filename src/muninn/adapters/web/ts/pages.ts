@@ -7,7 +7,7 @@ import { afterTalk, confirmationCard, connectAccount, copy } from "./cards.js";
 import { cloudFirst, cloudName, handleError, loadToday, reader, render, state } from "./shell.js";
 import { setTopic } from "./talk.js";
 import { LANGUAGE_NAMES, LANGUAGES, w, type Lang } from "./words.js";
-import type { ActivitySetup, Confirmation, Connection, HealthSetup, List, LocationSetup, Mail, Me, Prepared, Reflection, Requests, Settings, SetupSaved, TrackerRow, Undoable } from "./types.js";
+import type { ActivitySetup, Confirmation, Connection, HealthSetup, List, LocationSetup, Mail, Me, Prepared, Reflection, Requests, Settings, SetupPair, SetupSaved, TrackerRow, Undoable } from "./types.js";
 
 // ── Application packet, reply draft ──────────────────────────────────────
 
@@ -373,7 +373,27 @@ export async function renderSettings({ questions = true }: { questions?: boolean
     el("div", { class: "body" }, el("span", {}, me.device.name),
       el("span", { class: "meta" }, (me.device.created ? w.pages.pairedOn(fmtMD(me.device.created)) : w.pages.paired) + (settings.allowed_logins ? w.pages.tailscaleOnly : ""))),
     el("span", { class: "meta" }, w.pages.thisDevice)));
+  out.push(pairSection());
   return out;
+}
+
+// another device (the phone): a code and a QR code for it, once Muninn has an HTTPS address; until then what gives it one
+function pairSection(): HTMLElement {
+  const body = el("div", {});
+  const show = async () => {
+    try {
+      const p = await api<SetupPair>("/api/devices/pair", {});
+      body.replaceChildren(
+        el("p", { class: "sub" }, w.pages.pairScan),
+        el("img", { src: `data:image/svg+xml;base64,${btoa(p.qr)}`, alt: p.url, class: "pair-qr", width: 200, height: 200 }),
+        el("p", { class: "note" }, w.pages.pairByHand(p.url.split("?")[0] || p.url, p.code)));
+    } catch (err) {
+      body.replaceChildren(el("p", { class: "note" }, err instanceof Error ? err.message : String(err)),
+        el("p", { class: "note" }, w.pages.pairNeedsHttps(location.port)));
+    }
+  };
+  return section(w.pages.pairTitle, sectionHead(w.pages.pairTitle),
+    el("button", { type: "button", class: "btn", onclick: show }, w.pages.pairButton), body);
 }
 
 function hoursBody(hourGoals: { id: string; title: string }[]): Child[] {

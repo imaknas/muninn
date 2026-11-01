@@ -270,6 +270,8 @@ export interface Api {
   "POST /api/setup/models": SetupModels;
   "POST /api/setup/save": SetupSaved;
   "POST /api/setup/pair": SetupPair;
+  "POST /api/setup/pair-here": { code: string };
+  "POST /api/devices/pair": SetupPair;
   "GET /api/me": Me;
   "GET /api/settings": Settings;
   "POST /api/settings/language": SetupSaved;

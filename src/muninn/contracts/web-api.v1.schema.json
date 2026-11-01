@@ -19,6 +19,20 @@
   "POST /api/setup/pair": {
    "$ref": "#/$defs/SetupPair"
   },
+  "POST /api/setup/pair-here": {
+   "type": "object",
+   "properties": {
+    "code": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "code"
+   ]
+  },
+  "POST /api/devices/pair": {
+   "$ref": "#/$defs/SetupPair"
+  },
   "GET /api/me": {
    "$ref": "#/$defs/Me"
   },

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import pytest
+from starlette.testclient import TestClient
 from muninn.package import CONTRACTS
 from jsonschema import Draft202012Validator
 from starlette.routing import Mount, Route
@@ -164,6 +165,8 @@ POSTS: dict[str, Call] = {
     "POST /api/setup/models": lambda w: ("/api/setup/models", {"impl": "ollama"}),
     "POST /api/setup/save": lambda w: ("/api/setup/save", {"impl": "ollama", "fast": "model-small"}),
     "POST /api/setup/pair": lambda w: ("/api/setup/pair", {}),
+    "POST /api/setup/pair-here": lambda w: ("/api/setup/pair-here", {}),  # asked from this computer: LOCAL
+    "POST /api/devices/pair": lambda w: ("/api/devices/pair", {}),
     "POST /api/settings/language": lambda w: ("/api/settings/language", {"language": "en"}),
     "POST /api/inbox/read": lambda w: ("/api/inbox/read", {"ids": [first(w, "/api/inbox")["id"]]}),
     "POST /api/ideas/{n}/settle": lambda w: (f"/api/ideas/{w.client.get('/api/home').json()['ideas'][0]['n']}/settle", {"decision": "shelved"}),
@@ -214,6 +217,9 @@ POSTS: dict[str, Call] = {
 }
 
 
+LOCAL = {"POST /api/setup/pair-here"}
+
+
 def test_every_contract_route_has_a_call_here():
     assert set(CONTRACT["routes"]) == set(GETS) | set(FULL_GETS) | set(POSTS)
 
@@ -255,8 +261,12 @@ def test_the_lease_view_keeps_to_the_contract_however_it_is_asked(full, how):
 def test_a_change_keeps_to_the_contract(tmp_path, key):
     w = World(tmp_path).full()  # a world of its own: changes do not leak into the next call
     path, body = POSTS[key](w)
-    r = (w.client.post(path, content=body, headers={"Content-Type": "image/png", "X-Muninn-Upload": "1"}) if isinstance(body, bytes)
-         else w.client.post(path, json=body))
+    client = w.client
+    if key in LOCAL:  # a browser on the computer Muninn runs on
+        client = TestClient(w.client.app, base_url="http://127.0.0.1:18795", client=("127.0.0.1", 50000),
+                            headers={"Cookie": "; ".join(f"{k}={v}" for k, v in w.client.cookies.items())})
+    r = (client.post(path, content=body, headers={"Content-Type": "image/png", "X-Muninn-Upload": "1"}) if isinstance(body, bytes)
+         else client.post(path, json=body))
     assert r.status_code == 200, f"{key}: {r.status_code} {r.text}"
     conforms(key, r.json())
 

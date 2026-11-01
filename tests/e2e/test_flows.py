@@ -920,6 +920,28 @@ def test_the_panel_lists_exactly_what_the_server_says_waits(desktop, muninn):
 
 # ── first run ──────────────────────────────────────────────────────────────
 
+def test_a_fresh_install_without_https_is_used_in_this_computers_browser_and_stays_paired(browser, tmp_path):
+    from e2e_support import SETUP_TOKEN, Muninn
+
+    m = Muninn(tmp_path, https=False)  # as installed: http on this computer, no HTTPS address yet
+    _, b = browser
+    ctx = b.new_context(service_workers="block")
+    pg = ctx.new_page()
+    errors = []
+    pg.on("pageerror", lambda e: errors.append(str(e)))
+    pg.goto(f"{m.url}/#setup={SETUP_TOKEN}")
+    pg.get_by_role("button", name="先跳過,去配對手機").click()
+    pg.get_by_text("先在這台電腦的瀏覽器用 Muninn").click()
+    pg.get_by_role("textbox", name="跟 Muninn 說").wait_for()  # the app, in this browser
+    cookie = next(c for c in ctx.cookies() if c["name"] == "muninn_device")
+    assert cookie["secure"] is False  # Safari keeps no Secure cookie over plain http, even on this computer
+    pg.reload()
+    pg.get_by_role("textbox", name="跟 Muninn 說").wait_for()  # still paired after a reload
+    assert errors == []
+    m.server.should_exit = True
+    ctx.close()
+
+
 def test_a_first_run_sets_up_a_model_from_the_printed_link_and_pairs_a_phone_by_its_qr_code(browser, muninn):
     from e2e_support import SETUP_TOKEN
 

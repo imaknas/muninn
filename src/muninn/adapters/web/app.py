@@ -18,7 +18,7 @@ import hmac
 import html
 import json
 from datetime import timedelta
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 import logging
 import re
 import threading
@@ -59,7 +59,20 @@ from muninn.core.timewin import local_date
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
 VERSION = version()
+LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
 SCRIPTS = ("app.js", "sw.js")  # what the TypeScript build makes (npm run build): without them the page is empty
+
+
+def local_browser(request: Request) -> bool:
+    """A browser on this very computer: it asks for this computer's own address (Host) and connects from here. Both:
+    a request through `tailscale serve` connects from here too, but asks for its tailnet name; a caller elsewhere can
+    write any Host, but cannot connect from here."""
+    try:
+        host = urlsplit("//" + (request.headers.get("host") or "")).hostname or ""
+    except ValueError:
+        return False
+    client = request.client.host if request.client else ""
+    return host in LOOPBACK and client in ("127.0.0.1", "::1")
 
 
 def unbuilt() -> list[str]:
@@ -764,9 +777,31 @@ def create_app(
         if not public_url:
             return JSONResponse({"error": words("web.needs_https")},
                                 status_code=400)
+        return await pairing()
+
+    async def pairing() -> Response:
+        """A pairing code for a phone, with the address it opens and that address as a QR code."""
         code = await run_in_threadpool(devices.new_pairing_code)
         url = f"{public_url.rstrip('/')}/?pair={code}"
         return JSONResponse({"code": code, "url": url, "qr": qr_svg(url)})
+
+    @setup_gate
+    @guarded
+    async def setup_pair_here(request: Request) -> Response:
+        """The browser on this computer, paired now (no HTTPS needed here): a code it pairs itself with."""
+        await body(request)
+        if not local_browser(request):
+            return JSONResponse({"error": words("web.not_this_computer")}, status_code=403)
+        return JSONResponse({"code": await run_in_threadpool(devices.new_pairing_code)})
+
+    @authed
+    @guarded
+    async def devices_pair(request: Request) -> Response:
+        """Another device (the phone), paired from the settings page: over HTTPS, so only once there is an address."""
+        await body(request)
+        if not public_url:
+            return JSONResponse({"error": words("web.needs_https")}, status_code=400)
+        return await pairing()
 
     @guarded
     async def pair(request: Request) -> Response:
@@ -777,7 +812,9 @@ def create_app(
         if token is None:
             return JSONResponse({"error": "invalid or expired code"}, status_code=403)
         resp = JSONResponse({"ok": True})
-        resp.set_cookie(COOKIE, token, max_age=COOKIE_MAX_AGE, httponly=True, secure=True, samesite="strict", path="/")
+        # Secure everywhere but a browser on this computer over plain http, which Safari would not keep it from
+        resp.set_cookie(COOKIE, token, max_age=COOKIE_MAX_AGE, httponly=True, secure=not local_browser(request),
+                        samesite="strict", path="/")
         return resp
 
     @authed
@@ -1280,6 +1317,8 @@ def create_app(
         Route("/api/setup", setup_state),
         Route("/api/setup/models", setup_models, methods=["POST"]),
         Route("/api/setup/save", setup_save, methods=["POST"]),
+        Route("/api/setup/pair-here", setup_pair_here, methods=["POST"]),
+        Route("/api/devices/pair", devices_pair, methods=["POST"]),
         Route("/api/setup/pair", setup_pair, methods=["POST"]),
         Route("/api/me", me),
         Route("/api/settings", settings),
