@@ -70,6 +70,14 @@ def test_a_session_the_user_typed_into_counts_as_their_time_and_codexs_own_conte
     assert all(o.key.startswith("codex:s-own:") for o in obs)
 
 
+def test_the_interactive_command_line_counts_as_codex_0_165_records_it(tmp_path):
+    ws, day = setup(tmp_path)  # what a real session in the terminal said of itself: source vscode, originator codex-tui
+    write(day / "rollout-h.jsonl", [meta("s-tui", str(ws / "garden"), source="vscode", originator="codex-tui", thread_source="user"),
+                                    said(1, "user", "hello?", ["user.text"]), said(2, "assistant", "hello", ["unknown"], phase="final_answer")])
+    obs, _ = AgentActivitySource([tmp_path / "codex"], [ws]).collect(None, NOW)
+    assert sum(o.payload["human_turns"] for o in obs) == 1
+
+
 def test_sessions_another_program_or_a_sub_agent_started_are_not_the_users(tmp_path):
     ws, day = setup(tmp_path)
     write(day / "rollout-b.jsonl", [meta("s-hub", str(ws / "garden"), source="vscode", originator="agent-hub"),
