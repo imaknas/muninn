@@ -163,10 +163,12 @@ class Inbox:
             return
         if r["ext"] == ph.label(ACTS):
             if r["type"] == "raised":
-                self._messages.receive([{"id": key, "project": project, "type": "task", "text": terms["text"],
-                                         **({"due": terms["due"]} if terms.get("due") else {}),
-                                         **({"context": r["context"]} if r.get("context") else {}),
-                                         **({"new_reason": said} if said else {})}])
+                new = self._messages.receive([{"id": key, "project": project, "type": "task", "text": terms["text"],
+                                               **({"due": terms["due"]} if terms.get("due") else {}),
+                                               **({"context": r["context"]} if r.get("context") else {}),
+                                               **({"new_reason": said} if said else {})}])
+                if not new:  # the task came the v1 way before: it reads as the terms its settlement is now bound to
+                    self._tasks.amended(key, project, terms["text"], terms.get("due"))
             elif r["type"] == "amended":
                 self._tasks.amended(key, project, terms["text"], terms.get("due"))
             elif r["type"] == "withdrawn":

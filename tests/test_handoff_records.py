@@ -225,6 +225,17 @@ def test_a_project_that_speaks_0_4_is_checked_under_0_4_and_told_in_it_bound_to_
     assert s["terms_digest"] == ph._terms_digest_04(need) != ph.terms_digest(need)
 
 
+def test_a_task_that_came_the_v1_way_and_is_raised_later_is_the_same_task_in_the_words_raised(h):
+    h.engine.messages.receive([{"id": "task-pots-1", "project": P, "type": "task", "text": "買陶盆"}])
+    h.engine.records_in.receive([{**raised("task-pots-1", "買兩個陶盆", due="2026-11-05"), "context": "migration-v1"}])
+    [t] = h.engine.tasks.open()
+    assert (t["key"], t["title"], t["due"]) == ("task-pots-1", "買兩個陶盆", "2026-11-05")
+    h.engine.tasks.close("task-pots-1", why="買好了")
+    h.clock.t += timedelta(hours=1)
+    [s] = [r for r in out(h) if r["type"] == "settled"]  # now a record, bound to the terms raised
+    assert s["terms_digest"] == ph.terms_digest(raised("task-pots-1", "買兩個陶盆", due="2026-11-05"))
+
+
 def test_a_task_that_came_the_v1_way_is_settled_the_v1_way(h):
     h.engine.messages.receive([{"id": "m1", "project": P, "type": "task", "text": "買陶盆"}])
     [t] = h.engine.tasks.open()
