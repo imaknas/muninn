@@ -39,7 +39,25 @@ Tests use invented people, companies and data only, never anything real.
 
 `src/muninn/core/` is the logic and depends only on the ports in `core/ports.py`; `src/muninn/adapters/` holds the
 implementations (SQLite, YAML plans, mail and calendar providers, model providers, the web app, application form
-sites); `src/muninn/main.py` is the one place they are chosen and wired together (README.md, "Layout").
+sites); `src/muninn/main.py` is the one place they are chosen and wired together.
+
+```
+src/muninn/core/       domain-agnostic logic; depends only on core/ports.py
+src/muninn/adapters/   store (SQLite), plans (YAML), sources, LLM backends,
+                       Web Push channel, web app + PWA
+src/muninn/adapters/web/ts/   the PWA in TypeScript (strict), compiled into web/static/
+                       by `npm run build`; the compiled .js is not committed
+src/muninn/main.py     composition root and CLI (the only place adapters are chosen)
+src/muninn/contracts/  the interfaces other systems read or post, and the formats Muninn reads
+                       (schemas, model decision points), shipped inside the package
+examples/              config.yaml and attribution.yaml templates for data/
+```
+
+Storage is a set of small ports in `core/ports.py`, one per kind of record
+(observations, inbox, tasks, handoffs, leases, …). A module takes only the
+ones it uses, so another backend can be written port by port; `Store` is all
+of them together, and only the composition root and the engine take it
+(`tests/test_architecture.py` checks this).
 
 - **Dependencies come in from outside.** Core code takes what it uses (a store port, a clock, a model router, a
   callable) as constructor or function arguments; it does not create clients, read files or settings, or look at the
@@ -95,9 +113,27 @@ never taken). PyPI trusts the workflow itself (Trusted Publishing, environment `
 tag already pushed is released from the Actions tab: Release → Run workflow, using the workflow from that tag (the
 `pypi` environment accepts only `v*` tags).
 
+## Deploying (a runtime of your own from a checkout)
+
+`bin/deploy.sh` pins the commit it starts from, compiles the TypeScript and
+runs the unit and browser tests (a type error or a failing test stops it with
+nothing changed); where a platform test runner is installed (`agenthub test`),
+it hands that commit to it instead (`MUNINN_TESTS` chooses). The runtime clone (`MUNINN_RUNTIME`, default
+`~/services/muninn`) then takes that commit straight from this checkout, runs
+`uv sync` (with the `autofill` extra, and Chromium for it) and `npm ci && npm run build`, restarts the launchd job and runs
+`bin/smoke.py`: the running server checks its own dependencies on `/api/smoke`
+(store, each cloud model in use, the local model, Google, the session runner, the form-filling browser;
+no model is asked anything) and the served app must be the one in the repo.
+Only then is `main` pushed. A version that fails after the restart is rolled
+back on its own, and the runtime's `data/deploys.log` records every deploy and
+why one was rolled back; the script's header lists its exit codes. One deploy
+runs at a time. The server is
+exposed to the tailnet only, with `tailscale serve --https=8444`. First-time
+setup on the phone: [docs/d1-checklist.md](docs/d1-checklist.md).
+
 ## Privacy
 
-Read README.md, "Privacy model", before touching anything that sends data out of the machine: the model router, the
+Read [docs/privacy.md](docs/privacy.md) before touching anything that sends data out of the machine: the model router, the
 cloud payloads in `core/privacy.py`, push notifications, mail, application forms. A change that sends something new
 out says so in its description, and comes with a test that shows what does and does not leave.
 

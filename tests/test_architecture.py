@@ -1,4 +1,4 @@
-"""The layering the README promises, checked on the source itself:
+"""The layering CONTRIBUTING.md describes, checked on the source itself:
 
 - core depends only on core (its ports), never on adapters or the
   composition root;
