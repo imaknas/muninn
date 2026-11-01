@@ -2,8 +2,10 @@
 
 from pathlib import Path
 
+import pytest
+
 from conftest import ZH
-from muninn.config import Config
+from muninn.config import BadSetting, Config
 from muninn.main import main
 from ruamel.yaml import YAML
 
@@ -146,3 +148,10 @@ def test_a_container_says_where_to_listen_in_its_environment(tmp_path, monkeypat
     (tmp_path / "config.yaml").write_text("host: 127.0.0.1\n")
     monkeypatch.setenv("MUNINN_HOST", "0.0.0.0")
     assert Config.load(tmp_path)["host"] == "0.0.0.0"
+
+
+@pytest.mark.parametrize("port", ["not-a-port", 0, 70000, True])
+def test_a_port_muninn_cannot_listen_on_is_said_before_anything_runs(tmp_path, port):
+    (tmp_path / "config.yaml").write_text(f"port: {port!r}\n" if not isinstance(port, str) else f"port: {port}\n")
+    with pytest.raises(BadSetting, match="port"):
+        _ = Config.load(tmp_path).port

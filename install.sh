@@ -9,7 +9,9 @@
 #   3. a data folder that only you can read (macOS: ~/Library/Application Support/Muninn,
 #      Linux: ~/.local/share/muninn; MUNINN_DATA to choose another) with its keys and its own schedule;
 #   4. a background service that keeps it running and starts it at login (launchd on macOS, systemd --user on
-#      Linux); MUNINN_NO_SERVICE=1 skips this, and you run `muninn --data <folder> serve` yourself;
+#      Linux); where Linux has no systemd user session (a container, WSL, a bare server) it is kept running in the
+#      background until the next reboot instead; MUNINN_NO_SERVICE=1 skips this, and you run
+#      `muninn --data <folder> serve` yourself;
 #   5. the setup page in your browser: pick a model, paste its key, pair your phone.
 # Safe to run again: it updates Muninn and leaves your data as it is.
 set -eu
@@ -72,7 +74,8 @@ PL
   launchctl bootout "gui/$(id -u)/app.muninn" >/dev/null 2>&1 || true
   launchctl bootstrap "gui/$(id -u)" "$PLIST"
   OPEN=open
-else
+  LOGS="$DATA/muninn.log"
+elif systemctl --user show-environment >/dev/null 2>&1; then
   say "background service (systemd --user: muninn.service)"
   UNIT="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/muninn.service"
   mkdir -p "$(dirname "$UNIT")"
@@ -93,15 +96,44 @@ UN
   systemctl --user enable --now muninn.service
   loginctl enable-linger "$(id -un)" >/dev/null 2>&1 || true  # keeps it running when you log out
   OPEN=xdg-open
+  LOGS="journalctl --user -u muninn"
+else
+  say "no systemd user session here: Muninn runs in the background until the next reboot"
+  RUN="$DATA/run.sh"
+  cat > "$RUN" <<RN
+#!/bin/sh
+# Keeps Muninn running where there is no service manager, starting it again when it stops (as it does after a
+# change of settings). Started by install.sh; stop it with: kill \$(cat "$DATA/run.pid")
+echo \$\$ > "$DATA/run.pid"
+trap 'kill "\$child" 2>/dev/null; exit 0' TERM INT
+while :; do
+  MUNINN_SERVICE=1 "$MUNINN" --data "$DATA" serve >> "$DATA/muninn.log" 2>&1 &
+  child=\$!
+  wait "\$child"
+  sleep 2
+done
+RN
+  chmod 700 "$RUN"
+  if [ -s "$DATA/run.pid" ]; then kill "$(cat "$DATA/run.pid")" 2>/dev/null || true; sleep 2; fi  # the one an earlier install started
+  nohup "$RUN" >/dev/null 2>&1 &
+  echo "  to keep it running across reboots, start $RUN from your system's startup, or use Docker (compose.yaml)"
+  echo "  to stop it: kill \$(cat \"$DATA/run.pid\")"
+  OPEN=xdg-open
+  LOGS="$DATA/muninn.log"
 fi
 
 say "waiting for Muninn to start"
+PORT="$("$MUNINN" --data "$DATA" config --effective 2>/dev/null | sed -n 's/^port: *//p' | head -1)"
+up() { curl -fsS "http://127.0.0.1:${PORT:-18795}/healthz" 2>/dev/null | grep -q '"version"'; }  # Muninn, not whatever else holds the port
 i=0
-while [ ! -s "$DATA/setup-url" ] && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done
-if [ -s "$DATA/setup-url" ]; then
+until up || [ $i -ge 30 ]; do sleep 1; i=$((i + 1)); done
+if ! up; then
+  echo "Muninn did not start within 30 seconds: what it said is in $LOGS" >&2
+  exit 1
+elif [ -s "$DATA/setup-url" ]; then
   URL="$(cat "$DATA/setup-url")"
   say "set it up at $URL"
   $OPEN "$URL" >/dev/null 2>&1 || true
 else
-  echo "Muninn is running; a phone is already paired, so there is no setup link. Open it on your phone." >&2
+  echo "Muninn is running; a device is already paired, so there is no setup link. Open it where you paired." >&2
 fi

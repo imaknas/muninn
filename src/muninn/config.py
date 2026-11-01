@@ -170,6 +170,7 @@ class Config:
         out = dict(self.raw)
         out["timezone"] = self.tz
         out["language"] = self.language
+        out["port"] = self.port
         out["principal_id"] = parties_from(self.raw.get("principal_id"), str(self.raw["owner_label"])).principal
         out["data_dir"] = str(self.data_dir)
         out["secrets_dir"] = str(self.secrets_dir)
@@ -186,6 +187,14 @@ class Config:
         if code not in CODES:
             raise BadSetting(f"language: one of {', '.join(CODES)} (config says {code!r})")
         return code
+
+    @property
+    def port(self) -> int:
+        """The port Muninn listens on, on this machine."""
+        port = self.raw["port"]
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            raise BadSetting(f"port: a number from 1 to 65535 (config says {port!r})")
+        return port
 
     @property
     def quiet_hours(self) -> tuple[time, time]:

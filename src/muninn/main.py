@@ -187,6 +187,7 @@ def keep_picture(uploads: FileUploads, name: str, data: bytes) -> str:
 
 def build(config: Config, *, dry_run: bool = False) -> App:
     cfg = config
+    cfg.port  # noqa: B018  (a port it cannot listen on stops `init` and `check` too, before a setup link names it)
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
     os.chmod(cfg.data_dir, 0o700)
     store = SqliteStore(cfg.db_path)
@@ -758,7 +759,7 @@ def first_run_token(cfg: Config, devices: DeviceRegistry) -> str | None:
         return None
     kept = url_file.read_text(encoding="utf-8").strip().partition("#setup=")[2] if url_file.is_file() else ""
     token = kept or secrets.token_urlsafe(18)
-    url = f"http://127.0.0.1:{cfg['port']}/#setup={token}"  # after # it is never sent to the server or kept in its log
+    url = f"http://127.0.0.1:{cfg.port}/#setup={token}"  # after # it is never sent to the server or kept in its log
     fd = os.open(url_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         f.write(url + "\n")
@@ -784,7 +785,7 @@ def upgrade(args: argparse.Namespace) -> int:
     from muninn.upgrade import Upgrader
 
     try:
-        port = int(Config.load(args.data)["port"])
+        port = Config.load(args.data).port
     except BadSetting as err:
         print(err, file=sys.stderr)
         return 2
@@ -1185,7 +1186,7 @@ def main(argv: list[str] | None = None) -> int:
             location_apps=LOCATION_APPS,
             setup=Setup(app.config, IMPLS, restart_self, first_run_token(app.config, app.devices)),
             tailscale=Tailscale(),
-            port=int(app.config["port"]),
+            port=app.config.port,
         )
         try:
             jobs = scheduler.plan(app.config["jobs"])
@@ -1197,7 +1198,7 @@ def main(argv: list[str] | None = None) -> int:
             scheduler.Schedule(jobs, app.config.tz, e.clock.now,
                                lambda job, a: subprocess.run([sys.executable, "-m", "muninn", "--data", data, *a]).returncode,
                                e.store.get_state, e.store.set_state).start()
-        uvicorn.run(web, host=app.config["host"], port=int(app.config["port"]), log_level="info", proxy_headers=False)
+        uvicorn.run(web, host=app.config["host"], port=app.config.port, log_level="info", proxy_headers=False)
         return 0
     return 2
 
