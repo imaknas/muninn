@@ -17,6 +17,7 @@ export const setup: Words["setup"] = {
   namePlaceholder: "What to call this service (e.g. OpenRouter; optional)",
   nameLabel: "Name",
   checkKey: "Check the key and list models",
+  localService: "Runs on this computer or my network, no key (LM Studio and the like)",
   pickService: "First pick a model service. The key stays in this computer's secrets folder; the config only says where it is.",
   hasModel: "A model is already set up; the one you pick here is added and becomes the main one.",
   skip: "Skip for now and pair the phone",

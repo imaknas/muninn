@@ -18,7 +18,7 @@ async function call<T>(token: string, path: string, body?: unknown): Promise<T> 
   return data;
 }
 
-type Choice = { impl: string; key?: string; base_url?: string; label?: string };
+type Choice = { impl: string; key?: string; base_url?: string; label?: string; local?: boolean };
 
 function screen(...children: Child[]): void {
   must("#app").hidden = true;
@@ -54,6 +54,7 @@ function chooseService(token: string, state: SetupState, error?: string): void {
     const f = new FormData(e.target as HTMLFormElement);
     const choice: Choice = { impl: String(f.get("impl")) };
     for (const k of ["key", "base_url", "label"] as const) if (f.get(k)) choice[k] = String(f.get(k));
+    if (choice.impl === "openai" && f.get("local")) { choice.local = true; delete choice.key; }  // a local server: no key
     try {
       const { models } = await call<SetupModels>(token, "/api/setup/models", choice);
       chooseModels(token, state, choice, models);
@@ -66,6 +67,7 @@ function chooseService(token: string, state: SetupState, error?: string): void {
     el("input", { name: "key", type: "password", placeholder: w.setup.keyPlaceholder, autocomplete: "off", "aria-label": w.setup.keyLabel }),
     el("input", { name: "base_url", placeholder: w.setup.urlPlaceholder, "aria-label": w.setup.urlLabel }),
     el("input", { name: "label", placeholder: w.setup.namePlaceholder, "aria-label": w.setup.nameLabel }),
+    el("label", { class: "choice" }, el("input", { type: "checkbox", name: "local" }), " ", w.setup.localService),
     el("button", { type: "submit", class: "btn primary block" }, w.setup.checkKey));
   screen(
     languages(() => chooseService(token, state, error)),
@@ -76,7 +78,7 @@ function chooseService(token: string, state: SetupState, error?: string): void {
 }
 
 function chooseModels(token: string, state: SetupState, choice: Choice, models: string[], error?: string): void {
-  const local = choice.impl === "ollama";
+  const local = choice.impl === "ollama" || Boolean(choice.local);
   const pick = (name: string, label: string) => models.length
     ? el("label", {}, label, el("select", { name, required: true }, ...models.map((m) => el("option", { value: m }, m))))
     : el("input", { name, required: true, placeholder: w.setup.modelId(label), "aria-label": label });

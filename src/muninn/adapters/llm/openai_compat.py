@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 import time
 from typing import Any, Callable, Mapping, Sequence
 
@@ -35,6 +36,11 @@ JSON_NOTE = "\nRespond with a single JSON object and nothing else."
 
 Post = Callable[..., httpx.Response]  # httpx.post's shape, for tests
 
+
+# models a service lists that cannot hold a conversation (embeddings, speech, images, moderation, old completions):
+# left off the setup page's list, which the first answer to save still checks
+NOT_CHAT = re.compile(r"embed|whisper|tts|transcri|speech|audio|realtime|dall-e|image|moderation|babbage|davinci|search|sora",
+                      re.IGNORECASE)
 
 class OpenAICompatBackend:
     def __init__(self, provider: str, label: str, model: str, base_url: str, key: KeySource | None, *, timeout: float,
@@ -162,7 +168,10 @@ class OpenAICompatProvider:
         if r.status_code == 404:
             return []  # no list kept: the model is named by hand
         r.raise_for_status()
-        return sorted(str(m.get("id")) for m in r.json().get("data", []) if m.get("id"))
+        listed = [m for m in r.json().get("data", []) if isinstance(m, dict) and m.get("id")]
+        chat = [m for m in listed if not NOT_CHAT.search(str(m["id"]))] or listed
+        # newest first, where the service says when each came out: the one picked first is then a current model
+        return [str(m["id"]) for m in sorted(chat, key=lambda m: (-int(m.get("created") or 0), str(m["id"])))]
 
     def backend(self, model: str, timeout: float = 120.0) -> OpenAICompatBackend:
         if (model, timeout) not in self._made:

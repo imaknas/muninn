@@ -42,9 +42,9 @@ class FormFilling:
     def _work(self) -> None:
         try:
             self._installation.add_extra(EXTRA, self._version, BROWSER)
-        except UpgradeError as e:
+        except Exception as e:  # noqa: BLE001 — whatever stopped it is said, never left "installing"
             with self._lock:
-                self._state, self._said = "failed", str(e)
+                self._state, self._said = "failed", str(e) if isinstance(e, UpgradeError) else f"{type(e).__name__}: {e}"
             return
         restarting = self._restart()
         with self._lock:

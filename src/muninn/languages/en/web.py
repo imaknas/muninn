@@ -5,6 +5,7 @@ TEXTS = {
     "https_no_https": "Your tailnet has HTTPS certificates off: on the DNS page of the Tailscale admin console, turn on MagicDNS and HTTPS Certificates, then come back here",
     "https_no_port": "Tailscale's HTTPS ports 8444 to 8453 are all used by other services: free one, then come back here",
     "https_failed": "tailscale serve did not work: {why} (on Linux, first run sudo tailscale set --operator=$USER)",
+    "https_serve_off": "Tailscale Serve isn't on for your tailnet yet: open {url} to turn it on, then press the button again",
     "not_this_computer": "Only a browser on the computer Muninn runs on can pair without HTTPS",
     "not_built": "This Muninn was installed from source without building its web app. In the source folder run npm ci && npm run build, then install it again; or install the released package: uv tool install muninn-ai",
     "connect_refused": "The account was not connected: {why}",

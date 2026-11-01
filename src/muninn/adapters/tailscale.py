@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -25,7 +26,10 @@ class Tailscale:
     def _json(self, *args: str) -> Any:
         binary = self._binary()
         assert binary is not None
-        done = self._run([binary, *args, "--json"], capture_output=True, text=True, timeout=TIMEOUT_S)
+        try:
+            done = self._run([binary, *args, "--json"], capture_output=True, text=True, timeout=TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            return None
         if done.returncode != 0:
             return None
         try:
@@ -57,8 +61,14 @@ class Tailscale:
         if not st["ready"]:
             raise RuntimeError(st["why"])
         if not st["served"]:
-            done = self._run([self._binary(), "serve", "--bg", f"--https={st['https_port']}", f"http://127.0.0.1:{port}"],
-                             capture_output=True, text=True, timeout=TIMEOUT_S)
+            try:
+                done = self._run([self._binary(), "serve", "--bg", f"--https={st['https_port']}", f"http://127.0.0.1:{port}"],
+                                 capture_output=True, text=True, timeout=TIMEOUT_S)
+            except subprocess.TimeoutExpired as e:
+                # Serve not yet on for this tailnet: the CLI says where to turn it on, and waits
+                said = " ".join(x.decode(errors="replace") if isinstance(x, bytes) else x or "" for x in (e.stdout, e.stderr))
+                link = re.search(r"https://login\.tailscale\.com/\S+", said)
+                raise RuntimeError(f"serve_off {link.group(0) if link else 'https://login.tailscale.com/admin'}") from None
             if done.returncode != 0:
                 raise RuntimeError((done.stderr or done.stdout or "tailscale serve failed").strip().splitlines()[-1])
         return str(st["url"])

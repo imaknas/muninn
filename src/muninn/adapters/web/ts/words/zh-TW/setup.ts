@@ -15,6 +15,7 @@ export const setup = {
   namePlaceholder: "怎麼稱呼這家(例如 OpenRouter;可不填)",
   nameLabel: "名稱",
   checkKey: "檢查 key,列出模型",
+  localService: "在這台電腦或我的網路上,不用 key(LM Studio 之類)",
   pickService: "先選一家模型。key 只存在這台電腦的 secrets 資料夾,設定檔只寫它在哪。",
   hasModel: "已經設定過模型了;在這裡選的會加上去,當成主要的。",
   skip: "先跳過,去配對手機",

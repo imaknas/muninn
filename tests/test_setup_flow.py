@@ -253,3 +253,29 @@ def test_tailscales_state_is_read_from_its_own_answers(tmp_path):
     status["BackendState"] = "NeedsLogin"
     assert ts.state(18795) == {"ready": False, "why": "not_running"}
     assert Tailscale(run=run, which=lambda n: None, mac_app=tmp_path / "none").state(18795) == {"ready": False, "why": "not_installed"}
+
+
+def test_a_tailnet_without_serve_turned_on_is_said_with_where_to_turn_it_on(tmp_path):
+    import json
+    import subprocess
+
+    import pytest
+
+    from muninn.adapters.tailscale import Tailscale
+
+    status = {"BackendState": "Running", "Self": {"DNSName": "box.tail1.ts.net."}, "CertDomains": ["box.tail1.ts.net"]}
+
+    def run(args, **kw):
+        if args[1:3] == ["serve", "--bg"]:  # it prints where to turn Serve on, then waits
+            raise subprocess.TimeoutExpired(args, 20, output=b"Serve is not enabled on your tailnet.\nTo enable, visit:\n\n"
+                                                              b"         https://login.tailscale.com/f/serve?node=abc123\n")
+        out = status if args[1] == "status" else {} if args[1:3] == ["serve", "status"] else None
+        return subprocess.CompletedProcess(args, 0, json.dumps(out), "")
+
+    with pytest.raises(RuntimeError, match=r"serve_off https://login\.tailscale\.com/f/serve\?node=abc123"):
+        Tailscale(run=run, which=lambda n: "/usr/bin/tailscale").serve(18795)
+
+    def hangs(args, **kw):
+        raise subprocess.TimeoutExpired(args, 20)
+
+    assert Tailscale(run=hangs, which=lambda n: "/usr/bin/tailscale").state(18795) == {"ready": False, "why": "not_running"}

@@ -154,3 +154,21 @@ def test_a_local_provider_is_the_local_model_and_only_that():
                                      ("https://api.openai.com/v1", False), ("http://8.8.8.8", False)])
 def test_what_counts_as_this_machine_or_network(url, ok):
     assert private(url) is ok
+
+
+def test_the_models_offered_can_chat_and_the_newest_comes_first():
+    import httpx
+
+    from conftest import ZH
+    from muninn.adapters.llm.openai_compat import OpenAICompatProvider
+
+    listed = {"data": [{"id": "babbage-002", "created": 1}, {"id": "text-embedding-3-large", "created": 9},
+                       {"id": "gpt-old", "created": 2}, {"id": "whisper-1", "created": 8}, {"id": "gpt-new", "created": 7}]}
+
+    def get(url, **kw):
+        return httpx.Response(200, json=listed, request=httpx.Request("GET", url))
+
+    p = OpenAICompatProvider("openai", "https://api.example/v1", None, get=get, words=ZH)
+    assert p.models() == ["gpt-new", "gpt-old"]
+    listed["data"] = [{"id": "nomic-embed-text"}]  # only what looks unfit: still offered, the check at saving decides
+    assert p.models() == ["nomic-embed-text"]

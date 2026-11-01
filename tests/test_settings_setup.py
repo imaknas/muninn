@@ -168,3 +168,27 @@ def test_a_service_that_does_not_answer_while_listing_models_is_said_plainly(tmp
     s = Setup(Config.load(tmp_path), {**IMPLS, "openai": Impl}, restart=lambda: False)
     with pytest.raises(RuntimeError, match="did not answer.*Connection refused"):
         s.models({"impl": "openai", "base_url": "http://127.0.0.1:9", "key": "invented"})
+
+
+def test_a_service_on_this_computer_needs_no_key_and_is_the_local_model(tmp_path):
+    class Answering(Setup):
+        def _answers(self, name, spec, model, words):
+            pass
+
+    (tmp_path / "config.yaml").write_text("language: en\n")
+    s = Answering(Config.load(tmp_path), IMPLS, restart=lambda: True)
+    assert s.save({"impl": "openai", "local": True, "base_url": "http://127.0.0.1:1234/v1", "label": "LM Studio"}, "qwen-small") is True
+    llm = written(tmp_path)["llm"]
+    assert llm["providers"]["lm-studio"] == {"impl": "openai", "base_url": "http://127.0.0.1:1234/v1", "label": "LM Studio",
+                                              "location": "local", "models": {"fast": "qwen-small"}}
+    assert llm["routing"] == "privacy" and not (tmp_path / "secrets").exists()  # no key asked, none kept
+
+
+def test_an_unexpected_failure_while_installing_is_said_not_left_installing():
+    class Broken(Install):
+        def add_extra(self, extra, version, then=None):
+            raise OSError("disk full")
+
+    f = FormFilling(Broken(), "0.5.0", ready=lambda: False, restart=lambda: True, thread=lambda work: work())
+    f.start()
+    assert f.state()["state"] == "failed" and "disk full" in f.state()["said"]

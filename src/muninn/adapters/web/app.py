@@ -838,6 +838,8 @@ def create_app(
         except RuntimeError as e:
             why = str(e)
             known = why in ("not_installed", "not_running", "no_https", "no_port")
+            if why.startswith("serve_off "):
+                return JSONResponse({"error": words("web.https_serve_off", url=why.split(" ", 1)[1])}, status_code=400)
             return JSONResponse({"error": words(f"web.https_{why}") if known else words("web.https_failed", why=why)}, status_code=400)
         restarting = await run_in_threadpool(setup.set_public_url, url)
         return JSONResponse({"url": url, "restarting": restarting})
