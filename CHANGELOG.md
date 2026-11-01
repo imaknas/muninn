@@ -3,6 +3,18 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.3.0 (2026-11-01)
+
+### New
+
+- **setup:** Finish setting up in this computer's browser, and pair the phone later from the settings page
+- **setup:** The settings page gives Muninn its HTTPS address with Tailscale, so the phone can pair
+
+### Fixed
+
+- **setup:** A model that cannot chat is not offered or saved, and having no model at all is said
+- **talk:** A deep talk's past conversation that fails to load no longer raises an error on the page
+
 ## v0.2.0 (2026-11-01)
 
 ### New
