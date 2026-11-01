@@ -153,3 +153,20 @@ def test_the_server_says_its_version(web):
 
     _, client, _ = web
     assert client.get("/healthz").json() == {"ok": True, "version": version()}
+
+
+
+def test_uv_is_told_to_read_the_releases_afresh_and_its_whole_reason_is_kept():
+    import subprocess
+
+    ran = []
+
+    def run(args, **kw):
+        ran.append(args)
+        return subprocess.CompletedProcess(args, 1, "", "  × No solution found when resolving tool dependencies:\n"
+                                                        "  ╰─▶ Because there is no version of muninn-ai==0.3.0, we can conclude that\n"
+                                                        "      your requirements are unsatisfiable.\n")
+
+    with pytest.raises(UpgradeError, match="no version of muninn-ai==0.3.0.*unsatisfiable"):
+        installs.UvTool("/usr/bin/uv", "3.13", run=run).install(f"{PACKAGE}==0.3.0")
+    assert ran[0][:5] == ["/usr/bin/uv", "tool", "install", "--force", "--refresh-package"] and ran[0][5] == PACKAGE

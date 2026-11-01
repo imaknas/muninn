@@ -79,12 +79,15 @@ class UvTool:
 
     def install(self, spec: str) -> None:
         try:
-            done = self._run([self._uv, "tool", "install", "--force", "--python", self._python, spec],
+            # --refresh-package: uv keeps the index's list of releases for a while, so a release minutes old is
+            # otherwise "unsatisfiable" though PyPI already says it is out
+            done = self._run([self._uv, "tool", "install", "--force", "--refresh-package", PACKAGE, "--python", self._python, spec],
                              capture_output=True, text=True, timeout=INSTALL_TIMEOUT_S)
         except (OSError, subprocess.SubprocessError) as e:
             raise UpgradeError(f"uv could not run ({e})") from None
         if done.returncode != 0:
-            raise UpgradeError((done.stderr or done.stdout or "uv failed").strip().splitlines()[-1])
+            said = [line.strip() for line in (done.stderr or done.stdout or "uv failed").splitlines() if line.strip()]
+            raise UpgradeError(" ".join(said)[-400:])
 
 
 class Refused:
