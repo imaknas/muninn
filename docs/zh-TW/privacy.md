@@ -15,7 +15,8 @@
   那個畫面會寫入 `cloud` 並當場說明;之後的設定頁也一直會寫清楚什麼送到哪裡。
 
 哪些模型回答是 `llm.providers`:
-每個 provider 寫明它的實作(`claude` 是 CLI 和它的登入,
+每個 provider 寫明它的實作(`claude` 是 Claude CLI 和它的登入,`codex` 是 Codex CLI 和它的登入
+(工具、網路搜尋、sub-agent 全部關掉,只能回答),
 `anthropic` 是 Anthropic API,`openai` 是任何在 `base_url` 提供 OpenAI 式
 Chat Completions API 的服務,例如 OpenRouter 或 LM Studio,還有
 `ollama`)、金鑰在哪裡(`{secret: <file in the secrets directory>}` 或 `{env: <VARIABLE>}`,絕不是金鑰本身),以及每個層級用哪個模型。

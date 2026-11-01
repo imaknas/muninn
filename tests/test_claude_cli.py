@@ -7,7 +7,7 @@ import stat
 import pytest
 
 from conftest import ZH, RecordingLLM
-from muninn.adapters.llm.claude_cli import TOKEN_VAR, ClaudeCliBackend, HeadlessToken, OwnLogin, find_claude
+from muninn.adapters.llm.claude_cli import TOKEN_VAR, ClaudeCliBackend, HeadlessToken, OwnLogin, find_cli
 from muninn.core.llm_router import CloudFirst, LLMRequest, LLMRouter
 from muninn.core.models import Sensitivity
 from muninn.core.ports import CloudLoginLost
@@ -63,10 +63,10 @@ def test_the_cli_is_found_under_the_newest_nvm_node_when_the_configured_one_is_g
         script(nvm / "versions" / "node" / v / "bin" / "claude", "echo ok")
     (nvm / "versions" / "node" / "v25.0.0" / "bin").mkdir(parents=True)  # a newer node without the CLI
     gone = str(nvm / "versions" / "node" / "v23.0.0" / "bin" / "claude")
-    assert find_claude(gone, nvm) == str(nvm / "versions" / "node" / "v24.19.0" / "bin" / "claude")
+    assert find_cli(gone, nvm) == str(nvm / "versions" / "node" / "v24.19.0" / "bin" / "claude")
     here = script(tmp_path / "bin" / "claude", "echo ok")
-    assert find_claude(str(here), nvm) == str(here)  # the configured one, while it is there
-    assert find_claude("no-such-claude-cli", None) is None
+    assert find_cli(str(here), nvm) == str(here)  # the configured one, while it is there
+    assert find_cli("no-such-claude-cli", None) is None
     backend = ClaudeCliBackend(tmp_path / "work", binary="no-such-claude-cli", nvm_dir=tmp_path / "empty", words=ZH)
     assert not backend.available()  # not found: the router goes on to the local model, marked
 

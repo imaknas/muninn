@@ -54,6 +54,8 @@ llm:
   #               models: {fast: claude-haiku-5-5, standard: claude-sonnet-5-5, strong: claude-opus-5-5},
   #               effort: {fast: low}}   # how hard each tier thinks: low … max; the API bills the thinking (fast is low unless set)
   #   claude:    {impl: claude, binary: claude}   # the Claude CLI as you are logged in to it (/login), for your own use
+  #   codex:     {impl: codex, models: {fast: <a model Codex shows>}}   # the Codex CLI as you are logged in to it
+  #              (codex login), its tools off; a tier without a model uses Codex's own default
   #   openrouter: {impl: openai, base_url: "https://openrouter.ai/api/v1", key: {secret: openrouter-key}, label: OpenRouter,
   #                models: {fast: <a model id there>, standard: <another>}, reads: {<model id>: [images]}}
   #   home:      {impl: ollama, base_url: "http://127.0.0.1:11434",   # location: local is Ollama's own; the local model

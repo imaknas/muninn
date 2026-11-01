@@ -39,6 +39,7 @@ from muninn.adapters.postings import default_fetcher
 from muninn.adapters.clock import SystemClock
 from muninn.adapters.llm.anthropic_api import AnthropicApiProvider
 from muninn.adapters.llm.claude_cli import ClaudeCliProvider
+from muninn.adapters.llm.codex_cli import CodexCliProvider
 from muninn.adapters.llm.ollama import OllamaBackend, OllamaProvider
 from muninn.adapters.llm.openai_compat import OpenAICompatProvider
 from muninn.adapters.llm.reply_check import ReplyCheck, schemas
@@ -553,7 +554,8 @@ def settings_view(config: Config, c: ComposerConfig, problems: Sequence[str] = (
 
 
 # the providers config may name (llm.providers.<name>.impl), one implementation each
-IMPLS = {"claude": ClaudeCliProvider, "anthropic": AnthropicApiProvider, "openai": OpenAICompatProvider, "ollama": OllamaProvider}
+IMPLS = {"claude": ClaudeCliProvider, "codex": CodexCliProvider, "anthropic": AnthropicApiProvider, "openai": OpenAICompatProvider,
+         "ollama": OllamaProvider}
 
 
 class Providers:

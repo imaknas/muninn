@@ -17,7 +17,8 @@ Where models run is one setting, `llm.routing`:
   screen; the settings page always says what goes where.
 
 Which models answer is `llm.providers`:
-each provider names its implementation (`claude` for the CLI and its login,
+each provider names its implementation (`claude` for the Claude CLI and its login, `codex` for the Codex CLI and
+its login (run with every tool, web search and sub-agent switched off, so it can only answer),
 `anthropic` for the Anthropic API, `openai` for any service with an OpenAI-style
 Chat Completions API at its `base_url`, such as OpenRouter or LM Studio, and
 `ollama`), where its key is (`{secret: <file in the secrets

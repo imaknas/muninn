@@ -73,8 +73,8 @@ class OwnLogin:
         return {}
 
 
-def find_claude(configured: str, nvm_dir: Path | None = None) -> str | None:
-    """The CLI as configured (a path, or a name on PATH); else the newest node under nvm that has it."""
+def find_cli(configured: str, nvm_dir: Path | None = None, name: str = "claude") -> str | None:
+    """A node CLI (`name`) as configured (a path, or a name on PATH); else the newest node under nvm that has it."""
     path = os.path.expanduser(configured)
     if os.path.isfile(path) and os.access(path, os.X_OK):
         return path
@@ -82,7 +82,7 @@ def find_claude(configured: str, nvm_dir: Path | None = None) -> str | None:
         return found
     if nvm_dir is None:
         return None
-    candidates = [(tuple(int(x) for x in re.findall(r"\d+", v.name)), v / "bin" / "claude")
+    candidates = [(tuple(int(x) for x in re.findall(r"\d+", v.name)), v / "bin" / name)
                   for v in (nvm_dir / "versions" / "node").glob("v*")]
     return next((str(c) for _, c in sorted(candidates, reverse=True) if c.is_file() and os.access(c, os.X_OK)), None)
 
@@ -108,7 +108,7 @@ class ClaudeCliBackend:
         self._scrub = frozenset(scrub) | {TOKEN_VAR}
 
     def _cli(self) -> str:
-        found = find_claude(self._binary, self._nvm_dir)
+        found = find_cli(self._binary, self._nvm_dir)
         if found is None:
             raise FileNotFoundError(f"claude CLI not found ({self._binary})")
         return found
@@ -121,7 +121,7 @@ class ClaudeCliBackend:
         return env | self._credentials.env()
 
     def available(self) -> bool:
-        return find_claude(self._binary, self._nvm_dir) is not None
+        return find_cli(self._binary, self._nvm_dir) is not None
 
     def check(self) -> str:
         """Starts the CLI as a request would (same environment, so a missing login shows), without a model call."""
