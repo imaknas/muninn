@@ -3,6 +3,12 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.6.0 (2026-11-01)
+
+### New
+
+- **setup:** The settings page sets up the folders Muninn reads, Google mail and calendar, and form filling
+
 ## v0.5.0 (2026-11-01)
 
 ### New
