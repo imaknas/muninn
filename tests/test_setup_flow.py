@@ -189,3 +189,67 @@ def test_a_phone_is_paired_from_the_settings_page_once_there_is_an_https_address
     client.post("/api/pair", json={"code": devices.new_pairing_code(), "name": "laptop"})
     p = client.post("/api/devices/pair", json={}).json()
     assert p["url"].startswith("https://muninn.example.ts.net/?pair=") and p["code"] and p["qr"].startswith("<svg")
+
+
+def https_app(tmp_path, tailscale, public_url=None):
+    from world import FakeTailscale  # noqa: F401  (the fake's shape)
+
+    h = make_harness(at(2026, 11, 3, 9))
+    keys = VapidKeys(tmp_path / "vapid.pem")
+    keys.ensure()
+    devices = DeviceRegistry(tmp_path / "dev.db")
+    (tmp_path / "config.yaml").write_text("owner_label: Robin\n", encoding="utf-8")
+    restarts = []
+    setup = Listed(Config.load(tmp_path), IMPLS, restart=lambda: restarts.append(1) or True)
+    client = TestClient(create_app(h.engine, keys, "tok", devices, setup=setup, public_url=public_url, tailscale=tailscale, port=18795),
+                        base_url="https://testserver")
+    client.post("/api/pair", json={"code": devices.new_pairing_code(), "name": "laptop"})
+    return client, restarts
+
+
+def test_tailscale_gives_muninn_its_https_address_from_the_settings_page(tmp_path):
+    from world import FakeTailscale
+
+    ts = FakeTailscale()
+    client, restarts = https_app(tmp_path, ts)
+    assert client.post("/api/devices/pair", json={}).status_code == 400  # no address yet
+    assert client.get("/api/devices/https").json() == {"ready": True, "url": "https://muninn.example.ts.net:8444"}
+    r = client.post("/api/devices/https", json={}).json()
+    assert r == {"url": "https://muninn.example.ts.net:8444", "restarting": True} and ts.served == [18795] and restarts == [1]
+    assert "public_url: https://muninn.example.ts.net:8444" in (tmp_path / "config.yaml").read_text()
+
+
+def test_what_is_missing_for_an_https_address_is_said(tmp_path):
+    from world import FakeTailscale
+
+    client, restarts = https_app(tmp_path, FakeTailscale(ready=False, why="no_https"))
+    got = client.get("/api/devices/https").json()
+    assert got["ready"] is False and "HTTPS Certificates" in got["said"]
+    r = client.post("/api/devices/https", json={})
+    assert r.status_code == 400 and "HTTPS Certificates" in r.json()["error"] and restarts == []
+
+
+def test_tailscales_state_is_read_from_its_own_answers(tmp_path):
+    import json
+    import subprocess
+
+    from muninn.adapters.tailscale import Tailscale
+
+    status = {"BackendState": "Running", "Self": {"DNSName": "box.tail1.ts.net."}, "CertDomains": ["box.tail1.ts.net"]}
+    serving = {"Web": {"box.tail1.ts.net:8444": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:18790"}}}}}
+    ran = []
+
+    def run(args, **kw):
+        ran.append(args)
+        out = status if args[1] == "status" else serving if args[1:3] == ["serve", "status"] else None
+        return subprocess.CompletedProcess(args, 0, json.dumps(out) if out is not None else "", "")
+
+    ts = Tailscale(run=run, which=lambda n: "/usr/bin/tailscale")
+    assert ts.state(18795) == {"ready": True, "url": "https://box.tail1.ts.net:8445", "https_port": 8445, "served": False}  # 8444 is taken
+    assert ts.serve(18795) == "https://box.tail1.ts.net:8445"
+    assert ran[-1] == ["/usr/bin/tailscale", "serve", "--bg", "--https=8445", "http://127.0.0.1:18795"]  # the tailnet only: no funnel
+    status["CertDomains"] = []
+    assert ts.state(18795) == {"ready": False, "why": "no_https"}
+    status["BackendState"] = "NeedsLogin"
+    assert ts.state(18795) == {"ready": False, "why": "not_running"}
+    assert Tailscale(run=run, which=lambda n: None, mac_app=tmp_path / "none").state(18795) == {"ready": False, "why": "not_installed"}

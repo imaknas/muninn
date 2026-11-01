@@ -207,7 +207,9 @@ curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh
 
 在 NAS 或伺服器上用 `docker compose up -d`(見 `compose.yaml`);設定頁的連結
 在 `docker compose logs` 裡。不管哪種方式,你的手機都透過 HTTPS 連到 Muninn:
-Tailscale(`tailscale serve`)是最快的路。`muninn backup DIR` 會複製資料庫、計畫和設定;`muninn check` 會告訴你設定裡有哪些照寫的樣子沒辦法運作。
+Tailscale 是最快的路:電腦上的 Tailscale 登入了(而且 tailnet 開了 HTTPS 憑證),
+設定頁的「配對手機」會自己設好(`tailscale serve`,只有你的 tailnet 連得到),用新位址重啟 Muninn;
+缺什麼它會告訴你。`muninn backup DIR` 會複製資料庫、計畫和設定;`muninn check` 會告訴你設定裡有哪些照寫的樣子沒辦法運作。
 
 ## 從 checkout 執行
 

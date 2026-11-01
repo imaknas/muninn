@@ -126,6 +126,7 @@ Call = Callable[[World], tuple[str, Any]]
 GETS: dict[str, Call] = {
     "GET /api/me": lambda w: ("/api/me", None),
     "GET /api/settings": lambda w: ("/api/settings", None),
+    "GET /api/devices/https": lambda w: ("/api/devices/https", None),
     "GET /api/today": lambda w: ("/api/today", None),
     "GET /api/day": lambda w: ("/api/day", None),
     "GET /api/goal-days": lambda w: ("/api/goal-days", None),
@@ -167,6 +168,7 @@ POSTS: dict[str, Call] = {
     "POST /api/setup/pair": lambda w: ("/api/setup/pair", {}),
     "POST /api/setup/pair-here": lambda w: ("/api/setup/pair-here", {}),  # asked from this computer: LOCAL
     "POST /api/devices/pair": lambda w: ("/api/devices/pair", {}),
+    "POST /api/devices/https": lambda w: ("/api/devices/https", {}),
     "POST /api/settings/language": lambda w: ("/api/settings/language", {"language": "en"}),
     "POST /api/inbox/read": lambda w: ("/api/inbox/read", {"ids": [first(w, "/api/inbox")["id"]]}),
     "POST /api/ideas/{n}/settle": lambda w: (f"/api/ideas/{w.client.get('/api/home').json()['ideas'][0]['n']}/settle", {"decision": "shelved"}),

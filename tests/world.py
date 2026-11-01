@@ -115,6 +115,22 @@ class FitDecider:
         return Verdict("fit", None, "cloud", "符合")
 
 
+class FakeTailscale:
+    """This computer's Tailscale, signed in with HTTPS on: it would serve Muninn at its tailnet address."""
+
+    def __init__(self, ready: bool = True, why: str = ""):
+        self.ready, self.why, self.served = ready, why, []
+
+    def state(self, port):
+        return {"ready": True, "url": "https://muninn.example.ts.net:8444"} if self.ready else {"ready": False, "why": self.why}
+
+    def serve(self, port):
+        if not self.ready:
+            raise RuntimeError(self.why)
+        self.served.append(port)
+        return "https://muninn.example.ts.net:8444"
+
+
 class ListedSetup(Setup):
     """Setup whose service lists two models, which both answer, without being asked over the network."""
 
@@ -147,7 +163,8 @@ class World:
                          document_files=lambda: {"resume-en": tmp / "resume-en.md"}, connections=self.connections,
                          messages=e.messages, lease_runner=self.runner, permissions=self.desk, day_view=day,
                          uploads=FileUploads(tmp / "uploads", words=e.words), location_apps=LOCATION_APPS,
-                         setup=ListedSetup(Config.load(tmp), IMPLS, restart=lambda: False), public_url="https://muninn.example.ts.net")
+                         setup=ListedSetup(Config.load(tmp), IMPLS, restart=lambda: False), public_url="https://muninn.example.ts.net",
+                         tailscale=FakeTailscale())
         self.client = TestClient(app, base_url="https://testserver")
         r = self.client.post("/api/pair", json={"code": self.devices.new_pairing_code(), "name": "test phone"})
         assert r.status_code == 200, r.text

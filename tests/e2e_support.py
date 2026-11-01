@@ -31,7 +31,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
 from conftest import TZ, at, make_harness  # noqa: E402
-from world import Calendar, ListedSetup  # noqa: E402
+from world import Calendar, FakeTailscale, ListedSetup  # noqa: E402
 
 from muninn.adapters.channels.webpush import VapidKeys  # noqa: E402
 from muninn.adapters.uploads import FileUploads  # noqa: E402
@@ -94,7 +94,7 @@ class Muninn:
         self.setup = ListedSetup(Config.load(tmp), IMPLS, restart=lambda: False, token=SETUP_TOKEN)
         app = create_app(e, keys, "tok", self.devices, messages=e.messages, lease_runner=self.runner, permissions=self.desk,
                          day_view=day, uploads=self.uploads, location_apps=LOCATION_APPS, setup=self.setup,
-                         public_url=self.url if https else None,
+                         public_url=self.url if https else None, tailscale=FakeTailscale(),
                          settings_view=settings)
         self.app = app
         keyfile, certfile = _cert(tmp) if https else (None, None)

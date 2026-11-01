@@ -262,6 +262,9 @@ export interface SetupChoice { impl: string; needs_key: boolean; base_url: strin
 export interface SetupState { choices: SetupChoice[]; public_url: string | null; has_model: boolean; language: string }
 export interface SetupModels { models: string[] }
 export interface SetupSaved { ok: boolean; restarting: boolean }
+// whether this computer's Tailscale can give Muninn an HTTPS address (url: the one it would be), else what is missing (said)
+export interface HttpsState { ready: boolean; url?: string; why?: string; said?: string }
+export interface HttpsMade { url: string; restarting: boolean }
 export interface SetupPair { code: string; url: string; qr: string }  // qr: an SVG of the URL, for the phone's camera
 
 export interface Api {
@@ -272,6 +275,8 @@ export interface Api {
   "POST /api/setup/pair": SetupPair;
   "POST /api/setup/pair-here": { code: string };
   "POST /api/devices/pair": SetupPair;
+  "GET /api/devices/https": HttpsState;
+  "POST /api/devices/https": HttpsMade;
   "GET /api/me": Me;
   "GET /api/settings": Settings;
   "POST /api/settings/language": SetupSaved;

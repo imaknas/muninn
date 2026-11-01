@@ -7,7 +7,7 @@ import { afterTalk, confirmationCard, connectAccount, copy } from "./cards.js";
 import { cloudFirst, cloudName, handleError, loadToday, reader, render, state } from "./shell.js";
 import { setTopic } from "./talk.js";
 import { LANGUAGE_NAMES, LANGUAGES, w, type Lang } from "./words.js";
-import type { ActivitySetup, Confirmation, Connection, HealthSetup, List, LocationSetup, Mail, Me, Prepared, Reflection, Requests, Settings, SetupPair, SetupSaved, TrackerRow, Undoable } from "./types.js";
+import type { ActivitySetup, Confirmation, Connection, HealthSetup, List, LocationSetup, Mail, Me, Prepared, Reflection, Requests, Settings, SetupPair, SetupSaved, TrackerRow, Undoable, HttpsState, HttpsMade } from "./types.js";
 
 // ── Application packet, reply draft ──────────────────────────────────────
 
@@ -387,10 +387,29 @@ function pairSection(): HTMLElement {
         el("p", { class: "sub" }, w.pages.pairScan),
         el("img", { src: `data:image/svg+xml;base64,${btoa(p.qr)}`, alt: p.url, class: "pair-qr", width: 200, height: 200 }),
         el("p", { class: "note" }, w.pages.pairByHand(p.url.split("?")[0] || p.url, p.code)));
-    } catch (err) {
-      body.replaceChildren(el("p", { class: "note" }, err instanceof Error ? err.message : String(err)),
-        el("p", { class: "note" }, w.pages.pairNeedsHttps(location.port)));
+    } catch {
+      await https();  // no HTTPS address yet: Tailscale can give it one, or what is missing for that
     }
+  };
+  const https = async () => {
+    const t = await api<HttpsState>("/api/devices/https");
+    if (t.ready && t.url) {
+      const make = el("button", { type: "button", class: "btn primary", onclick: async () => {
+        make.disabled = true;
+        try {
+          const r = await api<HttpsMade>("/api/devices/https", {});
+          if (!r.restarting) { body.replaceChildren(el("p", { class: "note" }, w.pages.httpsRestartYourself)); return; }
+          body.replaceChildren(el("p", { class: "sub" }, w.pages.httpsRestarting));
+          await backUp();
+          await show();  // back with its address: the phone's code
+        } catch (err) { make.disabled = false; make.after(el("p", { class: "error" }, err instanceof Error ? err.message : String(err))); }
+      } }, w.pages.httpsMake);
+      body.replaceChildren(el("p", { class: "note" }, w.pages.httpsReady(t.url)), make);
+      return;
+    }
+    body.replaceChildren(el("p", { class: "note" }, t.said || ""),
+      el("button", { type: "button", class: "link-btn", onclick: https }, w.pages.httpsCheckAgain),
+      el("details", {}, el("summary", {}, w.pages.httpsByHand), el("p", { class: "note" }, w.pages.pairNeedsHttps(location.port))));
   };
   return section(w.pages.pairTitle, sectionHead(w.pages.pairTitle),
     el("button", { type: "button", class: "btn", onclick: show }, w.pages.pairButton), body);

@@ -252,7 +252,10 @@ says what is installed and what is out). In Docker, pull the new image instead.
 
 On a NAS or a server, `docker compose up -d` (see `compose.yaml`); the setup
 link is in `docker compose logs`. Either way your phone reaches Muninn over
-HTTPS: Tailscale (`tailscale serve`) is the shortest way there. `muninn backup
+HTTPS: Tailscale is the shortest way there. With Tailscale signed in on the
+computer (and HTTPS certificates on for the tailnet), the settings page's "Pair a
+phone" sets it up itself (`tailscale serve`, for your tailnet only) and restarts
+Muninn on the address; otherwise it says what is missing. `muninn backup
 DIR` copies the database, plans and settings; `muninn check` says what in the
 settings cannot work as written.
 

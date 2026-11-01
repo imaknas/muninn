@@ -120,6 +120,8 @@ def create_app(
     uploads: Uploads | None = None,
     location_apps: Sequence[LocationApp] = (),
     setup: Setup | None = None,
+    tailscale: Any = None,
+    port: int = 18795,
 ) -> Starlette:
     """`settings_view`: read-only facts about notification rules for the PWA.
     `messages`: what the projects post for the user; without it the
@@ -129,7 +131,8 @@ def create_app(
     `uploads`: the files the user sends with what they say (photos, PDFs); without it nothing can be sent.
     `day_view`: today as a timeline and goals day by day (the wide screen);
     without it those routes answer empty. `setup`: first-run setup (which model, its key, pairing the phone); open
-    to the one-time token printed at start until a device is paired, then to paired devices only."""
+    to the one-time token printed at start until a device is paired, then to paired devices only. `tailscale`: what
+    gives Muninn (on `port`) an HTTPS address for the phone from the settings page (adapters/tailscale.py)."""
     settings_view = settings_view or {}
     words = engine.words  # what the server says itself (errors, the pages a sign-in returns to)
     lock = threading.RLock()  # engine calls touch YAML files; serialize them (re-entrant: a lease's thread
@@ -803,6 +806,33 @@ def create_app(
             return JSONResponse({"error": words("web.needs_https")}, status_code=400)
         return await pairing()
 
+    @authed
+    async def devices_https(request: Request) -> Response:
+        """Whether this computer's Tailscale can give Muninn an HTTPS address now, and if not what is missing."""
+        if public_url:
+            return JSONResponse({"ready": False, "url": public_url, "why": "has_url"})
+        if tailscale is None or setup is None:
+            return JSONResponse({"ready": False, "why": "not_installed", "said": words("web.https_not_installed")})
+        st = await run_in_threadpool(tailscale.state, port)
+        return JSONResponse({**{k: st[k] for k in ("ready", "why", "url") if k in st},
+                             **({} if st["ready"] else {"said": words(f"web.https_{st['why']}")})})
+
+    @authed
+    @guarded
+    async def devices_https_make(request: Request) -> Response:
+        """`tailscale serve` run for Muninn, its address written as public_url, and Muninn started again on it."""
+        await body(request)
+        if tailscale is None or setup is None:
+            return JSONResponse({"error": words("web.https_not_installed")}, status_code=400)
+        try:
+            url = await run_in_threadpool(tailscale.serve, port)
+        except RuntimeError as e:
+            why = str(e)
+            known = why in ("not_installed", "not_running", "no_https", "no_port")
+            return JSONResponse({"error": words(f"web.https_{why}") if known else words("web.https_failed", why=why)}, status_code=400)
+        restarting = await run_in_threadpool(setup.set_public_url, url)
+        return JSONResponse({"url": url, "restarting": restarting})
+
     @guarded
     async def pair(request: Request) -> Response:
         if not tailnet_ok(request):
@@ -1319,6 +1349,8 @@ def create_app(
         Route("/api/setup/save", setup_save, methods=["POST"]),
         Route("/api/setup/pair-here", setup_pair_here, methods=["POST"]),
         Route("/api/devices/pair", devices_pair, methods=["POST"]),
+        Route("/api/devices/https", devices_https),
+        Route("/api/devices/https", devices_https_make, methods=["POST"]),
         Route("/api/setup/pair", setup_pair, methods=["POST"]),
         Route("/api/me", me),
         Route("/api/settings", settings),

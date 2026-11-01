@@ -937,6 +937,11 @@ def test_a_fresh_install_without_https_is_used_in_this_computers_browser_and_sta
     assert cookie["secure"] is False  # Safari keeps no Secure cookie over plain http, even on this computer
     pg.reload()
     pg.get_by_role("textbox", name="跟 Muninn 說").wait_for()  # still paired after a reload
+    pg.goto(f"{m.url}/#settings")  # the phone, later: its pairing needs an HTTPS address, which Tailscale gives
+    pg.get_by_role("button", name="顯示配對碼").click()
+    pg.get_by_role("button", name="幫我設定").click()
+    pg.get_by_text("位址設好了").wait_for()  # not under a service manager here: the user restarts it
+    assert "public_url: https://muninn.example.ts.net:8444" in (tmp_path / "config.yaml").read_text()
     assert errors == []
     m.server.should_exit = True
     ctx.close()

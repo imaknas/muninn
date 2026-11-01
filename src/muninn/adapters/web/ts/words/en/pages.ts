@@ -228,6 +228,12 @@ export const pages: Words["pages"] = {
   thisDevice: "This device",
   pairTitle: "Pair a phone",
   pairButton: "Show a pairing code",
+  httpsReady: (url: string) => `The phone reaches Muninn over HTTPS. This computer's Tailscale can give it the address ${url}, for your own devices only (your tailnet).`,
+  httpsMake: "Set it up",
+  httpsRestarting: "Muninn is restarting on its new address…",
+  httpsRestartYourself: "The address is set. Restart Muninn (muninn serve), then come back here to pair the phone.",
+  httpsCheckAgain: "Done, check again",
+  httpsByHand: "Without Tailscale",
   pairScan: "Scan this with the phone's camera and tap \"Pair\" on the page that opens. The code works once, for 10 minutes.",
   pairByHand: (url: string, code: string) => `If it won't scan, open ${url} on the phone and enter ${code}.`,
   pairNeedsHttps: (port: string) => "The phone reaches Muninn over HTTPS. The easiest way is Tailscale: install it on both and sign in "

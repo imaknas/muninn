@@ -1,5 +1,10 @@
 # what the web server says itself (adapters/web/app.py)
 TEXTS = {
+    "https_not_installed": "這台電腦沒有 Tailscale:在這台電腦和手機都裝 Tailscale(tailscale.com/download)、登入同一個帳號,再回來這裡",
+    "https_not_running": "Tailscale 有裝,但沒有登入或沒在跑:打開它、登入,再回來這裡",
+    "https_no_https": "你的 tailnet 沒開 HTTPS 憑證:到 Tailscale 管理頁的 DNS 頁面,打開 MagicDNS 和 HTTPS Certificates,再回來這裡",
+    "https_no_port": "Tailscale 的 HTTPS port 8444 到 8453 都被別的服務用了:空出一個,再回來這裡",
+    "https_failed": "tailscale serve 沒成功:{why}(在 Linux 上可能要先執行 sudo tailscale set --operator=$USER)",
     "not_this_computer": "只有在跑 Muninn 的這台電腦上的瀏覽器,才能不經 HTTPS 直接配對",
     "not_built": "這份 Muninn 是從原始碼裝的,網頁還沒編譯。在原始碼資料夾跑 npm ci && npm run build,再重裝一次;或改裝發布好的套件:uv tool install muninn-ai",
     "connect_refused": "沒有連結成功:{why}",

@@ -30,6 +30,7 @@ from ruamel.yaml import YAML
 
 from muninn.adapters.channels.webpush import ConsoleChannel, VapidKeys, WebPushChannel
 from muninn.adapters.documents import FileDocuments
+from muninn.adapters.tailscale import Tailscale
 from muninn.adapters.uploads import FileUploads
 from muninn.core.apply import FormFiller, Sites
 from muninn.adapters.lease_runner import HttpSandboxes, HttpSessionRunner
@@ -1170,6 +1171,8 @@ def main(argv: list[str] | None = None) -> int:
             uploads=FileUploads(app.config.data_dir / "uploads", words=e.words),
             location_apps=LOCATION_APPS,
             setup=Setup(app.config, IMPLS, restart_self, first_run_token(app.config, app.devices)),
+            tailscale=Tailscale(),
+            port=int(app.config["port"]),
         )
         try:
             jobs = scheduler.plan(app.config["jobs"])

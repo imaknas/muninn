@@ -1,5 +1,10 @@
 # what the web server says itself (adapters/web/app.py)
 TEXTS = {
+    "https_not_installed": "Tailscale is not on this computer: install it on this computer and the phone (tailscale.com/download), sign in to the same account on both, then come back here",
+    "https_not_running": "Tailscale is installed but not signed in or not running: open it, sign in, then come back here",
+    "https_no_https": "Your tailnet has HTTPS certificates off: on the DNS page of the Tailscale admin console, turn on MagicDNS and HTTPS Certificates, then come back here",
+    "https_no_port": "Tailscale's HTTPS ports 8444 to 8453 are all used by other services: free one, then come back here",
+    "https_failed": "tailscale serve did not work: {why} (on Linux, first run sudo tailscale set --operator=$USER)",
     "not_this_computer": "Only a browser on the computer Muninn runs on can pair without HTTPS",
     "not_built": "This Muninn was installed from source without building its web app. In the source folder run npm ci && npm run build, then install it again; or install the released package: uv tool install muninn-ai",
     "connect_refused": "The account was not connected: {why}",

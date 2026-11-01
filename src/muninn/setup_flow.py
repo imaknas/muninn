@@ -128,6 +128,13 @@ class Setup:
         if not str(reply or "").strip():
             raise ValueError(words("setup_flow.no_answer", model=model, why="(empty)"))
 
+    def set_public_url(self, url: str) -> bool:
+        """Writes the HTTPS address the phone reaches Muninn at, then starts Muninn again; False when the user has to."""
+        if not url.startswith("https://"):
+            raise ValueError("public_url: an https:// address")
+        self._rewrite(lambda doc: doc.__setitem__("public_url", url))
+        return self._restart()
+
     def set_language(self, code: str) -> bool:
         """Writes the language Muninn speaks into config, then starts Muninn again; False when the user has to."""
         if code not in CODES:

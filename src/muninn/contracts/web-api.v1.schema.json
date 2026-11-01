@@ -33,6 +33,12 @@
   "POST /api/devices/pair": {
    "$ref": "#/$defs/SetupPair"
   },
+  "GET /api/devices/https": {
+   "$ref": "#/$defs/HttpsState"
+  },
+  "POST /api/devices/https": {
+   "$ref": "#/$defs/HttpsMade"
+  },
   "GET /api/me": {
    "$ref": "#/$defs/Me"
   },
@@ -1607,6 +1613,41 @@
     "domains",
     "pending_confirmations",
     "unread"
+   ]
+  },
+  "HttpsMade": {
+   "type": "object",
+   "properties": {
+    "url": {
+     "type": "string"
+    },
+    "restarting": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "url",
+    "restarting"
+   ]
+  },
+  "HttpsState": {
+   "type": "object",
+   "properties": {
+    "ready": {
+     "type": "boolean"
+    },
+    "url": {
+     "type": "string"
+    },
+    "why": {
+     "type": "string"
+    },
+    "said": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "ready"
    ]
   },
   "Idea": {
