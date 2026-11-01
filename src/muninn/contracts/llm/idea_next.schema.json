@@ -1,0 +1,20 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-idea_next.v1",
+ "title": "What the model answers at the decision point idea_next",
+ "type": "object",
+ "required": [
+  "next"
+ ],
+ "properties": {
+  "next": {
+   "enum": [
+    "discuss",
+    "promote"
+   ]
+  },
+  "why": {
+   "type": "string"
+  }
+ }
+}

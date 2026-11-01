@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+.env
+.claude/
+.agent-memory/
+CLAUDE.local.md
+node_modules
+# compiled from src/muninn/adapters/web/ts (npm run build)
+src/muninn/adapters/web/static/*.js
+src/muninn/adapters/web/static/words/

@@ -1,0 +1,21 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-packet_fit.v1",
+ "title": "What the model answers at the decision point packet_fit",
+ "type": "object",
+ "required": [
+  "verdict"
+ ],
+ "properties": {
+  "verdict": {
+   "enum": [
+    "fit",
+    "doubt",
+    "no"
+   ]
+  },
+  "why": {
+   "type": "string"
+  }
+ }
+}

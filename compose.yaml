@@ -1,0 +1,15 @@
+# docker compose up -d, then open the setup link it prints: docker compose logs muninn | grep "first run".
+# Reachable from this machine only; for your phone, put HTTPS in front (Tailscale serve, Caddy, Cloudflare Tunnel)
+# and set MUNINN_PUBLIC_URL to that address.
+services:
+  muninn:
+    build: .
+    ports: ["127.0.0.1:18795:18795"]
+    volumes: ["muninn-data:/data"]  # a Docker volume: a host folder needs to be writable by uid 1000
+    environment:
+      MUNINN_PUBLIC_URL: ${MUNINN_PUBLIC_URL:-}
+      TZ: ${TZ:-UTC}  # your time zone, e.g. Europe/Berlin: the reports and reminders keep to it
+    extra_hosts: ["host.docker.internal:host-gateway"]  # Ollama on the host, on Linux too
+    restart: unless-stopped
+volumes:
+  muninn-data:

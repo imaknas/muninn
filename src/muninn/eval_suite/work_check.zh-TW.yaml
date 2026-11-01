@@ -1,0 +1,21 @@
+# Invented sentences and the life domain each is about: the check that keeps work off the cloud under privacy
+# routing ("none" for small talk). Every name in it is made up.
+context:
+  work_domains: [{id: work, title: 公司工作(後端團隊)}]
+  other_domains: [{id: jobs, title: 換工作}, {id: fitness, title: 運動}, {id: garden, title: 院子}]
+  projects: {billing-api: work}
+cases:
+  - {text: billing-api 的部署明天要先跟 QA 對過, expect: work}
+  - {text: 下午要跟主管 one-on-one, expect: work}
+  - {text: 客戶說 API 回應太慢,要查一下, expect: work}
+  - {text: Sprint review 的投影片還沒做, expect: work}
+  - {text: on-call 這週輪到我, expect: work}
+  - {text: Acme 的面試約在週四, expect: jobs}
+  - {text: 履歷要更新最新的專案, expect: jobs}
+  - {text: Brightline 的 HR 回信了, expect: jobs}
+  - {text: 籬笆報價拿到了, expect: garden}
+  - {text: 週末要把草剪一剪, expect: garden}
+  - {text: 今天跑了五公里, expect: fitness}
+  - {text: 重訓課改到週六, expect: fitness}
+  - {text: 今天好累, expect: none}
+  - {text: 晚餐要吃什麼, expect: none}

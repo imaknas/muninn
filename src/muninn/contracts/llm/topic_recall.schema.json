@@ -1,0 +1,22 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-topic_recall.v1",
+ "title": "What the model answers at the decision point topic_recall",
+ "type": "object",
+ "required": [
+  "lines"
+ ],
+ "properties": {
+  "lines": {
+   "type": "array",
+   "items": {
+    "type": "integer"
+   },
+   "maxItems": 4,
+   "description": "numbers of earlier lines to read again"
+  },
+  "why": {
+   "type": "string"
+  }
+ }
+}

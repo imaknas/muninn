@@ -1,0 +1,17 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-domain_classify.v1",
+ "title": "What the model answers at the decision point domain_classify",
+ "type": "object",
+ "required": [
+  "domain"
+ ],
+ "properties": {
+  "domain": {
+   "type": [
+    "string",
+    "null"
+   ]
+  }
+ }
+}

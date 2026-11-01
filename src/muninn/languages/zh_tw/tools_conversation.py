@@ -1,0 +1,28 @@
+# the conversation's own tools (core/tools/conversation.py)
+TEXTS = {
+    "nothing_today": "今天沒有到期或落後的事。",
+    "no_answer": "本機模型現在沒有回應,問題先記成筆記了",
+    "mail_with_draft": "找到「{subject}」,回信草稿已經準備好了",
+    "mail_found": "找到「{subject}」",
+    "no_mail": "最近三週沒有跟「{query}」有關的信",
+    "what_answer": "要回答什麼?",
+    "already_answered": "這個問題已經回答過了",
+    "passing_on": "會轉給 {project}:{answer}",
+    "no_question": "現在沒有在回答哪個問題",
+    "answered": "回答了:{answer}",
+    "options": "可以回答的是:{options}",
+    # how Muninn says it kept a wish (core/requests.py finds the turn it was asked in by it)
+    "recorded": "記到需求清單了",
+    "feature_kept": "{recorded}(目前 {n} 項),下次會處理",
+    "nothing_to_undo": "最近沒有可以撤回的事",
+    "undo_not_found": "找不到「{what}」;最近做的是:{recent}",
+    "undo_which": "是哪一件?{among}",
+    "cannot_undo": "「{what}」撤回不了",
+    "undone": "撤回了:{what}",
+    "ask_what": "問哪個專案、問什麼?",
+    "a_deep_talk": "深談",
+    "not_passed_on": "這段內容來自 {source},不轉給 {project}",
+    "asked": "問了 {project},它回了會出現在這裡",
+    "which_project": "是哪個專案?",
+    "lent": "接到 {project}",
+}

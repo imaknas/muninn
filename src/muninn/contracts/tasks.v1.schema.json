@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "muninn-tasks.v1",
+  "title": "muninn tasks --json",
+  "description": "What only the user can do, kept once. A task's key is the id of the message that created it (or muninn:<n> for Muninn's own); n is its short display number (T-n). Open tasks by default; --all for every status, --project to filter by origin. New fields may be added within v1; a renamed field or a changed meaning is v2.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["v", "key", "n", "title", "status", "origins"],
+    "properties": {
+      "v": {"const": 1},
+      "key": {"type": "string"},
+      "n": {"type": "integer"},
+      "title": {"type": "string"},
+      "due": {"type": ["string", "null"]},
+      "status": {"enum": ["open", "done", "dropped"]},
+      "context": {"type": ["string", "null"]},
+      "links": {"type": "array", "items": {"type": "string"},
+                "description": "\"new\": its project said why it is new (new_reason); \"deadline:<domain>/<id>\": a plan deadline it settles; \"task:<key>\": the settled task it repeated."},
+      "created": {"type": "string"},
+      "closed": {"type": ["string", "null"]},
+      "closed_by": {"type": ["string", "null"]},
+      "why": {"type": ["string", "null"]},
+      "origins": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["project", "ref"],
+          "properties": {
+            "project": {"type": "string"},
+            "ref": {"type": "string", "description": "The origin's message id; messages about this task may use it."},
+            "text": {"type": ["string", "null"]}
+          }
+        }
+      }
+    }
+  }
+}

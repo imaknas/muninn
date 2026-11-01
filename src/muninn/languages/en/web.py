@@ -1,0 +1,20 @@
+# what the web server says itself (adapters/web/app.py)
+TEXTS = {
+    "not_built": "This Muninn was installed from source without building its web app. In the source folder run npm ci && npm run build, then install it again; or install the released package: uv tool install muninn-ai",
+    "connect_refused": "The account was not connected: {why}",
+    "connect_failed": "Connecting failed: {why}",
+    "connected": "Connected. You can close this page and go back to Muninn.",
+    "not_lent": "Couldn't hand the conversation to {project}: {why}",
+    "too_many_files": "At most {most} files at a time",
+    "no_uploads": "Uploads aren't set up here",
+    "file_gone": "One of the files is gone; send it again",
+    "no_leases": "Lending conversations isn't set up",
+    "not_lent_out": "This conversation isn't lent out",
+    "unknown_command": "Unknown command; you can use /attach <project>, /detach, and while talking an idea through, /work (allow hands-on) or /discuss (back to read-only)",
+    "no_why": "Can't ask why right now (the local model didn't answer).",
+    "key_refused": "This key was refused; check it again",
+    "needs_https": "There is no HTTPS address yet (public_url): the phone pairs only over HTTPS, so set up Tailscale or your own domain first",
+    "focus": "Focus",
+    "file_expired": "The file has expired (files shown in a deep talk are kept for 30 days)",
+    "file_not_yet": "The file hasn't arrived yet; try again in a moment",
+}

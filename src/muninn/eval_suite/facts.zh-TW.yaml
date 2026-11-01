@@ -1,0 +1,33 @@
+# Invented news and which open items it affects (resolves | changes | relevant); every name in it is made up.
+context:
+  today: "2026-11-03"
+  domains: [{id: jobs, title: 換工作}, {id: fitness, title: 運動}, {id: garden, title: 院子}]
+  projects: [home-budget, shelf-planner]
+  open_items:
+    - {id: "todo:home-budget:0", owner: me, text: 問車廠交車日期, due: null, manual: true}
+    - {id: "todo:shelf-planner:1", owner: me, text: 量書房牆面寬度, due: null, manual: true}
+    - {id: "deadline:garden/fence-quote", owner: me, text: 拿到籬笆報價, due: "2026-11-07", manual: true}
+    - {id: "deadline:jobs/portfolio", owner: me, text: 作品集網站上線, due: "2026-11-10", manual: true}
+    - {id: "tracker:jobs/acme", owner: me, text: Acme 後端工程師(待投遞), due: null, manual: true}
+    - {id: "task:plumber", owner: me, text: 約水電行來修水管, due: "2026-11-06", manual: true}
+cases:
+  - fact: 車廠說 12 月中交車
+    expect: [{id: "todo:home-budget:0", effect: resolves}]
+  - fact: 車廠說交車要延到明年三月
+    expect: [{id: "todo:home-budget:0", effect: resolves}]
+  - fact: 籬笆報價拿到了,三萬二
+    expect: [{id: "deadline:garden/fence-quote", effect: resolves}]
+  - fact: 籬笆廠商說報價要下週三才能給
+    expect: [{id: "deadline:garden/fence-quote", effect: changes}]
+  - fact: 書房的牆量好了,寬 320 公分
+    expect: [{id: "todo:shelf-planner:1", effect: resolves}]
+  - fact: 作品集網站已經上線了
+    expect: [{id: "deadline:jobs/portfolio", effect: resolves}]
+  - fact: Acme 那個職缺已經關了
+    expect: [{id: "tracker:jobs/acme", effect: resolves}]  # no longer needed
+  - fact: 水電行說明天下午會來修
+    expect: [{id: "task:plumber", effect: resolves}]
+  - fact: 今天天氣很好
+    expect: []
+  - fact: 午餐吃了牛肉麵
+    expect: []

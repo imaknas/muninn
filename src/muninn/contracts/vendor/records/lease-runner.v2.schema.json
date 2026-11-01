@@ -1,0 +1,747 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "records-lease-runner.v2",
+  "title": "Lease runner API v2",
+  "description": "Local HTTP (127.0.0.1, Bearer token). $defs holds the shape of each request, event and error. Adding a field does not bump the version. v2 does not depend on which agent runs the session: actions use generic kinds, quotas use generic time windows (quota.windows), and error codes do not name the implementation. Request bodies and responses carry \"v\": 2. v1 is retired; events stored before the change are sent as they are (v: 1).",
+  "$defs": {
+    "create": {
+      "type": "object",
+      "required": [
+        "project",
+        "session_id",
+        "thread"
+      ],
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "project": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "discuss",
+            "work"
+          ],
+          "description": "discuss = read-only discussion; work = may change this project's files and run commands, asking the user first every time (only for policy's work_projects)"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 8,
+          "description": "This lease's session id (a UUID; the format the implementation requires)"
+        },
+        "thread": {
+          "type": "string"
+        },
+        "resume": {
+          "type": "boolean"
+        },
+        "max_turns": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "message": {
+      "type": "object",
+      "required": [
+        "text",
+        "client_msg_id"
+      ],
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "text": {
+          "type": "string"
+        },
+        "client_msg_id": {
+          "type": "string"
+        },
+        "attachments": {
+          "type": "array",
+          "maxItems": 8,
+          "description": "Attachments: saved in that project's folder as attachments/<YYYYMMDD-HHMMSS>-<name> (file name cleaned, never overwritten, not in git); images (image/jpeg|png|gif|webp) are also shown to the model directly; a line with the saved path is appended to the text. Each at most 10 MB decoded; the whole request at most 100 MB.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "media_type",
+              "data"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "media_type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "data": {
+                "type": "string",
+                "description": "base64"
+              }
+            }
+          }
+        }
+      },
+      "description": "POST /v1/leases/<id>/messages. At least one of text and attachments (with attachments only, text may be an empty string)."
+    },
+    "detach": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "reason": {
+          "enum": [
+            "user",
+            "idle",
+            "done",
+            "budget"
+          ]
+        }
+      }
+    },
+    "lease": {
+      "type": "object",
+      "required": [
+        "lease_id",
+        "project",
+        "mode",
+        "state"
+      ],
+      "properties": {
+        "lease_id": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "thread": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "attaching",
+            "running",
+            "idle_stopped",
+            "resuming",
+            "terminal",
+            "detaching",
+            "detached",
+            "crashed"
+          ]
+        },
+        "last_activity": {
+          "type": "string"
+        },
+        "waiting": {
+          "type": "boolean"
+        },
+        "resumable": {
+          "type": "boolean",
+          "description": "Whether this conversation can still be resumed (its transcript still exists)"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "lease_id",
+        "ts",
+        "type"
+      ],
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "seq": {
+          "type": "integer"
+        },
+        "lease_id": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "state",
+            "text_delta",
+            "assistant",
+            "tool_use",
+            "tool_result",
+            "turn_end",
+            "quota",
+            "idle_warning",
+            "question",
+            "permission",
+            "handover",
+            "error",
+            "file"
+          ]
+        }
+      },
+      "description": "Every event has these fields; the extra fields of each type are in tool_use_event, question_event, permission_event, state_event, quota, turn_end_event, error and file_event."
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "v",
+        "error"
+      ],
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "detail": {
+          "type": "string",
+          "description": "A message for people; agent_login = the agent that runs the session is not logged in or its credentials expired (detail says which)"
+        },
+        "error": {
+          "enum": [
+            "not_registered",
+            "cap_reached",
+            "busy",
+            "not_found",
+            "bad_request",
+            "agent_login",
+            "rate_limit",
+            "process_crashed",
+            "resume_failed",
+            "handover_failed",
+            "unauthorized",
+            "internal",
+            "bad_name",
+            "exists",
+            "too_many",
+            "create_failed",
+            "work_not_allowed",
+            "not_idea",
+            "dirty",
+            "name_taken",
+            "upgrade_failed",
+            "file_refused",
+            "rename_failed",
+            "runtime_unsupported"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "too_many: at most this many idea sandboxes at once"
+        },
+        "current": {
+          "type": "integer",
+          "description": "too_many: how many there are now"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "v",
+        "no_session_domains",
+        "attachable"
+      ],
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "no_session_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Domains (including subdomains) that open_web may not allow for the whole lease"
+        },
+        "attachable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Projects that can be leased"
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "work_projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Projects that may use work mode (idea sandboxes whose settings already have the OS sandbox)"
+        }
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "required": [
+        "v",
+        "command",
+        "hint"
+      ],
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "command": {
+          "type": "string",
+          "description": "The command to resume this session in a terminal, shown as is (built by the runner for the implementation)"
+        },
+        "hint": {
+          "type": "string",
+          "description": "One sentence for people: where to run it and what to do after"
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "required": [
+        "v",
+        "leased",
+        "cap"
+      ],
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "leased": {
+          "type": "integer"
+        },
+        "cap": {
+          "type": "integer"
+        },
+        "quota": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/quota"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "sandbox_create": {
+      "type": "object",
+      "required": [
+        "v",
+        "name",
+        "purpose"
+      ],
+      "description": "POST /v1/sandboxes: open a project to explore an idea (read-only by default). Sending the same name and purpose again returns the same project (200) instead of opening a new one.",
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$",
+          "description": "The idea's short name (readable, e.g. room-3d): lowercase letters, digits and -, not starting or ending with -, no --, at most 40 characters; must not collide with an existing project or folder (409 exists). Whether it is an idea sandbox is decided by the platform's registry, not by the name"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "The idea itself"
+        }
+      }
+    },
+    "sandbox": {
+      "type": "object",
+      "required": [
+        "v",
+        "name",
+        "created"
+      ],
+      "description": "201 (created) or 200 (already exists, resent). After that the name appears in policy's attachable and can be leased like any project. Errors: 400 bad_name, 409 exists (same name with a different purpose, or the name is taken by a real project), 429 too_many (with limit, current), 500 create_failed.",
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "name": {
+          "type": "string"
+        },
+        "created": {
+          "type": "boolean"
+        }
+      }
+    },
+    "mode": {
+      "type": "object",
+      "required": [
+        "v",
+        "mode"
+      ],
+      "description": "POST /v1/leases/<id>/mode: switch a discussion between discuss and work midway (sent only after the user allowed hands-on work on the card). Success returns 200 + lease; 409 busy while answering or waiting for the user; 400 work_not_allowed if not in work_projects. Switching stops the process and resumes the same session; the permission relay starts over (domains allowed for the whole lease and file writes must be allowed again).",
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "mode": {
+          "enum": [
+            "discuss",
+            "work"
+          ]
+        }
+      }
+    },
+    "sandbox_upgrade": {
+      "type": "object",
+      "required": [
+        "v"
+      ],
+      "description": "POST /v1/sandboxes/<name>/upgrade: upgrade an idea sandbox to a real project (history, files and memory are kept; a private GitHub repo is created). Sent only after the user agreed in the conversation. Sending again after an upgrade returns 200 + upgraded:false and the current name (safe to resend; found even after a rename).",
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "rename": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Rename while upgrading"
+        }
+      }
+    },
+    "sandbox_upgraded": {
+      "type": "object",
+      "required": [
+        "v",
+        "name",
+        "origin",
+        "upgraded"
+      ],
+      "description": "200. Errors: 404 not_found (no such sandbox), 409 not_idea (not an idea sandbox), 409 dirty (uncommitted changes), 409 name_taken (the new name or GitHub repo already exists), 500 upgrade_failed.",
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "name": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "upgraded": {
+          "type": "boolean"
+        }
+      }
+    },
+    "kind": {
+      "enum": [
+        "read",
+        "search",
+        "ask_user",
+        "open_web",
+        "write_file",
+        "run_command",
+        "other"
+      ],
+      "description": "What the action does: read, search (files or the web), ask_user (ask the user), open_web (open a web page), write_file (write a file), run_command (run a command), other"
+    },
+    "tool_use_event": {
+      "type": "object",
+      "required": [
+        "kind",
+        "summary"
+      ],
+      "description": "type=tool_use: the session used a tool",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/kind"
+        },
+        "summary": {
+          "type": "string",
+          "description": "One sentence for people (e.g. read README.md)"
+        },
+        "detail": {
+          "type": "object",
+          "description": "The implementation's own debugging information (e.g. the original tool name); readers must not depend on it"
+        }
+      }
+    },
+    "tool_result_event": {
+      "type": "object",
+      "description": "type=tool_result",
+      "properties": {
+        "is_error": {
+          "type": "boolean"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "question_event": {
+      "type": "object",
+      "required": [
+        "phase",
+        "kind"
+      ],
+      "description": "type=question: the session asks the user (and waits for the answer); phase=start when waiting begins, end with the result",
+      "properties": {
+        "phase": {
+          "enum": [
+            "start",
+            "end"
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/kind"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "The object being judged (URL, path, command)"
+        },
+        "decision": {
+          "type": "string",
+          "description": "Only on end: allow / deny / answered / timeout and so on"
+        }
+      }
+    },
+    "permission_event": {
+      "type": "object",
+      "required": [
+        "phase",
+        "kind"
+      ],
+      "description": "type=permission: what the session wants to do needs the user's consent; phase=start when waiting begins, end with the result",
+      "properties": {
+        "phase": {
+          "enum": [
+            "start",
+            "end"
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/kind"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "The object being judged (URL, path, command)"
+        },
+        "decision": {
+          "type": "string",
+          "description": "Only on end: allow / deny / answered / timeout and so on"
+        }
+      }
+    },
+    "state_event": {
+      "type": "object",
+      "required": [
+        "state"
+      ],
+      "description": "type=state",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/lease/properties/state"
+        },
+        "mode": {
+          "type": "string",
+          "description": "Only when the mode changed (e.g. work back to discuss after the upgrade to a real project; detail says why)"
+        },
+        "resumed": {
+          "type": "boolean",
+          "description": "Whether this start resumed the same conversation; false with a detail = it should have resumed but could not (the transcript is gone), so a new conversation started"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "warned": {
+          "type": "boolean"
+        },
+        "project": {
+          "type": "string",
+          "description": "The lease's project; after an upgrade with a rename, state events carry the new name (keep sending messages as usual; the runner resumes the same conversation in the new folder)"
+        }
+      }
+    },
+    "turn_end_event": {
+      "type": "object",
+      "description": "type=turn_end: a turn ended (one with only summary is a progress summary midway)",
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "cost": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "num_turns": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "duration_ms": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "is_error": {
+          "type": "boolean"
+        }
+      }
+    },
+    "quota": {
+      "type": "object",
+      "required": [
+        "windows"
+      ],
+      "description": "The content of a type=quota event, and the quota in /v1/status: the agent's usage windows. Readers display only by label and decide whether to warn only by used",
+      "properties": {
+        "status": {
+          "enum": [
+            "ok",
+            "warning",
+            "exhausted",
+            null
+          ]
+        },
+        "at": {
+          "type": "string"
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "used"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "description": "A name for people (e.g. 5 hours)"
+              },
+              "used": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "resets_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "ISO 8601"
+              }
+            }
+          }
+        }
+      }
+    },
+    "file_event": {
+      "type": "object",
+      "required": [
+        "id",
+        "path",
+        "name",
+        "mime",
+        "size"
+      ],
+      "description": "type=file: the session shows the user a file from the project. Get the content with GET /v1/leases/<lease id>/files/<id> (same token; returns the file itself, Content-Type = mime; it is the copy made when it was shown, kept 30 days; 404 not_found if missing or expired). Types limited to png/jpg/webp/gif/pdf/glb/txt/md/json/csv (the content must match too), each ≤ 20 MB; only files in that lease's project folder, and nothing that looks like a credential",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path relative to the project folder"
+        },
+        "name": {
+          "type": "string"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "summary": {
+          "type": "string",
+          "description": "One sentence from the session"
+        }
+      }
+    },
+    "project_rename": {
+      "type": "object",
+      "required": [
+        "v",
+        "to"
+      ],
+      "description": "POST /v1/projects/<name>/rename: rename a whole project (a real project or an idea sandbox): folder, memory, registration, GitHub repo (if any) and mirror move together, and the discussion's transcript moves with them. If that project has a discussion answering, waiting for a reply, open in a terminal or being reclaimed → 409 busy (nothing is touched; send again after that turn). An idle one is stopped first; after the move, leases not yet reclaimed get a state event with project: <new name>, and messages are sent as usual and resume the same conversation in the new folder. Errors: 400 bad_name, 404 not_found, 409 busy / name_taken (the new name, folder or GitHub repo already exists), 500 rename_failed. Sending the same rename again when it stopped halfway finishes it",
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$",
+          "description": "The new name (lowercase letters, digits and -, at most 40 characters)"
+        }
+      }
+    },
+    "project_renamed": {
+      "type": "object",
+      "required": [
+        "v",
+        "name",
+        "renamed"
+      ],
+      "description": "200: renamed (or already renamed)",
+      "properties": {
+        "v": {
+          "const": 2
+        },
+        "name": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string",
+          "description": "The new remote URL; (native) when there is no remote"
+        },
+        "renamed": {
+          "type": "boolean",
+          "description": "false = already renamed before (resent)"
+        }
+      }
+    }
+  }
+}

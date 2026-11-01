@@ -1,0 +1,25 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-todo_match.v1",
+ "title": "What the model answers at the decision point todo_match",
+ "type": "object",
+ "required": [
+  "same"
+ ],
+ "properties": {
+  "same": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "todo",
+     "as"
+    ],
+    "properties": {
+     "todo": {},
+     "as": {}
+    }
+   }
+  }
+ }
+}

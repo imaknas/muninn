@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "records-lease-handover.v1",
+  "title": "Channel lease handover",
+  "description": "The structured handover when a lease conversation is detached; an extension of session.report. fallback=true means the model could not produce a valid handover and this is the minimal version the platform filled in.",
+  "type": "object",
+  "required": ["v", "project", "session_id", "mode", "summary", "decisions", "open_questions", "tasks_for_owner", "notes_written", "fallback"],
+  "properties": {
+    "v": {"const": 1},
+    "project": {"type": "string"},
+    "session_id": {"type": "string"},
+    "mode": {"enum": ["discuss", "work"]},
+    "reason": {"enum": ["user", "idle", "done", "budget", "crash"]},
+    "summary": {"type": "string"},
+    "decisions": {"type": "array", "items": {"type": "object", "required": ["what"], "properties": {"what": {"type": "string"}, "why": {"type": "string"}}}},
+    "open_questions": {"type": "array", "items": {"type": "string"}},
+    "tasks_for_owner": {"type": "array", "items": {"type": "object", "required": ["text"], "properties": {"text": {"type": "string"}, "due": {"type": "string"}, "key": {"type": "string"}}}},
+    "ended": {"type": "array", "description": "earlier to-dos this conversation shows have ended: done (a claimed record was sent) or not_needed (withdrawn, unless it is a STATE.md line)", "items": {"type": "object", "required": ["key", "outcome"], "properties": {"key": {"type": "string"}, "outcome": {"enum": ["done", "not_needed"]}, "basis": {"type": "string"}}}},
+    "notes_markdown": {"type": "string"},
+    "notes_written": {"type": "boolean"},
+    "fallback": {"type": "boolean"},
+    "branch": {"type": ["string", "null"]},
+    "commits": {"type": "array"},
+    "tests": {"type": ["object", "null"]}
+  }
+}

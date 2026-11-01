@@ -1,0 +1,60 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-mail_triage.v1",
+ "title": "What the model answers at the decision point mail_triage",
+ "type": "object",
+ "required": [
+  "category"
+ ],
+ "properties": {
+  "category": {
+   "enum": [
+    "application_confirmation",
+    "interview",
+    "rejection",
+    "offer",
+    "needs_reply",
+    "deadline",
+    "fyi",
+    "promo",
+    "unclear"
+   ]
+  },
+  "company": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "summary": {
+   "type": "string"
+  },
+  "action": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "due": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "needs_reply": {
+   "type": "boolean"
+  },
+  "draft": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "guess": {
+   "type": [
+    "string",
+    "null"
+   ]
+  }
+ }
+}

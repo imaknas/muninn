@@ -1,0 +1,17 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-work_check.v1",
+ "title": "What the model answers at the decision point work_check",
+ "type": "object",
+ "required": [
+  "domain"
+ ],
+ "properties": {
+  "domain": {
+   "type": [
+    "string",
+    "null"
+   ]
+  }
+ }
+}

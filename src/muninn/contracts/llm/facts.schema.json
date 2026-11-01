@@ -1,0 +1,58 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-facts.v1",
+ "title": "What the model answers at the decision point facts",
+ "type": "object",
+ "required": [
+  "effects"
+ ],
+ "properties": {
+  "domain": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "effects": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "effect"
+    ],
+    "properties": {
+     "id": {},
+     "effect": {
+      "enum": [
+       "resolves",
+       "changes",
+       "relevant"
+      ]
+     },
+     "why": {
+      "type": "string"
+     },
+     "new_due": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    }
+   }
+  },
+  "projects": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "summary": {
+   "type": "string"
+  },
+  "sure": {
+   "type": "boolean"
+  }
+ }
+}

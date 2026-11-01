@@ -1,0 +1,89 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-route.v1",
+ "title": "What the model answers at the decision point route",
+ "type": "object",
+ "required": [
+  "actions"
+ ],
+ "properties": {
+  "actions": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "tool"
+    ],
+    "properties": {
+     "tool": {
+      "type": "string"
+     },
+     "args": {
+      "type": "object"
+     }
+    }
+   }
+  },
+  "reply": {
+   "type": "string"
+  },
+  "for_project": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "description": "beside a deep talk only: the part of the reply the project's session needs to know next, as one sentence (a correction when it corrects what it was told before); null when none"
+  },
+  "suggest": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "label": {
+      "type": "string"
+     },
+     "tool": {
+      "type": "string"
+     },
+     "args": {
+      "type": "object"
+     }
+    }
+   }
+  },
+  "topic": {
+   "type": "object",
+   "required": [
+    "title",
+    "state"
+   ],
+   "properties": {
+    "title": {
+     "type": "string"
+    },
+    "state": {
+     "enum": [
+      "open",
+      "waiting",
+      "doing",
+      "closed"
+     ]
+    },
+    "now": {
+     "type": "string"
+    }
+   }
+  },
+  "next": {
+   "enum": [
+    "discuss",
+    "experiment",
+    "offer_experiment",
+    "promote",
+    "shelve",
+    null
+   ],
+   "description": "only when the round is about an idea: what Muninn does next with it (null otherwise)"
+  }
+ }
+}

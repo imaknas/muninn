@@ -1,0 +1,3831 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://muninn.local/contracts/web-api.v1.schema.json",
+ "title": "Muninn web API v1",
+ "description": "What each route the pages call answers when it succeeds; any 4xx answers ErrorReply. Generated from src/muninn/adapters/web/ts/types.ts by bin/web_api_schema.py: edit that file, not this one. An answer may carry fields it does not declare.",
+ "routes": {
+  "POST /api/pair": {
+   "$ref": "#/$defs/Ok"
+  },
+  "GET /api/setup": {
+   "$ref": "#/$defs/SetupState"
+  },
+  "POST /api/setup/models": {
+   "$ref": "#/$defs/SetupModels"
+  },
+  "POST /api/setup/save": {
+   "$ref": "#/$defs/SetupSaved"
+  },
+  "POST /api/setup/pair": {
+   "$ref": "#/$defs/SetupPair"
+  },
+  "GET /api/me": {
+   "$ref": "#/$defs/Me"
+  },
+  "GET /api/settings": {
+   "$ref": "#/$defs/Settings"
+  },
+  "POST /api/settings/language": {
+   "$ref": "#/$defs/SetupSaved"
+  },
+  "GET /api/today": {
+   "$ref": "#/$defs/Today"
+  },
+  "GET /api/day": {
+   "$ref": "#/$defs/Day"
+  },
+  "GET /api/goal-days": {
+   "$ref": "#/$defs/GoalDays"
+  },
+  "GET /api/home": {
+   "$ref": "#/$defs/Home"
+  },
+  "GET /api/inbox": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/InboxItem"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "POST /api/inbox/read": {
+   "$ref": "#/$defs/MaybeUndone"
+  },
+  "GET /api/items/{iid}": {
+   "$ref": "#/$defs/InboxItem"
+  },
+  "POST /api/ideas/{n}/settle": {
+   "$ref": "#/$defs/MaybeUndone"
+  },
+  "GET /api/confirmations": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Confirmation"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "POST /api/confirmations/{cid}": {
+   "$ref": "#/$defs/Ok"
+  },
+  "GET /api/connections": {
+   "type": "object",
+   "additionalProperties": {
+    "$ref": "#/$defs/Connection"
+   }
+  },
+  "POST /api/connections/{provider}": {
+   "type": "object",
+   "properties": {
+    "url": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "url"
+   ]
+  },
+  "GET /api/mail/{account}/{mid}": {
+   "$ref": "#/$defs/Mail"
+  },
+  "POST /api/command": {
+   "$ref": "#/$defs/CommandReply"
+  },
+  "POST /api/uploads": {
+   "$ref": "#/$defs/Sent"
+  },
+  "POST /api/command/act": {
+   "$ref": "#/$defs/CommandReply"
+  },
+  "GET /api/conversation": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Thread"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "GET /api/topics": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/TopicState"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "GET /api/waiting": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Waiting"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "POST /api/tasks/{key}/close": {
+   "$ref": "#/$defs/Undoable"
+  },
+  "GET /api/requests": {
+   "$ref": "#/$defs/Requests"
+  },
+  "POST /api/handoffs/{hid}/cancel": {
+   "$ref": "#/$defs/Ok"
+  },
+  "GET /api/review": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/ReviewItem"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "POST /api/review": {
+   "$ref": "#/$defs/DoneUndoable"
+  },
+  "POST /api/review/domain": {
+   "$ref": "#/$defs/DoneUndoable"
+  },
+  "POST /api/review/why": {
+   "type": "object",
+   "properties": {
+    "answer": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "answer"
+   ]
+  },
+  "GET /api/prepared/{pid}": {
+   "$ref": "#/$defs/Prepared"
+  },
+  "POST /api/prepared/{pid}/send": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "text": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "ok",
+    "text"
+   ]
+  },
+  "POST /api/prepared/{pid}/draft": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/prepared/{pid}/done": {
+   "$ref": "#/$defs/DoneUndoable"
+  },
+  "POST /api/prepared/{pid}/dismiss": {
+   "$ref": "#/$defs/DoneUndoable"
+  },
+  "POST /api/actions/{aid}/undo": {
+   "$ref": "#/$defs/Ok"
+  },
+  "GET /api/attribution": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "repo": {
+        "type": "string"
+       },
+       "domain": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      },
+      "required": [
+       "repo",
+       "domain"
+      ]
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "POST /api/attribution": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "reattributed": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "ok",
+    "reattributed"
+   ]
+  },
+  "POST /api/input/note": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/input/hours": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/tracker/status": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "change": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "ok",
+    "change"
+   ]
+  },
+  "POST /api/tracker/undo/{change}": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/deadlines/done": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/schedule": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "blocks": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "ok",
+    "blocks"
+   ]
+  },
+  "POST /api/places": {
+   "$ref": "#/$defs/DoneUndoable"
+  },
+  "GET /api/push/key": {
+   "type": "object",
+   "properties": {
+    "key": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "key"
+   ]
+  },
+  "POST /api/push/subscribe": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/push/test": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/push/ack": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/opened": {
+   "type": "object",
+   "properties": {
+    "said": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "said"
+   ]
+  },
+  "GET /api/setup/health": {
+   "$ref": "#/$defs/HealthSetup"
+  },
+  "GET /api/setup/location": {
+   "$ref": "#/$defs/LocationSetup"
+  },
+  "GET /api/setup/activity": {
+   "$ref": "#/$defs/ActivitySetup"
+  },
+  "GET /api/project-questions": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/ProjectQuestion"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "POST /api/project-questions/{mid}/answer": {
+   "$ref": "#/$defs/HandoffMade"
+  },
+  "POST /api/project-questions/{mid}/dismiss": {
+   "$ref": "#/$defs/HandoffMade"
+  },
+  "GET /api/leases": {
+   "$ref": "#/$defs/LeaseInfo"
+  },
+  "POST /api/leases/attach": {
+   "$ref": "#/$defs/LeaseReply"
+  },
+  "POST /api/leases/keepalive": {
+   "$ref": "#/$defs/Ok"
+  },
+  "POST /api/leases/terminal": {
+   "type": "object",
+   "properties": {
+    "command": {
+     "type": "string"
+    },
+    "lease_id": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "command",
+    "lease_id"
+   ]
+  },
+  "POST /api/leases/detach": {
+   "type": "object",
+   "properties": {
+    "lease_id": {
+     "type": "string"
+    },
+    "state": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "lease_id",
+    "state"
+   ]
+  },
+  "POST /api/leases/work": {
+   "type": "object",
+   "properties": {
+    "lease_id": {
+     "type": "string"
+    },
+    "mode": {
+     "$ref": "#/$defs/LeaseMode"
+    },
+    "note": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "lease_id",
+    "mode"
+   ]
+  },
+  "POST /api/leases/discuss": {
+   "type": "object",
+   "properties": {
+    "lease_id": {
+     "type": "string"
+    },
+    "mode": {
+     "$ref": "#/$defs/LeaseMode"
+    },
+    "note": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "lease_id",
+    "mode"
+   ]
+  },
+  "GET /api/permission-requests/pending": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/PermissionRequest"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ]
+  },
+  "POST /api/permission-requests/{rid}/decision": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "ok",
+    "note"
+   ]
+  },
+  "POST /api/client-error": {
+   "$ref": "#/$defs/Ok"
+  },
+  "GET /api/permissions/auto-commands": {
+   "type": "object",
+   "properties": {
+    "on": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "on"
+   ]
+  },
+  "POST /api/permissions/auto-commands": {
+   "type": "object",
+   "properties": {
+    "on": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "on"
+   ]
+  }
+ },
+ "$defs": {
+  "About": {
+   "type": "object",
+   "properties": {
+    "kind": {
+     "enum": [
+      "review",
+      "question",
+      "task",
+      "project_question",
+      "packet",
+      "alert",
+      "onboarding",
+      "idea"
+     ]
+    },
+    "id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "number"
+      }
+     ]
+    }
+   },
+   "required": [
+    "kind",
+    "id"
+   ]
+  },
+  "ActiveLease": {
+   "type": "object",
+   "properties": {
+    "lease_id": {
+     "type": "string"
+    },
+    "project": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    },
+    "thread": {
+     "type": "string"
+    },
+    "state": {
+     "type": "string"
+    },
+    "warn": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "lease_id",
+    "project",
+    "thread",
+    "state",
+    "warn"
+   ]
+  },
+  "ActivitySetup": {
+   "type": "object",
+   "properties": {
+    "collectors": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "label": {
+        "type": "string"
+       },
+       "command": {
+        "type": "string"
+       },
+       "note": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "name",
+       "label",
+       "command",
+       "note"
+      ]
+     }
+    },
+    "token": {
+     "type": "string"
+    },
+    "last_received": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "last_source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "collectors",
+    "token",
+    "last_received",
+    "last_source"
+   ]
+  },
+  "Button": {
+   "type": "object",
+   "properties": {
+    "index": {
+     "type": "number"
+    },
+    "label": {
+     "type": "string"
+    },
+    "id": {
+     "type": "string"
+    },
+    "turn": {
+     "type": "string"
+    },
+    "plain": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "index",
+    "label"
+   ]
+  },
+  "CommandReply": {
+   "type": "object",
+   "properties": {
+    "thread": {
+     "type": "string"
+    },
+    "reply": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "outcomes": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Outcome"
+     }
+    },
+    "suggest": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Button"
+     }
+    },
+    "stood_in": {
+     "type": "boolean"
+    },
+    "needs_confirm": {
+     "type": "string"
+    },
+    "project": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    },
+    "lease_id": {
+     "type": "string"
+    },
+    "leased": {
+     "type": "boolean"
+    },
+    "state": {
+     "type": "string"
+    },
+    "mode": {
+     "$ref": "#/$defs/LeaseMode"
+    },
+    "can_work": {
+     "type": "boolean"
+    },
+    "note": {
+     "type": "string"
+    },
+    "lent": {
+     "$ref": "#/$defs/Lent"
+    },
+    "topic": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "switched": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "title",
+      "switched"
+     ]
+    }
+   }
+  },
+  "Confirmation": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "number"
+    },
+    "ts": {
+     "type": "string"
+    },
+    "kind": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string"
+    },
+    "options": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "data": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/ConfirmationData"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "talk": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Talk"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "id",
+    "ts",
+    "kind",
+    "question",
+    "options",
+    "data",
+    "talk"
+   ]
+  },
+  "ConfirmationData": {
+   "type": "object",
+   "properties": {
+    "why": {
+     "type": "string"
+    },
+    "match": {
+     "type": "string"
+    },
+    "observations": {
+     "type": "number"
+    },
+    "suggestion": {
+     "type": "string"
+    },
+    "titles": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "string"
+     }
+    },
+    "neutral": {
+     "type": "boolean"
+    }
+   }
+  },
+  "Connection": {
+   "type": "object",
+   "properties": {
+    "configured": {
+     "type": "boolean"
+    },
+    "authorized": {
+     "type": "boolean"
+    },
+    "status": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "configured",
+    "authorized",
+    "status"
+   ]
+  },
+  "Day": {
+   "type": "object",
+   "properties": {
+    "now": {
+     "type": "string"
+    },
+    "events": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "title": {
+        "type": "string"
+       },
+       "start": {
+        "type": "string"
+       },
+       "end": {
+        "type": "string"
+       },
+       "own": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "title",
+       "start",
+       "end",
+       "own"
+      ]
+     }
+    },
+    "activity": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "start": {
+        "type": "string"
+       },
+       "end": {
+        "type": "string"
+       },
+       "domain": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "title": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "start",
+       "end",
+       "domain",
+       "title"
+      ]
+     }
+    },
+    "hours": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "title": {
+        "type": "string"
+       },
+       "hours": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "title",
+       "hours"
+      ]
+     }
+    },
+    "stays": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "start": {
+        "type": "string"
+       },
+       "end": {
+        "type": "string"
+       },
+       "place": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      },
+      "required": [
+       "start",
+       "end",
+       "place"
+      ]
+     }
+    }
+   },
+   "required": [
+    "now",
+    "events",
+    "activity",
+    "hours",
+    "stays"
+   ]
+  },
+  "Deadline": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "due": {
+     "type": "string"
+    },
+    "days_left": {
+     "type": "number"
+    },
+    "manual": {
+     "type": "boolean"
+    },
+    "pending": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "in_lead_window": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "id",
+    "title",
+    "due",
+    "days_left",
+    "manual",
+    "pending",
+    "in_lead_window"
+   ]
+  },
+  "Domain": {
+   "type": "object",
+   "properties": {
+    "domain": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "priority": {
+     "type": "number"
+    },
+    "goals": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Goal"
+     }
+    },
+    "deadlines": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Deadline"
+     }
+    },
+    "tracker": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/TrackerRow"
+     }
+    },
+    "hour_goals": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "title": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id",
+       "title"
+      ]
+     }
+    }
+   },
+   "required": [
+    "domain",
+    "title",
+    "priority",
+    "goals",
+    "deadlines",
+    "tracker",
+    "hour_goals"
+   ]
+  },
+  "Done": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "number"
+    },
+    "ts": {
+     "type": "string"
+    },
+    "domain": {
+     "type": "string"
+    },
+    "text": {
+     "type": "string"
+    },
+    "undoable": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "id",
+    "ts",
+    "domain",
+    "text",
+    "undoable"
+   ]
+  },
+  "DoneUndoable": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "text": {
+     "type": "string"
+    },
+    "action_id": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "ok",
+    "text",
+    "action_id"
+   ]
+  },
+  "ErrorReply": {
+   "type": "object",
+   "properties": {
+    "error": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "error"
+   ]
+  },
+  "Goal": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "period": {
+     "type": "string"
+    },
+    "state": {
+     "type": "string"
+    },
+    "state_label": {
+     "type": "string"
+    },
+    "value": {
+     "type": "string"
+    },
+    "actual": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "target": {
+     "type": "number"
+    },
+    "expected": {
+     "type": "number"
+    },
+    "unit": {
+     "type": "string"
+    },
+    "direction": {
+     "enum": [
+      "at_least",
+      "at_most"
+     ]
+    },
+    "pending": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "id",
+    "title",
+    "period",
+    "state",
+    "state_label",
+    "value",
+    "actual",
+    "target",
+    "expected",
+    "unit",
+    "direction",
+    "pending"
+   ]
+  },
+  "GoalDays": {
+   "type": "object",
+   "properties": {
+    "goals": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "day": {
+         "type": "string"
+        },
+        "value": {
+         "anyOf": [
+          {
+           "type": "number"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        }
+       },
+       "required": [
+        "day",
+        "value"
+       ]
+      }
+     }
+    }
+   },
+   "required": [
+    "goals"
+   ]
+  },
+  "HandoffMade": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "handoff_id": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "ok",
+    "handoff_id"
+   ]
+  },
+  "Handover": {
+   "type": "object",
+   "properties": {
+    "project": {
+     "type": "string"
+    },
+    "fallback": {
+     "type": "boolean"
+    },
+    "summary": {
+     "type": "string"
+    },
+    "decisions": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "what": {
+        "type": "string"
+       },
+       "why": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "what"
+      ]
+     }
+    },
+    "open_questions": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "tasks_for_owner": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "due": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ]
+     }
+    }
+   }
+  },
+  "HealthSetup": {
+   "type": "object",
+   "properties": {
+    "last": {
+     "type": "object",
+     "properties": {
+      "steps": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {
+          "steps": {
+           "type": "number"
+          },
+          "at": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "steps",
+          "at"
+         ]
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "sleep": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {
+          "hours": {
+           "type": "number"
+          },
+          "at": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "hours",
+          "at"
+         ]
+        },
+        {
+         "type": "null"
+        }
+       ]
+      }
+     }
+    },
+    "url": {
+     "type": "string"
+    },
+    "authorization": {
+     "type": "string"
+    },
+    "focus_url": {
+     "type": "string"
+    },
+    "focus_open": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "name": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "name"
+       ]
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "last",
+    "url",
+    "authorization",
+    "focus_url",
+    "focus_open"
+   ]
+  },
+  "Home": {
+   "type": "object",
+   "properties": {
+    "places": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Place"
+     }
+    },
+    "relink": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "mail": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/MailRow"
+     }
+    },
+    "schedule": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "title": {
+        "type": "string"
+       },
+       "start": {
+        "type": "string"
+       },
+       "end": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id",
+       "title",
+       "start",
+       "end"
+      ]
+     }
+    },
+    "now": {
+     "type": "string"
+    },
+    "reflection": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "number"
+        },
+        "ts": {
+         "type": "string"
+        },
+        "title": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "id",
+        "ts",
+        "title"
+       ]
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "my_project_todos": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "project": {
+        "type": "string"
+       },
+       "items": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "required": [
+       "project",
+       "items"
+      ]
+     }
+    },
+    "ready": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Ready"
+     }
+    },
+    "done": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Done"
+     }
+    },
+    "next": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Next"
+     }
+    },
+    "week": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "domain": {
+        "type": "string"
+       },
+       "title": {
+        "type": "string"
+       },
+       "value": {
+        "type": "string"
+       },
+       "state": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "domain",
+       "title",
+       "value",
+       "state"
+      ]
+     }
+    },
+    "tasks": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Task"
+     }
+    },
+    "ideas": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Idea"
+     }
+    },
+    "reports": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Report"
+     }
+    },
+    "domains": {
+     "type": "number"
+    },
+    "pending_confirmations": {
+     "type": "number"
+    },
+    "unread": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "places",
+    "relink",
+    "mail",
+    "schedule",
+    "now",
+    "reflection",
+    "my_project_todos",
+    "ready",
+    "done",
+    "next",
+    "week",
+    "tasks",
+    "ideas",
+    "reports",
+    "domains",
+    "pending_confirmations",
+    "unread"
+   ]
+  },
+  "Idea": {
+   "type": "object",
+   "properties": {
+    "n": {
+     "type": "number"
+    },
+    "text": {
+     "type": "string"
+    },
+    "ts": {
+     "type": "string"
+    },
+    "status": {
+     "enum": [
+      "open",
+      "shelved"
+     ]
+    },
+    "talk": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Talk"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "n",
+    "text",
+    "ts",
+    "status",
+    "talk"
+   ]
+  },
+  "InboxItem": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "number"
+    },
+    "ts": {
+     "type": "string"
+    },
+    "domain": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "kind": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "body": {
+     "type": "string"
+    },
+    "data": {
+     "type": "object",
+     "additionalProperties": {}
+    }
+   },
+   "required": [
+    "id",
+    "ts",
+    "domain",
+    "kind",
+    "title",
+    "body",
+    "data"
+   ]
+  },
+  "LeaseInfo": {
+   "type": "object",
+   "properties": {
+    "enabled": {
+     "type": "boolean"
+    },
+    "active": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/ActiveLease"
+     }
+    },
+    "lease": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/LeaseView"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "attachable": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "quota_warning": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "transcript": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string"
+        },
+        "label": {
+         "type": "string"
+        },
+        "ended": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "turns": {
+         "type": "array",
+         "items": {
+          "$ref": "#/$defs/Turn"
+         }
+        },
+        "handover": {
+         "anyOf": [
+          {
+           "$ref": "#/$defs/Handover"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        }
+       },
+       "required": [
+        "project",
+        "turns",
+        "handover"
+       ]
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "enabled"
+   ]
+  },
+  "LeaseMode": {
+   "enum": [
+    "discuss",
+    "work"
+   ]
+  },
+  "LeaseReply": {
+   "type": "object",
+   "properties": {
+    "needs_confirm": {
+     "type": "string"
+    },
+    "thread": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "lease_id": {
+     "type": "string"
+    },
+    "project": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    },
+    "state": {
+     "type": "string"
+    },
+    "mode": {
+     "$ref": "#/$defs/LeaseMode"
+    },
+    "can_work": {
+     "type": "boolean"
+    }
+   }
+  },
+  "LeaseView": {
+   "type": "object",
+   "properties": {
+    "lease_id": {
+     "type": "string"
+    },
+    "project": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    },
+    "state": {
+     "type": "string"
+    },
+    "mode": {
+     "$ref": "#/$defs/LeaseMode"
+    },
+    "can_work": {
+     "type": "boolean"
+    },
+    "warn": {
+     "type": "boolean"
+    },
+    "turns": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Turn"
+     }
+    }
+   },
+   "required": [
+    "lease_id",
+    "project",
+    "state",
+    "turns"
+   ]
+  },
+  "Lent": {
+   "type": "object",
+   "properties": {
+    "needs_confirm": {
+     "type": "string"
+    },
+    "thread": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "lease_id": {
+     "type": "string"
+    },
+    "project": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    },
+    "state": {
+     "type": "string"
+    },
+    "mode": {
+     "$ref": "#/$defs/LeaseMode"
+    },
+    "can_work": {
+     "type": "boolean"
+    },
+    "text": {
+     "type": "string"
+    },
+    "error": {
+     "type": "string"
+    },
+    "opened": {
+     "type": "boolean"
+    }
+   }
+  },
+  "LocationSetup": {
+   "type": "object",
+   "properties": {
+    "apps": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "label": {
+        "type": "string"
+       },
+       "link": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "note": {
+        "type": "string"
+       },
+       "fields": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "label": {
+           "type": "string"
+          },
+          "value": {
+           "type": "string"
+          },
+          "secret": {
+           "type": "boolean"
+          }
+         },
+         "required": [
+          "label",
+          "value",
+          "secret"
+         ]
+        }
+       }
+      },
+      "required": [
+       "name",
+       "label",
+       "link",
+       "note",
+       "fields"
+      ]
+     }
+    },
+    "last_received": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "last_app": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "apps",
+    "last_received",
+    "last_app"
+   ]
+  },
+  "Mail": {
+   "type": "object",
+   "properties": {
+    "from": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "ts": {
+     "type": "string"
+    },
+    "subject": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "summary": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "category": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "action": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "text": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "kind": {
+     "type": "string"
+    },
+    "web_url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "from",
+    "ts",
+    "subject",
+    "summary",
+    "category",
+    "action",
+    "text",
+    "kind",
+    "web_url"
+   ]
+  },
+  "MailRow": {
+   "type": "object",
+   "properties": {
+    "ts": {
+     "type": "string"
+    },
+    "from": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "subject": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "category": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "summary": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "action": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "thread": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "account": {
+     "type": "string"
+    },
+    "id": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "ts",
+    "from",
+    "subject",
+    "category",
+    "summary",
+    "action",
+    "thread",
+    "account",
+    "id"
+   ]
+  },
+  "MaybeUndone": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "text": {
+     "type": "string"
+    },
+    "action_id": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "ok"
+   ]
+  },
+  "Me": {
+   "type": "object",
+   "properties": {
+    "device": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string"
+      },
+      "created": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      }
+     },
+     "required": [
+      "name",
+      "created"
+     ]
+    },
+    "last_push_received": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "device",
+    "last_push_received"
+   ]
+  },
+  "Next": {
+   "type": "object",
+   "properties": {
+    "text": {
+     "type": "string"
+    },
+    "why": {
+     "type": "string"
+    },
+    "kind": {
+     "type": "string"
+    },
+    "target": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "domain": {
+     "type": "string"
+    },
+    "domain_title": {
+     "type": "string"
+    },
+    "domain_priority": {
+     "type": "number"
+    },
+    "priority": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "text",
+    "why",
+    "kind",
+    "target",
+    "domain",
+    "domain_title",
+    "domain_priority",
+    "priority"
+   ]
+  },
+  "Ok": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "ok"
+   ]
+  },
+  "Outcome": {
+   "type": "object",
+   "properties": {
+    "text": {
+     "type": "string"
+    },
+    "action_id": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "link": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "confirm_id": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "options": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "handoff_id": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "text"
+   ]
+  },
+  "Packet": {
+   "type": "object",
+   "properties": {
+    "summary": {
+     "type": "string"
+    },
+    "match": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "gaps": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "resume": {
+     "type": "string"
+    },
+    "resume_focus": {
+     "type": "string"
+    },
+    "answers": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "q": {
+        "type": "string"
+       },
+       "a": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "q",
+       "a"
+      ]
+     }
+    },
+    "ask_first": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "PermissionRequest": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "lease": {
+     "type": "string"
+    },
+    "project": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    },
+    "ts": {
+     "type": "string"
+    },
+    "kind": {
+     "$ref": "#/$defs/StepKind"
+    },
+    "url": {
+     "type": "string"
+    },
+    "summary": {
+     "type": "string"
+    },
+    "domain": {
+     "type": "string"
+    },
+    "flagged": {
+     "type": "boolean"
+    },
+    "allow_session": {
+     "type": "boolean"
+    },
+    "question": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "questions": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "question": {
+            "type": "string"
+           },
+           "multi": {
+            "type": "boolean"
+           },
+           "options": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "label": {
+               "type": "string"
+              },
+              "description": {
+               "type": "string"
+              }
+             },
+             "required": [
+              "label"
+             ]
+            }
+           }
+          },
+          "required": [
+           "question"
+          ]
+         }
+        }
+       }
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "id",
+    "lease",
+    "kind"
+   ]
+  },
+  "Place": {
+   "type": "object",
+   "properties": {
+    "start": {
+     "type": "string"
+    },
+    "end": {
+     "type": "string"
+    },
+    "hours": {
+     "type": "number"
+    },
+    "place": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "domain": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "lat": {
+     "type": "number"
+    },
+    "lon": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "start",
+    "end",
+    "hours",
+    "place",
+    "domain",
+    "lat",
+    "lon"
+   ]
+  },
+  "Prepared": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "number"
+    },
+    "status": {
+     "type": "string"
+    },
+    "kind": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "prepared_by": {
+     "type": "string"
+    },
+    "prepared_by_label": {
+     "type": "string"
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "deadline": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "title": {
+         "type": "string"
+        },
+        "days_left": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "title",
+        "days_left"
+       ]
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "packet": {
+     "$ref": "#/$defs/Packet"
+    },
+    "form": {
+     "$ref": "#/$defs/PreparedForm"
+    },
+    "summary": {
+     "type": "string"
+    },
+    "action": {
+     "type": "string"
+    },
+    "draft": {
+     "type": "string"
+    },
+    "from": {
+     "type": "string"
+    },
+    "can_save_draft": {
+     "type": "boolean"
+    },
+    "talk": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Talk"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "id",
+    "status",
+    "kind",
+    "title",
+    "prepared_by",
+    "prepared_by_label",
+    "url",
+    "deadline",
+    "talk"
+   ]
+  },
+  "PreparedForm": {
+   "type": "object",
+   "properties": {
+    "state": {
+     "type": "string"
+    },
+    "site": {
+     "type": "string"
+    },
+    "shot": {
+     "type": "string"
+    },
+    "said": {
+     "type": "string"
+    },
+    "blocked": {
+     "type": "string"
+    },
+    "url": {
+     "type": "string"
+    },
+    "fields": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "label": {
+        "type": "string"
+       },
+       "required": {
+        "type": "boolean"
+       },
+       "value": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         }
+        ]
+       },
+       "ask": {
+        "type": "string"
+       },
+       "file": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id",
+       "label",
+       "required"
+      ]
+     }
+    }
+   },
+   "required": [
+    "state"
+   ]
+  },
+  "ProjectQuestion": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "project": {
+     "type": "string"
+    },
+    "text": {
+     "type": "string"
+    },
+    "ts": {
+     "type": "string"
+    },
+    "lease_thread": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "lease_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "talk": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Talk"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "label": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "project",
+    "text",
+    "lease_thread",
+    "lease_id",
+    "talk"
+   ]
+  },
+  "ProjectTodos": {
+   "type": "object",
+   "properties": {
+    "me": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    },
+    "agent": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    },
+    "pending": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  "Ready": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "number"
+    },
+    "kind": {
+     "type": "string"
+    },
+    "domain": {
+     "type": "string"
+    },
+    "target": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "summary": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "from": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "prepared_by": {
+     "type": "string"
+    },
+    "prepared_by_label": {
+     "type": "string"
+    },
+    "ts": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "kind",
+    "domain",
+    "target",
+    "title",
+    "summary",
+    "from",
+    "prepared_by",
+    "prepared_by_label",
+    "ts"
+   ]
+  },
+  "Reflection": {
+   "type": "object",
+   "properties": {
+    "title": {
+     "type": "string"
+    },
+    "body": {
+     "type": "string"
+    },
+    "data": {
+     "type": "object",
+     "properties": {
+      "aggregate": {
+       "type": "object",
+       "properties": {
+        "sessions": {
+         "type": "number"
+        },
+        "themes": {
+         "type": "array",
+         "items": {
+          "type": "array",
+          "prefixItems": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "number"
+           }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+         }
+        },
+        "repeated_commitments": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "observed_hours_by_domain": {
+         "type": "object",
+         "additionalProperties": {
+          "type": "number"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "required": [
+    "title",
+    "body"
+   ]
+  },
+  "Report": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "number"
+    },
+    "ts": {
+     "type": "string"
+    },
+    "kind": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "body": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "ts",
+    "kind",
+    "title",
+    "body"
+   ]
+  },
+  "Requests": {
+   "type": "object",
+   "properties": {
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "text": {
+        "type": "string"
+       },
+       "ts": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id",
+       "text",
+       "ts"
+      ]
+     }
+    },
+    "live_check_off": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "items",
+    "live_check_off"
+   ]
+  },
+  "ReviewItem": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "goal",
+      "deadline"
+     ]
+    },
+    "domain": {
+     "type": "string"
+    },
+    "domain_title": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "detail": {
+     "type": "string"
+    },
+    "value": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "string"
+      }
+     ]
+    },
+    "actions": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "talk": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Talk"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "id",
+    "kind",
+    "domain",
+    "domain_title",
+    "title",
+    "detail",
+    "value",
+    "actions",
+    "source"
+   ]
+  },
+  "Sent": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "name": {
+     "type": "string"
+    },
+    "media_type": {
+     "type": "string"
+    },
+    "size": {
+     "type": "number"
+    },
+    "lease": {
+     "type": "string"
+    },
+    "path": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "name",
+    "media_type"
+   ]
+  },
+  "Settings": {
+   "type": "object",
+   "properties": {
+    "routing": {
+     "type": "string"
+    },
+    "cloud_label": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "quiet_hours": {
+     "type": "string"
+    },
+    "interrupt_max_priority": {
+     "type": "number"
+    },
+    "tier_quota": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "number"
+     }
+    },
+    "daily_push_cap": {
+     "type": "number"
+    },
+    "report_times": {
+     "type": "string"
+    },
+    "allowed_logins": {
+     "anyOf": [
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      {
+       "type": "boolean"
+      }
+     ]
+    },
+    "models": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/TaskModel"
+     }
+    },
+    "local_model": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "problems": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "off": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "feature": {
+        "type": "string"
+       },
+       "why": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "feature",
+       "why"
+      ]
+     }
+    },
+    "language": {
+     "type": "string"
+    }
+   }
+  },
+  "SetupChoice": {
+   "type": "object",
+   "properties": {
+    "impl": {
+     "type": "string"
+    },
+    "needs_key": {
+     "type": "boolean"
+    },
+    "base_url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "impl",
+    "needs_key",
+    "base_url"
+   ]
+  },
+  "SetupModels": {
+   "type": "object",
+   "properties": {
+    "models": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "models"
+   ]
+  },
+  "SetupPair": {
+   "type": "object",
+   "properties": {
+    "code": {
+     "type": "string"
+    },
+    "url": {
+     "type": "string"
+    },
+    "qr": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "url",
+    "qr"
+   ]
+  },
+  "SetupSaved": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "restarting": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "ok",
+    "restarting"
+   ]
+  },
+  "SetupState": {
+   "type": "object",
+   "properties": {
+    "choices": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/SetupChoice"
+     }
+    },
+    "public_url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "has_model": {
+     "type": "boolean"
+    },
+    "language": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "choices",
+    "public_url",
+    "has_model",
+    "language"
+   ]
+  },
+  "StepKind": {
+   "enum": [
+    "ask_user",
+    "read",
+    "search",
+    "write_file",
+    "run_command",
+    "open_web",
+    "other"
+   ]
+  },
+  "Talk": {
+   "type": "object",
+   "properties": {
+    "thread": {
+     "type": "string"
+    },
+    "last": {
+     "type": "string"
+    },
+    "suggest": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Button"
+     }
+    }
+   },
+   "required": [
+    "thread",
+    "last",
+    "suggest"
+   ]
+  },
+  "Task": {
+   "type": "object",
+   "properties": {
+    "key": {
+     "type": "string"
+    },
+    "n": {
+     "type": "number"
+    },
+    "title": {
+     "type": "string"
+    },
+    "due": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "context": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "projects": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "talk": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Talk"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "mail": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "key",
+    "n",
+    "title",
+    "due",
+    "context",
+    "projects",
+    "talk",
+    "mail"
+   ]
+  },
+  "TaskModel": {
+   "type": "object",
+   "properties": {
+    "key": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    },
+    "detail": {
+     "type": "string"
+    },
+    "model": {
+     "type": "string"
+    },
+    "configured": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "key",
+    "label",
+    "detail",
+    "model",
+    "configured"
+   ]
+  },
+  "Thread": {
+   "type": "object",
+   "properties": {
+    "thread": {
+     "type": "string"
+    },
+    "about": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/About"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "title": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "ts": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "lease_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "turns": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "role": {
+        "enum": [
+         "user",
+         "muninn"
+        ]
+       },
+       "text": {
+        "type": "string"
+       },
+       "ts": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "spoken": {
+        "type": "boolean"
+       },
+       "files": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/Sent"
+        }
+       },
+       "handover": {
+        "$ref": "#/$defs/Handover"
+       },
+       "ended": {
+        "type": "string"
+       },
+       "note": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "role",
+       "text",
+       "ts"
+      ]
+     }
+    },
+    "suggest": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Button"
+     }
+    }
+   },
+   "required": [
+    "thread",
+    "about",
+    "title",
+    "ts",
+    "lease_id",
+    "turns",
+    "suggest"
+   ]
+  },
+  "Today": {
+   "type": "object",
+   "properties": {
+    "now": {
+     "type": "string"
+    },
+    "domains": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Domain"
+     }
+    },
+    "domain_choices": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "title": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id",
+       "title"
+      ]
+     }
+    },
+    "project_todos": {
+     "$ref": "#/$defs/ProjectTodos"
+    },
+    "statuses": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "status_labels": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "string"
+     }
+    },
+    "unread": {
+     "type": "number"
+    },
+    "pending_confirmations": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "now",
+    "domains",
+    "domain_choices",
+    "project_todos",
+    "statuses",
+    "status_labels",
+    "unread",
+    "pending_confirmations"
+   ]
+  },
+  "TopicState": {
+   "type": "object",
+   "properties": {
+    "thread": {
+     "type": "string"
+    },
+    "about": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/About"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "title": {
+     "type": "string"
+    },
+    "state": {
+     "enum": [
+      "waiting",
+      "doing",
+      "open",
+      "shelved",
+      "closed"
+     ]
+    },
+    "now": {
+     "type": "string"
+    },
+    "ts": {
+     "type": "string"
+    },
+    "via": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "ask": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "thread",
+    "about",
+    "title",
+    "state",
+    "now",
+    "ts",
+    "via",
+    "ask"
+   ]
+  },
+  "TrackerRow": {
+   "type": "object",
+   "properties": {
+    "target": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "status": {
+     "type": "string"
+    },
+    "applied": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "next_action": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "next_action_due": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "target",
+    "title",
+    "status",
+    "applied",
+    "next_action",
+    "next_action_due",
+    "url"
+   ]
+  },
+  "Turn": {
+   "type": "object",
+   "properties": {
+    "role": {
+     "anyOf": [
+      {
+       "const": "user"
+      },
+      {
+       "const": "answer"
+      },
+      {
+       "const": "session"
+      },
+      {
+       "type": "string"
+      }
+     ]
+    },
+    "text": {
+     "type": "string"
+    },
+    "ts": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "files": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Sent"
+     }
+    },
+    "detail": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "role",
+    "text"
+   ]
+  },
+  "Undoable": {
+   "type": "object",
+   "properties": {
+    "text": {
+     "type": "string"
+    },
+    "action_id": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "text",
+    "action_id"
+   ]
+  },
+  "Waiting": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "kind": {
+     "type": "string"
+    },
+    "group": {
+     "enum": [
+      "wait",
+      "doing"
+     ]
+    },
+    "about": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/About"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "thread": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "lease": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "by": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "lines": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "id",
+    "kind",
+    "group",
+    "about",
+    "thread",
+    "lease",
+    "by",
+    "lines"
+   ]
+  }
+ }
+}

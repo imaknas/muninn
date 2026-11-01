@@ -1,0 +1,33 @@
+# Invented news in English and which open items it affects (resolves | changes | relevant); every name in it is made up.
+context:
+  today: "2026-11-03"
+  domains: [{id: jobs, title: Job search}, {id: fitness, title: Exercise}, {id: garden, title: Garden}]
+  projects: [home-budget, shelf-planner]
+  open_items:
+    - {id: "todo:home-budget:0", owner: me, text: Ask the dealer when the car will be delivered, due: null, manual: true}
+    - {id: "todo:shelf-planner:1", owner: me, text: Measure the study wall's width, due: null, manual: true}
+    - {id: "deadline:garden/fence-quote", owner: me, text: Get the fence quote, due: "2026-11-07", manual: true}
+    - {id: "deadline:jobs/portfolio", owner: me, text: Portfolio site live, due: "2026-11-10", manual: true}
+    - {id: "tracker:jobs/acme", owner: me, text: Acme backend engineer (to apply), due: null, manual: true}
+    - {id: "task:plumber", owner: me, text: Book the plumber to come fix the pipe, due: "2026-11-06", manual: true}
+cases:
+  - fact: The dealer says the car arrives mid-December
+    expect: [{id: "todo:home-budget:0", effect: resolves}]
+  - fact: The dealer says delivery slips to next March
+    expect: [{id: "todo:home-budget:0", effect: resolves}]
+  - fact: Got the fence quote, 3,200
+    expect: [{id: "deadline:garden/fence-quote", effect: resolves}]
+  - fact: The fence company says the quote won't be ready until next Wednesday
+    expect: [{id: "deadline:garden/fence-quote", effect: changes}]
+  - fact: Measured the study wall, it's 320 cm wide
+    expect: [{id: "todo:shelf-planner:1", effect: resolves}]
+  - fact: The portfolio site is live now
+    expect: [{id: "deadline:jobs/portfolio", effect: resolves}]
+  - fact: The Acme opening has been closed
+    expect: [{id: "tracker:jobs/acme", effect: resolves}]  # no longer needed
+  - fact: The plumber says he'll come fix it tomorrow afternoon
+    expect: [{id: "task:plumber", effect: resolves}]
+  - fact: Lovely weather today
+    expect: []
+  - fact: Had beef noodles for lunch
+    expect: []

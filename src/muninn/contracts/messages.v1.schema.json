@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "muninn-messages.v1",
+  "title": "POST /api/messages request body",
+  "description": "What projects post to Muninn, with the ingest bearer token. Retrying is safe: a message id already seen is skipped. One malformed message rejects the whole post (400). Response: {\"ok\": true, \"new\": <count>}. `v` may be left out (read as 1); a version Muninn does not know is rejected. New fields may be added within v1.",
+  "type": "object",
+  "required": ["messages"],
+  "properties": {
+    "v": {"const": 1},
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "project", "type", "text"],
+        "properties": {
+          "v": {"const": 1},
+          "id": {"type": "string", "minLength": 1, "maxLength": 200, "description": "The sender's message id: the idempotency key, and the key of a task it creates."},
+          "project": {"type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[^/]+$"},
+          "type": {
+            "enum": ["question", "progress", "done", "task", "drop"],
+            "description": "question: for the user to answer (the answer comes back as a handoff with reply_to = id). progress, done: reports; done with handoff_id closes that handoff, done with task closes that task; done or drop with question closes that question, settled where it was asked. task: something only the user can do. drop: the task, or the question, is no longer needed (needs task or question)."
+          },
+          "text": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "handoff_id": {"type": "integer"},
+          "task": {"type": "string", "minLength": 1, "maxLength": 200, "description": "A task key (the id of the message that created it)."},
+          "question": {"type": "string", "minLength": 1, "maxLength": 200, "description": "For done and drop: the id of a question the project asked the user that is now settled where it was asked (the user answered it in the project's own session); it leaves the user's list, and no answer goes back."},
+          "due": {"type": "string", "description": "YYYY-MM-DD, for task."},
+          "context": {"type": "string"},
+          "new_reason": {"type": "string", "description": "For task: why this is new although it looks like one already settled."},
+          "inferred": {"type": "boolean", "default": false, "description": "For done and drop with task: true when the sender only inferred it (no one saw the user do it). Muninn then asks the user before closing the task, instead of closing it with an undo."}
+        },
+        "if": {"properties": {"type": {"const": "drop"}}},
+        "then": {"anyOf": [{"required": ["task"]}, {"required": ["question"]}]}
+      }
+    }
+  }
+}

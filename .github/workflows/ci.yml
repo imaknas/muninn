@@ -1,0 +1,91 @@
+# What every push to main and every pull request must pass. All of it runs with fake models, a fake clock and
+# invented data: no key, account or model is needed. While the repository is private every job is skipped (no Actions
+# minutes are spent on each deploy's push): the same checks run locally, in a clean Linux container, before a push.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: unit, browser and deploy tests
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - name: build the PWA (strict TypeScript)
+        run: npm ci --no-audit --no-fund && npm run build
+      - run: uv sync --frozen --extra autofill
+      - name: unit and API tests
+        run: uv run pytest -q -n 4
+      - name: browsers (WebKit for the PWA, Chromium for application forms)
+        run: uv run playwright install --with-deps webkit chromium
+      - name: browser tests
+        run: uv run pytest -q -m e2e -n 4
+      - name: deploy script tests
+        run: uv run pytest -q -m deploy
+
+  package:
+    name: wheel and container
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: npm ci --no-audit --no-fund && npm run build
+      - run: uv build --wheel -o dist
+      - name: the wheel in a clean environment, with no model set up
+        env:
+          MUNINN_DATA: ${{ runner.temp }}/data
+        run: |
+          uv venv "$RUNNER_TEMP/clean"
+          uv pip install --python "$RUNNER_TEMP/clean/bin/python" dist/*.whl
+          muninn="$RUNNER_TEMP/clean/bin/muninn"
+          "$muninn" init
+          "$muninn" check
+          "$muninn" serve & server=$!
+          for _ in $(seq 60); do curl -fsS http://127.0.0.1:18795/healthz && break; sleep 1; done
+          curl -fsS http://127.0.0.1:18795/healthz
+          curl -fsS -o /dev/null http://127.0.0.1:18795/static/app.js  # the web app is in the package, not only the server
+          kill "$server"
+      - name: container image
+        run: docker build -t muninn:ci .
+
+  secrets:
+    name: no secrets in the tree
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: gitleaks
+        env:
+          GITLEAKS: "8.21.2"
+        run: |
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS}/gitleaks_${GITLEAKS}_linux_x64.tar.gz" | tar -xz gitleaks
+          ./gitleaks dir . --redact --no-banner

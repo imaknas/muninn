@@ -1,0 +1,36 @@
+export const things = {
+  // what kind of thing each one is, as its one-line state says it
+  kinds: {
+    relink: "授權過期", lease: "深談中", perm: "專案想做的事", talkq: "深談的問題", project: "專案問你", action: "要先問你",
+    plan_change: "要改計畫嗎", status_from_mail: "信件帶來的更新", fact_done: "你剛說的事", attribution: "repo 歸屬",
+    window_class: "視窗歸屬", offline_time: "空檔", question: "問你一下", review: "計畫確認", packet: "投遞包", reply: "回信草稿",
+    due: "任務到期", topic: "在談的事",
+  },
+  // ── When a task is due ──
+  monthDay: (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`,
+  yesterday: "昨天",
+  daysAgo: (n: number) => `${n} 天前`,
+  today: "今天",
+  tomorrow: "明天",
+  weekday: (day: string) => `週${day}`,
+  // ── Titles and states ──
+  needsRelink: (name: string) => `${name} 要重新連結`,
+  asksYou: (who: string) => `${who} 問你`,
+  wantsToChange: (what?: string) => `想改 ${what || "一個檔案"}`,
+  wantsToRun: (what?: string) => `想跑 ${what || "一個指令"}`,
+  wantsToOpen: (what?: string) => `想打開 ${what || "一個網頁"}`,
+  wantsToDo: (what?: string) => `想做:${what || "一件事"}`,
+  firstOfMore: (first: string, more: number) => `${first}(還有 ${more} 個)`,
+  leftByTalk: (by: string | null) => `${by || "深談"} 深談留下的`,
+  whereActivityGoes: (match: string) => `${match} 的活動要歸到哪裡?`,
+  reviewTitle: (title: string, detail: string) => `${title}:${detail}`,
+  replyDraftFrom: (from: string) => `回信草稿 · ${from}`,
+  packetReady: (by: string) => `投遞包 · ${by} 準備好了`,
+  waitingOnYou: "等你",
+  inProgress: "在做",
+  deepTalkWith: (who: string) => `跟 ${who} 深談`,
+  quietAWhile: "一陣子沒說話了",
+  inTerminal: "在終端機接續中",
+  going: "進行中",
+  backToThisConversation: "回到這段對話",
+};

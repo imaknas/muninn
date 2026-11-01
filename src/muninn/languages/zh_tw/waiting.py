@@ -1,0 +1,19 @@
+# the one sentence that says what waits on the user, and the buttons that go with it (core/waiting.py)
+TEXTS = {
+    "relink": "{name} 要重新連結",
+    "a_project": "專案",
+    "permission": "{who} 想做一件事,要你同意:{what}",
+    "topic_now": "{title}:{now}",
+    "project_asks": "{project} 問你:{text}",
+    "talk_left": "{called} 的深談留下 {n} 個問題",
+    "review": "「{title}:{detail}」要放進計畫嗎?",
+    "yes": "要",
+    "no": "不要",
+    "reply_ready": "回信草稿好了:{title}",
+    "packet_ready": "投遞包準備好了:{title}",
+    "overdue": "過期了",
+    "due_today": "今天到期",
+    "due_tomorrow": "明天到期",
+    "due": "{title}({when})",
+    "talking_with": "跟 {who} 深談中",
+}

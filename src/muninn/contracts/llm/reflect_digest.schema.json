@@ -1,0 +1,31 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-reflect_digest.v1",
+ "title": "What the model answers at the decision point reflect_digest",
+ "type": "object",
+ "required": [
+  "summary"
+ ],
+ "properties": {
+  "summary": {
+   "type": "string"
+  },
+  "domain": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "commitments": {
+   "type": "array"
+  },
+  "decisions": {
+   "type": "array"
+  },
+  "themes": {
+   "type": "array"
+  },
+  "mood": {},
+  "friction": {}
+ }
+}

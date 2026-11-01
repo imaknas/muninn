@@ -1,0 +1,21 @@
+# what Muninn says about the mail it read: a to-do to read one it could not, a status it set, a draft it saved (core/mail.py)
+TEXTS = {
+    "format_empty": "the body is empty; it may be only pictures or attachments",
+    "format_garbled": "the body is garbled; its encoding may be broken",
+    "no_content": "can't see what it says",
+    "no_meaning": "can't tell what it wants",
+    "unreadable_answer": "couldn't read it",
+    "guessed": "My guess: {guess}. ",
+    "where_web": "It's at {url}",
+    "where_box": "It's in the {account} mailbox",
+    "unclear": "Muninn {said}. From: {sender}. {guessed}{where}.",
+    "read_this": "Read this mail: {subject}",
+    "no_subject": "(no subject)",
+    "confirmed": "Got the confirmation from {target}",
+    "sent_interview": "{target} sent an interview invitation",
+    "sent_offer": "{target} sent an offer",
+    "sent_rejection": "{target} sent a rejection",
+    "summary_from": "{summary} (from {sender})",
+    "from": "From {sender}",
+    "draft_saved": "Saved the reply “{title}” as a draft (you send it)",
+}

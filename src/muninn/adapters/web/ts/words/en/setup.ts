@@ -1,0 +1,46 @@
+import type { Words } from "../../words.js";
+
+export const setup: Words["setup"] = {
+  title: "Set up Muninn",
+  linkUsed: "This setup link no longer works (a device has been paired)",
+  http: (status: number) => `HTTP ${status}`,
+  language: "Language",
+  choices: {
+    anthropic: "Anthropic API",
+    openai: "OpenAI-compatible (OpenAI, OpenRouter, Gemini, LM Studio…)",
+    ollama: "Ollama on this computer",
+  },
+  keyPlaceholder: "API key (not needed for Ollama)",
+  keyLabel: "API key",
+  urlPlaceholder: "Address (only for an OpenAI-compatible service, or Ollama on another computer)",
+  urlLabel: "Address",
+  namePlaceholder: "What to call this service (e.g. OpenRouter; optional)",
+  nameLabel: "Name",
+  checkKey: "Check the key and list models",
+  pickService: "First pick a model service. The key stays in this computer's secrets folder; the config only says where it is.",
+  hasModel: "A model is already set up; the one you pick here is added and becomes the main one.",
+  skip: "Skip for now and pair the phone",
+  modelId: (label: string) => `${label} (the model's id)`,
+  pickLocal: "Pick the local model: everything that must stay on this computer goes to it.",
+  pickTwo: "Pick two models: a fast one for most of the work (sorting mail, summaries), and a good one that reads what you say (what to do, what news affects, answering questions).",
+  cloudReadsAll: (service: string) => `With only a cloud service, everything Muninn reads goes to ${service}: what you type, `
+    + "mail, window titles and your conversations, work included. To keep some of it on this computer, add a local model "
+    + "later; the settings page says what goes where.",
+  savedRestartYourself: "Saved. The settings take effect once muninn serve is restarted; then open the setup link it prints to pair the phone.",
+  localModel: "Local model",
+  fastModel: "Fast model",
+  goodModel: "Good model",
+  save: "Save",
+  restarting: "Muninn is restarting…",
+  lastStep: "Last step: pair the phone.",
+  needsHttps: (port: string) => "The phone reaches Muninn over HTTPS. The easiest way is Tailscale: install it on both and sign in "
+    + `to the same account, run tailscale serve --bg --https=8444 http://127.0.0.1:${port} on this computer, `
+    + "put the address it gives into the config's public_url, restart Muninn, and open the setup link again.",
+  tryAgain: "Done, try again",
+  scan: "Scan this code with the phone's camera and tap \"Pair\" on the page that opens. The code works once, for 10 minutes.",
+  qrAlt: (url: string) => `Pairing address ${url}`,
+  cannotScan: "If it won't scan, open ",
+  thenEnter: " on the phone and enter ",
+  sentenceEnd: ".",
+  newCode: "Get a new code",
+};

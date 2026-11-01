@@ -1,0 +1,63 @@
+# Invented sentences and what Muninn should do with each (the tools; the id-like arguments a case names are
+# compared, others are not). The context is what a route request carries; every name in it is made up.
+context:
+  today: "2026-11-03 (Tue) 09:30"
+  domains: [{id: jobs, title: 換工作}, {id: fitness, title: 運動}, {id: garden, title: 院子}]
+  goals:
+    - {id: fitness/run, title: 每週跑步, metric: hours}
+    - {id: jobs/apply, title: 每週投遞, metric: count}
+  targets:
+    - {id: jobs/acme, title: Acme 後端工程師, status: todo}
+    - {id: jobs/brightline, title: Brightline 平台工程師, status: applied}
+  statuses: [todo, applied, screening, interview, offer, rejected, withdrawn]
+  deadlines:
+    - {id: jobs/portfolio, title: 作品集網站上線, due: "2026-11-10"}
+    - {id: garden/fence-quote, title: 拿到籬笆報價, due: "2026-11-07"}
+  blocks:
+    - {id: b-run-thu, title: 跑步, when: "2026-11-05 19:00"}
+  calendar: []
+cases:
+  - said: Acme 那份我投出去了
+    expect: [{tool: set_status, args: {target: jobs/acme, status: applied}}]
+  - said: Brightline 約我下週一面試
+    expect: [{tool: set_status, args: {target: jobs/brightline, status: interview}}]
+    also: [record_fact, schedule]
+  - said: Brightline 那份不投了,撤回
+    expect: [{tool: set_status, args: {target: jobs/brightline, status: withdrawn}}]
+  - said: 昨天跑了一個半小時,幫我補記
+    expect: [{tool: log_hours, args: {goal: fitness/run}}]
+  - said: 作品集網站做好上線了
+    expect: [{tool: mark_done, args: {deadline: jobs/portfolio}}]
+  - said: 這週跑步進度怎麼樣?
+    expect: [{tool: progress, args: {goal: fitness/run}}]
+  - said: 週四晚上七點幫我排兩小時寫作品集
+    expect: [{tool: schedule}]
+  - said: 把週四的跑步改到週五晚上
+    expect: [{tool: move_block, args: {block: b-run-thu}}]
+  - said: 週四的跑步取消
+    expect: [{tool: cancel_block, args: {block: b-run-thu}}]
+  - said: 今天先做什麼?
+    expect: [{tool: today}]
+  - said: 為什麼每週要跑步那麼多小時?
+    expect: [{tool: ask}]
+  - said: 把每週跑步的目標改成 4 小時
+    expect: [{tool: change_plan, args: {domain: fitness, op: goal_target, goal: fitness/run}}]
+  - said: 籬笆報價的期限延到下週五
+    expect: [{tool: change_plan, args: {domain: garden, op: deadline_due, deadline: garden/fence-quote}}]
+  - said: 剛問到籬笆的報價,三萬二
+    expect: [{tool: record_fact}]
+    also: [mark_done]  # the quote was the deadline's whole point
+  - said: 提醒我週五前打電話給水電行
+    expect: [{tool: add_task}]
+  - said: 希望你以後能幫我訂高鐵票
+    expect: [{tool: request_feature}]
+  - said: 今天好累
+    expect: []
+  - said: 有個點子:做一個記錄植物澆水的小程式
+    expect: [{tool: capture_idea}]
+  - said: 我想開始學陶藝,當成一個長期的計畫,每週兩小時
+    expect: [{tool: propose_domain}]
+  - said: 幫我找房東上週寄來的那封信
+    expect: [{tool: find_mail}]
+  - said: 剛剛那個提醒不要了,撤回
+    expect: [{tool: undo_action}]

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "llm-points.v1.schema.json",
+  "title": "Judgment-point registry (llm-points) v1",
+  "description": "One entry per place in a system where a model is asked to decide or produce something (a judgment point): who calls it, what it does, what the output looks like, and what happens when the model does not answer or the output is invalid. Two systems share this format; each keeps its own registry contents. Shared fields: caller, purpose, output, on_failure; every other field is used by one side only and is optional. Unknown fields are rejected at the point level: to add a field, change this schema first and have the other side sync its copy the same day before using it. Adding a field does not bump the version; renaming a field or changing its meaning does.",
+  "type": "object",
+  "required": ["v", "points"],
+  "additionalProperties": false,
+  "properties": {
+    "v": {"const": 1},
+    "points": {
+      "type": "object",
+      "description": "Point name → declaration. Names are lowercase letters and digits, with - or _.",
+      "additionalProperties": {"$ref": "#/$defs/point"}
+    },
+    "exempt": {
+      "type": "array",
+      "description": "Calls that temporarily bypass the registry (each with a reason)",
+      "items": {
+        "type": "object",
+        "required": ["file", "reason"],
+        "additionalProperties": false,
+        "properties": {"file": {"type": "string"}, "reason": {"type": "string", "minLength": 1}}
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "required": ["caller", "purpose", "output", "on_failure"],
+      "additionalProperties": false,
+      "properties": {
+        "caller": {"type": "string", "minLength": 1, "description": "Who makes the request (file or module)"},
+        "purpose": {"type": "string", "minLength": 1, "description": "What it decides or produces"},
+        "output": {
+          "type": "object",
+          "required": ["format"],
+          "additionalProperties": false,
+          "properties": {
+            "format": {"enum": ["json", "text"]},
+            "schema": {"type": "string", "description": "The output's JSON Schema file (relative to the registry file's directory); only when format is json"}
+          }
+        },
+        "on_failure": {
+          "enum": ["skip", "retry_later", "ask_user", "say_so", "default"],
+          "description": "What actually happens when the model does not answer or its output is invalid (there is no \"silently use another model or another result\" option): skip = skip this time, keep no result; retry_later = do not advance progress, try again next round; ask_user = ask the user instead; say_so = tell the user (or the status page / an alert) plainly that the model did not answer; default = use a safe result declared in advance (the value can be in the default field, or supplied by the caller)"
+        },
+        "default": {"description": "The safe result when on_failure is default and the registry supplies it; if this field is present, a failure returns this value"},
+
+        "kind": {"enum": ["decide", "generate"], "description": "decide = pick one of a fixed set of conclusions (could be replaced by a classifier that returns probabilities); generate = produce content"},
+        "labels": {"type": "array", "items": {"type": "string"}, "minItems": 1, "description": "The conclusions a decide point can return"},
+        "model_group": {"type": "string", "description": "The group name when models are chosen by group (e.g. fast / standard / strong; default = unspecified, the tool's own default)"},
+        "shape": {"enum": ["completion", "agent"], "description": "completion = the model has no tools and only answers (any LLM provider can run it); agent = a coding agent that needs tools, a working directory and permissions (docs/design/llm-providers.md)"},
+        "max_tokens": {"type": "integer", "minimum": 1, "description": "Output limit for completion (default 8192)"},
+        "material": {"enum": ["cloud_safe", "personal", "sensitive", "local_only"], "description": "What kind of material is sent to the model (decides whether it may go to the cloud)"},
+        "eval": {
+          "type": "object",
+          "required": ["scorer", "truth"],
+          "additionalProperties": false,
+          "properties": {
+            "scorer": {"type": "string", "minLength": 1, "description": "How it is scored; judge = a model acts as judge"},
+            "truth": {"type": "string", "minLength": 1, "description": "Where the correct answer comes from"}
+          }
+        },
+
+        "model_env": {"type": "string", "description": "Read the model name from this environment variable"},
+        "model_default": {"type": "string"},
+        "auth": {"enum": ["token", "subscription"], "description": "Which login to use"},
+        "permission_mode": {"type": "string"},
+        "prompts": {"type": "string", "description": "Who answers permission prompts; none = always deny"},
+        "tools": {"type": "string", "description": "Tools it may use (comma-separated; empty string = all off)"},
+        "allowed_tools": {"type": "array", "items": {"type": "string"}, "description": "Permission rules that are allowed automatically"},
+        "extra_allow_env": {"type": "string", "description": "Extra allow rules the caller adds through this environment variable (a JSON list; adds rules, does not change the mode)"},
+        "allow_from_env": {"type": "string", "description": "Unattended: when this environment variable is set, only those rules are allowed and everything else is denied"},
+        "settings": {"enum": ["platform"], "description": "platform = load none of the user's, the project's or local tool settings: only the platform's own for the project named by the project_env variable (its sandbox when enforced, its deny list, the platform's commands), so the declared rules are the whole boundary"},
+        "project_env": {"type": "string", "description": "With settings: platform, the environment variable that names the project"},
+        "extra_args": {"type": "array", "items": {"type": "string"}},
+        "stream": {"type": "boolean", "description": "A long-running streaming session (not one question, one answer)"},
+        "timeout_s": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

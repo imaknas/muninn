@@ -1,0 +1,55 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-packet.v1",
+ "title": "What the model answers at the decision point packet",
+ "type": "object",
+ "required": [
+  "summary",
+  "match",
+  "answers",
+  "resume"
+ ],
+ "properties": {
+  "summary": {
+   "type": "string"
+  },
+  "match": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "gaps": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "resume": {
+   "type": "string"
+  },
+  "resume_focus": {
+   "type": "string"
+  },
+  "answers": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "q": {
+      "type": "string"
+     },
+     "a": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "ask_first": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  }
+ }
+}

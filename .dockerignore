@@ -1,0 +1,10 @@
+.git
+.venv
+node_modules
+data
+muninn-data
+.claude
+.agent-memory
+tests
+docs
+src/muninn/adapters/web/static/*.js

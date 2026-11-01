@@ -1,0 +1,63 @@
+# Invented sentences in English and what Muninn should do with each (the tools; the id-like arguments a case names
+# are compared, others are not). The context is what a route request carries; every name in it is made up.
+context:
+  today: "2026-11-03 (Tue) 09:30"
+  domains: [{id: jobs, title: Job search}, {id: fitness, title: Exercise}, {id: garden, title: Garden}]
+  goals:
+    - {id: fitness/run, title: Weekly running, metric: hours}
+    - {id: jobs/apply, title: Weekly applications, metric: count}
+  targets:
+    - {id: jobs/acme, title: Acme backend engineer, status: todo}
+    - {id: jobs/brightline, title: Brightline platform engineer, status: applied}
+  statuses: [todo, applied, screening, interview, offer, rejected, withdrawn]
+  deadlines:
+    - {id: jobs/portfolio, title: Portfolio site live, due: "2026-11-10"}
+    - {id: garden/fence-quote, title: Get the fence quote, due: "2026-11-07"}
+  blocks:
+    - {id: b-run-thu, title: Run, when: "2026-11-05 19:00"}
+  calendar: []
+cases:
+  - said: I sent off the Acme application
+    expect: [{tool: set_status, args: {target: jobs/acme, status: applied}}]
+  - said: Brightline wants to interview me next Monday
+    expect: [{tool: set_status, args: {target: jobs/brightline, status: interview}}]
+    also: [record_fact, schedule]
+  - said: I'm pulling out of the Brightline one
+    expect: [{tool: set_status, args: {target: jobs/brightline, status: withdrawn}}]
+  - said: I ran for an hour and a half yesterday, log it for me
+    expect: [{tool: log_hours, args: {goal: fitness/run}}]
+  - said: The portfolio site is done and live
+    expect: [{tool: mark_done, args: {deadline: jobs/portfolio}}]
+  - said: How's my running going this week?
+    expect: [{tool: progress, args: {goal: fitness/run}}]
+  - said: Block two hours Thursday at 7pm for the portfolio
+    expect: [{tool: schedule}]
+  - said: Move Thursday's run to Friday evening
+    expect: [{tool: move_block, args: {block: b-run-thu}}]
+  - said: Cancel Thursday's run
+    expect: [{tool: cancel_block, args: {block: b-run-thu}}]
+  - said: What should I do first today?
+    expect: [{tool: today}]
+  - said: Why do I have to run so many hours a week?
+    expect: [{tool: ask}]
+  - said: Change the weekly running goal to 4 hours
+    expect: [{tool: change_plan, args: {domain: fitness, op: goal_target, goal: fitness/run}}]
+  - said: Push the fence quote deadline to next Friday
+    expect: [{tool: change_plan, args: {domain: garden, op: deadline_due, deadline: garden/fence-quote}}]
+  - said: Just got the fence quote, 3,200
+    expect: [{tool: record_fact}]
+    also: [mark_done]  # the quote was the deadline's whole point
+  - said: Remind me to call the plumber before Friday
+    expect: [{tool: add_task}]
+  - said: I wish you could book train tickets for me someday
+    expect: [{tool: request_feature}]
+  - said: So tired today
+    expect: []
+  - said: "Idea: a little app that tracks when I water the plants"
+    expect: [{tool: capture_idea}]
+  - said: I want to start learning pottery, as a long-term thing, two hours a week
+    expect: [{tool: propose_domain}]
+  - said: Find the email my landlord sent last week
+    expect: [{tool: find_mail}]
+  - said: Scratch that reminder you just set, undo it
+    expect: [{tool: undo_action}]

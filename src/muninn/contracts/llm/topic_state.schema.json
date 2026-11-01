@@ -1,0 +1,54 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-topic_state.v1",
+ "title": "What the model answers at the decision point topic_state",
+ "type": "object",
+ "required": [
+  "decided",
+  "open",
+  "next",
+  "where"
+ ],
+ "properties": {
+  "decided": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "decisions and facts he gave, with their details"
+  },
+  "open": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "what is still waiting, and on whom"
+  },
+  "next": {
+   "type": "string",
+   "description": "the next step, or empty"
+  },
+  "where": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "what",
+     "lines"
+    ],
+    "properties": {
+     "what": {
+      "type": "string"
+     },
+     "lines": {
+      "type": "array",
+      "items": {
+       "type": "integer"
+      },
+      "description": "numbers of the lines that say it"
+     }
+    }
+   }
+  }
+ }
+}

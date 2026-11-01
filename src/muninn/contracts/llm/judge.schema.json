@@ -1,0 +1,19 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-judge.v1",
+ "title": "What the model answers at the decision point judge",
+ "type": "object",
+ "required": [
+  "score"
+ ],
+ "properties": {
+  "score": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 5
+  },
+  "why": {
+   "type": "string"
+  }
+ }
+}

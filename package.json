@@ -1,0 +1,12 @@
+{
+  "name": "muninn-web",
+  "private": true,
+  "description": "The PWA's TypeScript, compiled into src/muninn/adapters/web/static",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p src/muninn/adapters/web/ts/tsconfig.json && tsc -p src/muninn/adapters/web/ts/tsconfig.sw.json"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

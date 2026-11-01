@@ -1,0 +1,20 @@
+# what the drift rules say about a plan that is off track (core/drift.py)
+TEXTS = {
+    "minutes": "{value:.0f} 分鐘",
+    "steps": "{value:,.0f} 步",
+    "at_most": "{goal}:已 {actual}(上限 {target})",
+    "this_week": "{goal}:本週 {actual}/{target}",
+    "today": "{goal}:今天 {actual}/{target}",
+    "on_pace": "照進度現在應該要有 {expected}",
+    "overdue": lambda title, days, due: f"{title}:已逾期 {days} 天({due.month}/{due.day})",
+    "due_today": "{title}:今天到期",
+    "days_left": lambda title, days, due: f"{title}:剩 {days} 天({due.month}/{due.day})",
+    "finish_this": "完成這一項",
+    "target_step": "{target}:{step}",
+    "mark_done": "做完後在 Muninn 的「今日」頁標記完成",
+    "to_go": "還差 {n} 項",
+    "todos_overdue": "{n} 個待辦已過期",
+    "late_night": "深夜還在工作:最晚到 {time}",
+    "stop_earlier": "今天早點收工,把深夜才做的事移到白天的時段",
+    "idle": "{domain}:已經 {days} 天沒有動靜",
+}

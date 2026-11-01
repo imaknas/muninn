@@ -1,0 +1,19 @@
+# the one sentence that says what waits on the user, and the buttons that go with it (core/waiting.py)
+TEXTS = {
+    "relink": "{name} needs reconnecting",
+    "a_project": "A project",
+    "permission": "{who} wants to do something and needs your OK: {what}",
+    "topic_now": "{title}: {now}",
+    "project_asks": "{project} asks you: {text}",
+    "talk_left": lambda called, n: f"{called}'s deep talk left 1 question" if n == 1 else f"{called}'s deep talk left {n} questions",
+    "review": "Add “{title}: {detail}” to the plan?",
+    "yes": "Yes",
+    "no": "No",
+    "reply_ready": "A reply draft is ready: {title}",
+    "packet_ready": "An application packet is ready: {title}",
+    "overdue": "overdue",
+    "due_today": "due today",
+    "due_tomorrow": "due tomorrow",
+    "due": "{title} ({when})",
+    "talking_with": "In a deep talk with {who}",
+}

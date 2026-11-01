@@ -1,0 +1,21 @@
+# what Muninn says about the mail it read: a to-do to read one it could not, a status it set, a draft it saved (core/mail.py)
+TEXTS = {
+    "format_empty": "內文是空的,可能只有圖片或附件",
+    "format_garbled": "內文是亂碼,可能是編碼壞掉了",
+    "no_content": "看不到內容",
+    "no_meaning": "看不懂它要什麼",
+    "unreadable_answer": "讀不出來",
+    "guessed": "我猜:{guess}。",
+    "where_web": "在 {url}",
+    "where_box": "在 {account} 信箱",
+    "unclear": "Muninn {said}。寄件人:{sender}。{guessed}{where}。",
+    "read_this": "讀這封信:{subject}",
+    "no_subject": "(無主旨)",
+    "confirmed": "收到 {target} 的確認信",
+    "sent_interview": "{target} 寄來面試邀請",
+    "sent_offer": "{target} 寄來offer",
+    "sent_rejection": "{target} 寄來拒絕信",
+    "summary_from": "{summary}(寄件人:{sender})",
+    "from": "寄件人:{sender}",
+    "draft_saved": "把回覆「{title}」存成草稿(你寄出)",
+}

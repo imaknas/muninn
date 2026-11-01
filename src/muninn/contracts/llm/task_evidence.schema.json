@@ -1,0 +1,28 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-task_evidence.v1",
+ "title": "What the model answers at the decision point task_evidence",
+ "type": "object",
+ "required": [
+  "done"
+ ],
+ "properties": {
+  "done": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "properties": {
+     "task": {
+      "type": "string"
+     },
+     "why": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ }
+}

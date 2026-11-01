@@ -1,0 +1,40 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-window_classify.v1",
+ "title": "What the model answers at the decision point window_classify",
+ "type": "object",
+ "required": [
+  "windows"
+ ],
+ "properties": {
+  "windows": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "title"
+    ],
+    "properties": {
+     "title": {
+      "type": "string"
+     },
+     "domain": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "goal": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "sure": {
+      "type": "boolean"
+     }
+    }
+   }
+  }
+ }
+}

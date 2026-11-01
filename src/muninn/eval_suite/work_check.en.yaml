@@ -1,0 +1,21 @@
+# Invented sentences in English and the life domain each is about: the check that keeps work off the cloud under
+# privacy routing ("none" for small talk). Every name in it is made up.
+context:
+  work_domains: [{id: work, title: Day job (backend team)}]
+  other_domains: [{id: jobs, title: Job search}, {id: fitness, title: Exercise}, {id: garden, title: Garden}]
+  projects: {billing-api: work}
+cases:
+  - {text: The billing-api deploy needs a check with QA first tomorrow, expect: work}
+  - {text: One-on-one with my manager this afternoon, expect: work}
+  - {text: A customer says the API is too slow; need to look into it, expect: work}
+  - {text: Haven't made the sprint review slides yet, expect: work}
+  - {text: I'm on call this week, expect: work}
+  - {text: The Acme interview is on Thursday, expect: jobs}
+  - {text: Need to update my resume with the latest project, expect: jobs}
+  - {text: Brightline's HR wrote back, expect: jobs}
+  - {text: Got the fence quote, expect: garden}
+  - {text: Mow the lawn this weekend, expect: garden}
+  - {text: Ran five kilometres today, expect: fitness}
+  - {text: Weights class moved to Saturday, expect: fitness}
+  - {text: So tired today, expect: none}
+  - {text: What's for dinner, expect: none}

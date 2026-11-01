@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "records-reflect-week.v1",
+  "title": "Weekly activity analysis <YYYY-Www>.json",
+  "description": "A week's cross-project activity statistics plus the model's analysis. Carries \"v\": 1 from 2026-W43 (earlier files have none; read them as 1). analysis may be only {error, meta}.",
+  "type": "object",
+  "required": ["week", "start", "end", "generated", "totals", "projects", "rhythm", "delegation"],
+  "properties": {
+    "v": {"const": 1},
+    "week": {"type": "string", "pattern": "^\\d{4}-W\\d{2}$"},
+    "start": {"type": "string"},
+    "end": {"type": "string"},
+    "generated": {"type": "string"},
+    "totals": {"type": "object", "required": ["prompts", "prompts_prev", "sessions", "projects", "days"]},
+    "projects": {"type": "array", "items": {"type": "object", "required": ["name", "prompts"]}},
+    "matrix": {"type": "array"},
+    "rhythm": {"type": "object", "required": ["late", "late_share", "longest_hours", "last_per_day"]},
+    "delegation": {"type": "object", "required": ["agents", "peer"]},
+    "changes": {"type": "object"},
+    "analysis": {"type": "object", "properties": {"meta": {"type": "object"}, "error": {"type": "string"}}},
+    "unsupported": {"type": "string", "description": "This runtime has no transcripts: conversation statistics (messages, daily rhythm, how work was handed off) were not computed or sent for analysis; the value is the reason"}
+  }
+}

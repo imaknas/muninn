@@ -1,0 +1,29 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-lent_turn.v1",
+ "title": "What the model answers at the decision point lent_turn",
+ "type": "object",
+ "required": [
+  "topic"
+ ],
+ "properties": {
+  "topic": {
+   "type": "string",
+   "description": "current, new, or the id of another conversation still going"
+  },
+  "for_muninn": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "description": "staying in the talk: the part of it meant for Muninn, as one sentence; null when it is all the project's"
+  },
+  "end": {
+   "type": "boolean",
+   "description": "staying in the talk: he is stopping it for now and wants it handed back to Muninn"
+  },
+  "why": {
+   "type": "string"
+  }
+ }
+}

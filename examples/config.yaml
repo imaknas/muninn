@@ -1,0 +1,74 @@
+# Copy to <data>/config.yaml. Every key is optional; these are the defaults
+# unless marked "example".
+secrets_dir: secrets           # where Muninn's own keys live (or MUNINN_SECRETS_DIR); relative = under the data directory
+timezone: null                 # an IANA name, e.g. Europe/Berlin; unset = the machine's own
+host: 127.0.0.1
+port: 18795
+public_url: https://<host>.<tailnet>.ts.net:8444   # example; also the VAPID subject
+allowed_tailscale_logins: []   # example: [you@example.com]; empty = any tailnet login (device pairing still required)
+quiet_hours: "23:00-08:00"     # pushes held back (except signals that prove you are awake)
+active_hours: "08:00-23:00"    # pro-rata targets accrue only in these hours
+late_night: "00:30-05:00"      # generic late-night anomaly (stands down if a plan has a late_activity goal)
+daily_push_cap: 8
+push_detail: titles            # or counts: notifications say only "<domain>: N new reminders"
+interrupt_max_priority: 3      # domains with priority <= this push; others go to the evening summary
+escalation_level: 3            # ...unless a signal reaches this level
+tier_quota: {"1": 4, "2": 2, "3": 1, "escalation": 1}   # daily alert pushes per priority tier
+idle_alert_days: 3
+report_times: "08:30 · 22:30"  # display only; the scheduler owns the real times
+documents: []                  # example: [~/resume/resume.html]; your resume versions, for application packets
+cloud_drafts: false            # true: the cloud model drafts packets from those documents and the public posting
+prepare_per_tick: 1
+reflect: true                  # read conversation text (sensitive, so as routing allows) for the weekly reflection
+calendar_name: Muninn          # Muninn writes only to this calendar (create it in Google Calendar)
+mail_accounts: []              # example below; kind work = sensitive (local unless routing: cloud); outlook = Microsoft Graph, read-only
+#  - {name: personal, kind: personal, provider: gmail}
+#  - {name: work, kind: work, provider: outlook}
+cloud_mail: false              # true: personal mail may be read by the cloud model
+# Where your projects live. "local": plain folders (only the ones listed take part; contracts/local-projects.v1.md
+# says what Muninn reads and writes in them). "external": another system keeps them (the settings below).
+projects:
+  side: local
+  folders: []                  # for local, e.g. [~/code/garden, ~/code/thesis]
+  sandbox_root: null           # for local: where folders for exploring an idea are opened, e.g. ~/code/ideas
+# Project records kept elsewhere (the authority for project to-dos and decisions):
+external_todos: null           # example: ~/records/todo.md  ('## owner' / '### project' / '- [ ] item')
+external_todo_owners: {}       # heading text → me | agent | pending, e.g. {"Only me": me, "Agents": agent}
+project_states: null           # example: ~/records/{name}/STATE.md
+weekly_stats: null             # example: ~/records/weekly  (contains 2026-W42.json …)
+workspace_roots: []            # example: [~/code]; folders whose git repositories count as your work
+transcript_roots: []           # example: [~/.claude/projects]; Claude Code conversations, for the weekly reflection
+git_authors: []                # default: git config --global user.email
+git_exclude: []
+llm:
+  local_model: null             # example: qwen3:8b, an Ollama model on this machine; unset = no local model
+  ollama_url: http://127.0.0.1:11434
+  cloud: none                  # or claude-cli: the Claude CLI and its own login
+  cloud_model: haiku
+  understanding_model: sonnet  # what you type (routing, facts, answers)
+  claude_binary: claude        # a name on PATH or a path; not found, the newest node under ~/.nvm that has it
+  claude_token_file: ~/.claude/headless-oauth-token  # example: the file `claude setup-token` wrote; unset = the CLI's own login
+  # or, instead of cloud/cloud_model/understanding_model/claude_*: providers, one per service. A key is
+  # never written here, only where it is: a file in the secrets directory (chmod 600) or an environment variable.
+  # providers:
+  #   anthropic: {impl: anthropic, key: {secret: anthropic-api-key},
+  #               models: {fast: claude-haiku-5-5, standard: claude-sonnet-5-5, strong: claude-opus-5-5},
+  #               effort: {fast: low}}   # how hard each tier thinks: low … max; the API bills the thinking (fast is low unless set)
+  #   claude:    {impl: claude, binary: claude, token_file: ~/.claude/headless-oauth-token}
+  #   openrouter: {impl: openai, base_url: "https://openrouter.ai/api/v1", key: {secret: openrouter-key}, label: OpenRouter,
+  #                models: {fast: <a model id there>, standard: <another>}, reads: {<model id>: [images]}}
+  #   home:      {impl: ollama, base_url: "http://127.0.0.1:11434",   # location: local is Ollama's own; the local model
+  #               models: {fast: {name: "qwen3:8b", context: 32768}}}  # context: how much it reads at once (sent as num_ctx)
+  # use: {fast: anthropic, standard: anthropic}  # which cloud provider serves each tier; with one cloud provider, leave it out
+  # A provider on this machine or network (location: local, base_url loopback / private / tailnet) is the local model that
+  # privacy routing keeps sensitive content on; there is one at most, and use, models and points name cloud providers.
+  # a model per kind of work; any left out keeps its tier's (standard for your own words, fast for the rest).
+  # A value is a tier (fast, standard, strong: that provider's model for it), a model of the same provider by
+  # its own name (claude-sonnet-5-5 for the API, sonnet for the CLI), or {provider: …, model: …}.
+  # models:
+  #   route: standard   # what to do with what you said
+  #   facts: standard   # what news you tell settles
+  #   answer: standard  # answers to your questions
+  #   draft: strong     # application packets
+  #   mail: fast        # sorting new mail, reply drafts
+  #   reflect: fast     # conversation digests, the weekly reflection

@@ -1,0 +1,292 @@
+# Every place Muninn asks a model to judge or write something (LLMRequest.task), declared:
+# who asks, what for, which model group answers (core/task_models.py; default = the router's own cloud
+# model), what material goes in (cloud_safe | personal | sensitive | local_only, which decides where it
+# may go in privacy routing), what comes back, what happens when the model gives nothing usable, and how
+# the point is scored in an evaluation (core/evals.py) against what truth. Every prompt is in English; what a person
+# reads of an answer (a reply, a summary, a why, a draft, a reflection) is asked for in the language Muninn speaks.
+#
+# kind: decide = picks from a fixed set of answers (labels), so a decision-only model could stand in;
+#       generate = writes content (an answer, a draft, a summary, tools with arguments).
+# shape: completion = one call, no tools, working directory or permissions of its own, so any LLM provider can
+#        answer it (written on every point: a tool reading the registry takes a point without it for an agent).
+# on_failure, one of — never a silent stand-in:
+#   skip         nothing is done this time and nothing is left behind
+#   retry_later  progress is not marked, so a later round asks again
+#   ask_user     the user is asked instead
+#   say_so       the user is told the model did not answer
+#   default      the declared `default` is used, the cautious way round
+# The format is shared (contracts/vendor/records/llm-points.v1.schema.json); tests/test_llm_points.py
+# checks this file against it and against the code.
+v: 1
+points:
+  route:
+    caller: core/commands.py
+    purpose: Turns one thing the user says into the tools to run and their arguments, plus the reply to the user, the line to tell the project when beside a deep conversation, and a suggested next step
+    kind: generate
+    shape: completion
+    model_group: route
+    material: local_only
+    output: {format: json, schema: llm/route.schema.json}
+    on_failure: say_so
+    eval: {scorer: route, truth: "the user later undoing it, correcting themselves, or saying the same thing again"}
+
+  facts:
+    caller: core/facts.py
+    purpose: Decides which open items the user's news resolves, changes, or bears on, and whether the user said it as settled (only then is it passed on restated)
+    kind: decide
+    shape: completion
+    labels: [resolves, changes, relevant]  # one per affected open item
+    model_group: facts
+    material: local_only
+    output: {format: json, schema: llm/facts.schema.json}
+    on_failure: skip
+    eval: {scorer: facts, truth: "the user's answer to the confirmation card it raises, or their undo"}
+
+  answer:
+    caller: core/answer.py
+    purpose: Answers the user's question from their plan, progress, calendar, and project states
+    kind: generate
+    shape: completion
+    model_group: answer
+    material: local_only
+    output: {format: text}
+    on_failure: say_so
+    eval: {scorer: judge, truth: "the cloud model's answer as reference; the user next saying \"that's wrong\""}
+
+  why:
+    caller: core/answer.py
+    purpose: Explains why a goal or deadline in the plan exists and what it was written in from
+    kind: generate
+    shape: completion
+    model_group: answer
+    material: sensitive
+    output: {format: text}
+    on_failure: say_so
+    eval: {scorer: judge, truth: "the cloud model's answer as reference; the plan item's source"}
+
+  work_check:
+    caller: core/understanding.py
+    purpose: Decides which domain a line the user wrote belongs to (whether it is work), which decides whether it may go to the cloud in privacy mode
+    kind: decide
+    shape: completion
+    labels: [<a known domain id>, none]
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/work_check.schema.json}
+    on_failure: default
+    default: treated as work, kept on the local model
+    eval: {scorer: work_check, truth: "the domain the line is later filed under"}
+
+  domain_classify:
+    caller: core/classify.py
+    purpose: Suggests a domain for repo activity not yet assigned, to put in the question asked of the user
+    kind: decide
+    shape: completion
+    labels: [<a known domain id>, "null"]
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/domain_classify.schema.json}
+    on_failure: ask_user
+    eval: {scorer: domain_classify, truth: "the domain the user picks in the assignment question"}
+
+  window_classify:
+    caller: core/window_classify.py
+    purpose: From the app and window title, decides which domain and which goal each window belongs to, and how sure it is
+    kind: decide
+    shape: completion
+    labels: [<a known domain id>, "null"]  # one per window, with the goal and whether it is sure
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/window_classify.schema.json}
+    on_failure: retry_later
+    eval: {scorer: window_classify, truth: "the user's answer to the window assignment question, and later changes"}
+
+  mail_triage:
+    caller: core/mail.py
+    purpose: Decides a new mail's category, writes a summary and next step, and drafts a reply for mail that needs one
+    kind: decide
+    shape: completion
+    labels: [application_confirmation, interview, rejection, offer, needs_reply, deadline, fyi, promo, unclear]
+    model_group: mail
+    material: sensitive
+    output: {format: json, schema: llm/mail_triage.schema.json}
+    on_failure: retry_later
+    eval: {scorer: mail_triage, truth: "the user's answer to the status-update card the mail brings"}
+
+  packet:
+    caller: core/prepare.py
+    purpose: Writes an application packet for a job opening (summary, fit points, gaps, which résumé to use, draft answers to form questions, what to ask on the first call)
+    kind: generate
+    shape: completion
+    model_group: draft
+    material: sensitive
+    output: {format: json, schema: llm/packet.schema.json}
+    on_failure: retry_later
+    eval: {scorer: judge, truth: "the cloud model's packet as reference; whether the user submitted or said they won't apply"}
+
+  packet_fit:
+    caller: core/prepare.py
+    purpose: Before preparing a packet, decides whether the opening's requirements match the user's own qualifications
+    kind: decide
+    shape: completion
+    labels: [fit, doubt, no]
+    model_group: draft
+    material: sensitive
+    output: {format: json, schema: llm/packet_fit.schema.json}
+    on_failure: retry_later
+    eval: {scorer: packet_fit, truth: "the user's answer to \"Still prepare it?\"; for one prepared automatically, the user saying \"not applying\" or submitting it"}
+
+  form_fill:
+    caller: core/apply.py
+    purpose: Answers each field of a job's application form from its packet, the résumé and the user's earlier answers, and says what only the user can answer
+    kind: generate
+    shape: completion
+    model_group: draft
+    material: sensitive
+    output: {format: json, schema: llm/form_fill.schema.json}
+    on_failure: retry_later
+    eval: {scorer: judge, truth: "the fields the user changed before sending, and their answers to what was asked"}
+
+  todo_match:
+    caller: core/todo_match.py
+    purpose: Finds project to-dos that are the same thing as a Muninn item or as each other, so each shows up only once
+    kind: decide
+    shape: completion
+    labels: [same, different]  # one per pair (project to-do, Muninn item or earlier to-do)
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/todo_match.schema.json}
+    on_failure: retry_later
+    eval: {scorer: todo_match, truth: "the cloud model's pairing as reference"}
+
+  task_match:
+    caller: core/todo_match.py
+    purpose: Decides whether an incoming task is the same as a known task
+    kind: decide
+    shape: completion
+    labels: [same, different]  # one per pair (new task, known task)
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/task_match.schema.json}
+    on_failure: retry_later
+    eval: {scorer: judge, truth: "the user undoing the merge, or saying no to \"already done\""}
+
+  task_evidence:
+    caller: core/task_evidence.py
+    purpose: Checks recent conversation summaries, mail, and finished meetings to decide which open tasks are in fact done
+    kind: decide
+    shape: completion
+    labels: [done, not_done]  # one per open task
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/task_evidence.schema.json}
+    on_failure: retry_later
+    eval: {scorer: judge, truth: "the user reopening a task Muninn closed"}
+
+  evening:
+    caller: core/engine.py
+    purpose: Writes a few lines of evening review from today's progress numbers in each domain
+    kind: generate
+    shape: completion
+    model_group: default
+    material: cloud_safe
+    output: {format: text}
+    on_failure: skip
+    eval: {scorer: judge, truth: "the cloud model's review as reference"}
+
+  reflect_digest:
+    caller: core/reflect.py
+    purpose: Turns a conversation into a structured record (summary, domains, commitments, decisions, topics, mood as one of a fixed set of ids, blockers)
+    kind: generate
+    shape: completion
+    model_group: reflect
+    material: sensitive
+    output: {format: json, schema: llm/reflect_digest.schema.json}
+    on_failure: retry_later
+    eval: {scorer: judge, truth: "the cloud model's summary as reference"}
+
+  reflect_week:
+    caller: core/reflect.py
+    purpose: Writes a weekly reflection from this week's conversation record statistics, ending with one question
+    kind: generate
+    shape: completion
+    model_group: reflect
+    material: sensitive
+    output: {format: text}
+    on_failure: retry_later
+    eval: {scorer: judge, truth: "the cloud model's reflection as reference"}
+
+  judge:
+    caller: core/evals.py
+    purpose: In an evaluation, compares a candidate model's answer with the reference answer and gives a score from 0 to 5
+    kind: decide
+    shape: completion
+    labels: ["0", "1", "2", "3", "4", "5"]
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/judge.schema.json}
+    on_failure: skip
+    eval: {scorer: none, truth: "the judge's answers are not recorded as evaluation cases"}
+
+  turn_topic:
+    caller: core/topics.py
+    purpose: Whether a thing the user says continues the conversation on screen, returns to another ongoing conversation, or starts something new
+    kind: decide
+    shape: completion
+    labels: [current, new, <id of another ongoing conversation>]
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/turn_topic.schema.json}
+    on_failure: default
+    default: continues the conversation on screen
+    eval: {scorer: judge, truth: "the user next correcting with \"No, I'm talking about…\"; a later topic split the user changes back"}
+
+  topic_state:
+    caller: core/topic_memory.py
+    purpose: In a long conversation, the current state of one topic (what was decided, what is still awaited, the next step, and which original line each is in), updated from the previous state plus the original lines leaving the window
+    kind: generate
+    shape: completion
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/topic_state.schema.json}
+    on_failure: default
+    default: "keep the previous state; read the original lines not yet merged in as they are"
+    eval: {scorer: judge, truth: "a fact planted early in the conversation, and whether it can still be found when asked about after compression; the user next adding details with \"I said…\""}
+
+  topic_recall:
+    caller: core/topic_memory.py
+    purpose: In a long conversation, which earlier original lines (at most 4) to read back for what the user just said
+    kind: generate
+    shape: completion
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/topic_recall.schema.json}
+    on_failure: default
+    default: "fetch nothing; read only the recent original lines, the user's own words, and the current state"
+    eval: {scorer: judge, truth: "a fact planted early in the conversation, and whether that line was fetched when it was asked about; the user next adding details with \"I said…\""}
+
+  lent_turn:
+    caller: core/topics.py
+    purpose: A thing the user says in a conversation lent to a project, whether it stays in this deep conversation, returns to another ongoing conversation, or starts something new; if it stays, whether it holds something for Muninn to do that is not that project's (a reminder, a note, something from another domain), and if so, rewritten as one line to Muninn
+    kind: decide
+    shape: completion
+    labels: [current, new, <id of another ongoing conversation>]
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/lent_turn.schema.json}
+    on_failure: default
+    default: stays in this deep conversation; the whole line goes to the project
+    eval: {scorer: judge, truth: "the user next correcting with \"No, I'm talking about…\"; the user telling Muninn \"Didn't I just ask you to note…\"; Muninn acting on the side and the user undoing it"}
+
+  idea_next:
+    caller: core/idea_next.py
+    purpose: When an experiment comes back, whether to ask the user to promote the idea to a project (in a round under discussion, the next step is the next field in the route reply, not asked separately)
+    kind: decide
+    shape: completion
+    labels: [discuss, promote]
+    model_group: default
+    material: sensitive
+    output: {format: json, schema: llm/idea_next.schema.json}
+    on_failure: default
+    default: not asked (the handoff is written back to the conversation as before)
+    eval: {scorer: judge, truth: "the user saying yes or no to \"Promote it to a project?\""}

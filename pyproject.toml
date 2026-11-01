@@ -1,0 +1,50 @@
+[project]
+name = "muninn-ai"  # the name "muninn" on PyPI is another project's; the module and the command are muninn
+version = "0.1.0"
+description = "Always-on personal assistant: observes, plans, nudges"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "anthropic>=2.3.0",
+    "httpx>=0.27",
+    "jsonschema>=4.26.0",
+    "pypdf>=6.21.1",
+    "pywebpush>=2.0",
+    "ruamel.yaml>=0.18",
+    "segno>=1.6",
+    "starlette>=0.40",
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+# filling in job application forms in a headless browser (then: playwright install chromium)
+autofill = ["playwright==1.52.0"]
+
+[project.scripts]
+muninn = "muninn.main:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "playwright==1.52.0",
+    "pytest>=8",
+    "pytest-xdist>=3.6",
+]
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "muninn"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "e2e: browser end-to-end tests (uv run pytest -m e2e; needs `uv run playwright install webkit`)",
+    "deploy: bin/deploy.sh against a scratch remote and runtime (uv run pytest -m deploy)",
+]
+addopts = "-m 'not e2e and not deploy'"
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]

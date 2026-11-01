@@ -1,0 +1,18 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "muninn-llm-turn_topic.v1",
+ "title": "What the model answers at the decision point turn_topic",
+ "type": "object",
+ "required": [
+  "topic"
+ ],
+ "properties": {
+  "topic": {
+   "type": "string",
+   "description": "current, new, or the id of another conversation still going"
+  },
+  "why": {
+   "type": "string"
+  }
+ }
+}

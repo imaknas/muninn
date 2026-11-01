@@ -1,0 +1,20 @@
+# what the web server says itself (adapters/web/app.py)
+TEXTS = {
+    "not_built": "這份 Muninn 是從原始碼裝的,網頁還沒編譯。在原始碼資料夾跑 npm ci && npm run build,再重裝一次;或改裝發布好的套件:uv tool install muninn-ai",
+    "connect_refused": "沒有連結成功:{why}",
+    "connect_failed": "連結失敗:{why}",
+    "connected": "已連結。可以關掉這頁,回 Muninn。",
+    "not_lent": "沒能把對話交給 {project}:{why}",
+    "too_many_files": "一次最多傳 {most} 個檔案",
+    "no_uploads": "這台沒有設定上傳",
+    "file_gone": "有個檔案已經不在了,再傳一次",
+    "no_leases": "通道租借還沒設定",
+    "not_lent_out": "這段對話沒有借出去",
+    "unknown_command": "不認得的指令;可以用 /attach <專案>、/detach,深談想法時 /work(允許動手)或 /discuss(改回唯讀)",
+    "no_why": "現在問不到原因(本機模型沒有回應)。",
+    "key_refused": "這把 key 被拒絕了,再確認一次",
+    "needs_https": "還沒有 HTTPS 網址(public_url):手機要透過 HTTPS 才能配對,先設好 Tailscale 或自己的網域",
+    "focus": "專注",
+    "file_expired": "檔案已經過期(深談給你看的檔案保留 30 天)",
+    "file_not_yet": "檔案還沒拿到,等一下再試",
+}

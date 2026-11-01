@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F7F7F5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Muninn">
+  <title>Muninn</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icon-180.png">
+  <link rel="icon" href="/static/icon-192.png">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app" hidden>
+    <header id="top">
+      <b class="brand">Muninn</b>
+      <button type="button" id="pill" aria-expanded="false"></button>
+    </header>
+    <main id="stream" aria-label="跟 Muninn 的對話">
+      <div id="log"></div>
+      <div id="waiting"></div>
+    </main>
+    <div id="lease-bar" hidden></div>
+    <form id="say">
+      <label for="say-input" class="sr-only">跟 Muninn 說</label>
+      <textarea id="say-input" rows="1" placeholder="跟 Muninn 說⋯" autocomplete="off" enterkeyhint="send"></textarea>
+      <button type="submit" aria-label="送出"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></button>
+    </form>
+    <div id="scrim" hidden></div>
+    <aside id="panel" aria-label="今天的事與細節" hidden></aside>
+  </div>
+  <main id="pair" hidden></main>
+  <div id="toast" role="status" hidden></div>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Copy to <data>/attribution.yaml. Maps activity to domains (and goals).
+# Anything no rule matches stays unattributed (= sensitive) and shows up in the
+# PWA's confirmation queue; answers there become learned rules.
+
+# Domains whose observations are always sensitive (local model unless llm.routing is cloud).
+sensitive_domains: [work]
+
+# Domains without a plan file that should still be selectable.
+domains:
+  work: Work
+
+# Repository directory name → domain, or {domain, goal}.
+repos:
+  my-resume: jobs
+  thesis: {domain: phd, goal: research-hours}
+
+# Language seen in a commit or project → goal it counts toward ("<domain>/<goal>").
+languages:
+  go: jobs/golang
+
+# Window activity (from a window tracker shipping to /api/ingest).
+windows:
+  - {app: Preview, title: "(?i)arxiv|\\.pdf", domain: phd, goal: research-hours}
+
+# Email senders (address or @domain).
+senders:
+  "@greenhouse.io": jobs

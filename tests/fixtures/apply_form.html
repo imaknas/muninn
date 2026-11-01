@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- An invented application form drawn the way Greenhouse draws one: plain fields, dropdowns drawn by the page
+     (role=combobox, options appear on click), a group of checkboxes, a file field. After send, what the address asks
+     for: ?then=captcha, ?then=code or ?then=invalid; else it says it took the application. -->
+<html lang="en"><head><meta charset="utf-8"><title>Job Application for Staff Engineer at Example Co</title>
+<style>.menu{border:1px solid #ccc}</style></head>
+<body><h1>Staff Engineer</h1>
+<form id="f">
+  <label>First Name <input id="first_name" aria-required="true"></label>
+  <label>Country <input id="country" role="combobox" data-list="Taiwan +886,Thailand +66,Tanzania +255" data-search="1"></label>
+  <label>Location <input id="candidate-location" role="combobox" data-list="Taipei, Taipei City, Taiwan,New Taipei City, Taiwan" data-sep="|" data-search="1"></label>
+  <label>Will you require visa sponsorship? <input id="question_1" role="combobox" data-list="Yes,No"></label>
+  <fieldset id="question_2[]"><legend>Guidelines</legend><label><input type="checkbox" id="question_2[]_9"> Acknowledge/Confirm</label></fieldset>
+  <label>Resume <input type="file" id="resume"></label>
+  <label>Why? <textarea id="question_3"></textarea></label>
+  <button type="submit">Submit application</button>
+</form>
+<script>
+  // a dropdown the page draws: options appear when it is clicked (or typed in, filtered), picking one fills it in
+  for (const input of document.querySelectorAll("[role=combobox]")) {
+    const all = input.dataset.sep ? ["Taipei, Taipei City, Taiwan", "New Taipei City, Taiwan"] : input.dataset.list.split(",");
+    const show = () => {
+      document.querySelectorAll(".menu").forEach((m) => m.remove());
+      const q = input.dataset.search ? input.value.toLowerCase() : "";
+      if (input.dataset.search && !q) return;
+      const menu = document.createElement("div");
+      menu.className = "menu"; menu.setAttribute("role", "listbox");
+      for (const o of all.filter((x) => x.toLowerCase().includes(q))) {
+        const d = document.createElement("div");
+        d.setAttribute("role", "option"); d.textContent = o;
+        d.onclick = () => { input.value = o; input.dataset.chosen = o; menu.remove(); };
+        menu.appendChild(d);
+      }
+      input.after(menu);
+    };
+    input.addEventListener("click", show);
+    input.addEventListener("input", () => setTimeout(show, 50));
+  }
+  document.getElementById("f").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const then = new URLSearchParams(location.search).get("then");
+    if (then === "captcha") {
+      const f = document.createElement("iframe");
+      f.title = "recaptcha challenge expires in two minutes"; f.src = "about:blank#bframe"; f.width = 300; f.height = 300;
+      document.body.appendChild(f);
+    } else if (then === "code") {
+      document.body.insertAdjacentHTML("beforeend", "<p>Enter the 8-character security code sent to your email</p>");
+    } else if (then === "invalid") {
+      document.getElementById("question_3").setAttribute("aria-invalid", "true");
+    } else {
+      const chosen = [...document.querySelectorAll("[role=combobox]")].map((i) => i.id + "=" + (i.dataset.chosen || "")).join(";");
+      const files = document.getElementById("resume").files.length;
+      const checked = document.getElementById("question_2[]_9").checked;
+      document.body.innerHTML = `<h1>Thank you for applying.</h1><p id="got">${document.getElementById("first_name").value};${chosen};files=${files};checked=${checked}</p>`;
+    }
+  });
+</script>
+</body></html>
