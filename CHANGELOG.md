@@ -3,6 +3,16 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.7.0 (2026-11-01)
+
+### New
+
+- **activity:** Codex sessions count as your time and go into the weekly reflection, beside Claude Code's
+
+### Fixed
+
+- **records:** A record id sent twice with other content shows the same, whichever arrived first
+
 ## v0.6.1 (2026-11-01)
 
 ### Fixed
