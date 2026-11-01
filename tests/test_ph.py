@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 
 from muninn.core import ph
+from muninn.package import CONTRACTS
 
-ROOT = Path(__file__).resolve().parents[1] / "contracts" / "vendor" / "principal-handoff"
+ROOT = CONTRACTS / "vendor" / "principal-handoff"
 EXTS = ph.extensions(ROOT)
 
 

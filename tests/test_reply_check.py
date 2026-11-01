@@ -10,8 +10,9 @@ from conftest import RecordingLLM
 from muninn.adapters.llm.reply_check import ReplyCheck, schemas
 from muninn.core.llm_router import CloudFirst, LLMRequest, LLMRouter
 from muninn.core.models import Sensitivity
+from muninn.package import CONTRACTS
 
-CONTRACTS = Path(__file__).resolve().parents[1] / "contracts"
+CONTRACTS = CONTRACTS
 OK = json.dumps({"actions": [], "reply": "好。"}, ensure_ascii=False)
 WRONG = json.dumps({"actions": [], "reply": "好。", "topic": {"title": "牙醫", "state": "someday"}}, ensure_ascii=False)
 

@@ -1,4 +1,4 @@
-"""The web API keeps to its contract (contracts/web-api.v1.schema.json, generated from the pages'
+"""The web API keeps to its contract (src/muninn/contracts/web-api.v1.schema.json, generated from the pages'
 own declarations in types.ts): every route the app serves is in it, or listed below as one that
 machines call, and every route answers the shape it declares, for a newcomer with nothing yet and
 for a world with something on every page. The pages can be redesigned against this contract alone."""
@@ -12,13 +12,14 @@ from pathlib import Path
 from typing import Any, Callable
 
 import pytest
+from muninn.package import CONTRACTS
 from jsonschema import Draft202012Validator
 from starlette.routing import Mount, Route
 
 from world import World
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT = json.loads((ROOT / "contracts" / "web-api.v1.schema.json").read_text(encoding="utf-8"))
+CONTRACT = json.loads((CONTRACTS / "web-api.v1.schema.json").read_text(encoding="utf-8"))
 
 # routes that machines call, not the pages, and where their shape is kept instead
 MACHINES = {
@@ -29,12 +30,12 @@ MACHINES = {
     "POST /api/ingest/location/{app}": "a tracking app on the phone (core/location.py, one implementation per app)",
     "POST /api/ingest/health": "an iOS Shortcut (steps, sleep)",
     "POST /api/ingest/focus": "an iOS Shortcut (Focus on and off)",
-    "POST /api/messages": "contracts/messages.v1.schema.json",
-    "POST /api/records": "Principal Handoff 0.3 records from the projects (contracts/vendor/principal-handoff)",
+    "POST /api/messages": "src/muninn/contracts/messages.v1.schema.json",
+    "POST /api/records": "Principal Handoff records from the projects (src/muninn/contracts/vendor/principal-handoff)",
     "GET /api/records": "Principal Handoff 0.3 records for a project, read from a cursor",
     "POST /api/records/ack": "a project acknowledging records up to a cursor",
-    "POST /api/permission-requests": "contracts/permission-requests.v2.schema.json",
-    "GET /api/permission-requests/{rid}": "contracts/permission-requests.v2.schema.json",
+    "POST /api/permission-requests": "src/muninn/contracts/permission-requests.v2.schema.json",
+    "GET /api/permission-requests/{rid}": "src/muninn/contracts/permission-requests.v2.schema.json",
     "GET /api/leases/{lease_id}/events": "server-sent events, read by talk.ts as they come",
     "GET /api/changes/events": "server-sent events, read by app.ts while the app is in view",
     "GET /api/documents/{name}": "a file, opened as a link",
@@ -61,7 +62,7 @@ def test_the_contract_is_what_types_ts_declares():
     spec = importlib.util.spec_from_file_location("web_api_schema", ROOT / "bin" / "web_api_schema.py")
     gen = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(gen)
-    assert (ROOT / "contracts" / "web-api.v1.schema.json").read_text(encoding="utf-8") == gen.render(), \
+    assert (CONTRACTS / "web-api.v1.schema.json").read_text(encoding="utf-8") == gen.render(), \
         "types.ts changed: run uv run python bin/web_api_schema.py"
 
 

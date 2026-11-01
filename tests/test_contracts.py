@@ -1,5 +1,5 @@
 """What Muninn hands to other systems matches its published schemas
-(contracts/*.schema.json): the real CLI output, run on a real store."""
+(src/muninn/contracts/*.schema.json): the real CLI output, run on a real store."""
 
 from __future__ import annotations
 
@@ -14,8 +14,9 @@ from muninn.config import Config
 from muninn.core.project_messages import parse
 from muninn.core.timewin import iso_week
 from muninn.main import build, main
+from muninn.package import CONTRACTS
 
-CONTRACTS = Path(__file__).parent.parent / "contracts"
+CONTRACTS = CONTRACTS
 
 
 def schema(name: str) -> Draft202012Validator:

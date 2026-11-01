@@ -57,7 +57,7 @@ sources ──► attribution ──► store ──► drift rules ──► co
 - **Claude Code 對話紀錄**:時間戳、工作目錄和 session id;
   只有*有人在場*的活動才算(一則人下的 prompt 加上之後的 10 分鐘),
   所以 agent 自己跑的時間不算你的時間。不取訊息內文。
-- **電腦活動**(`contracts/activity.v1.md`):電腦上的收集器送來的東西;
+- **電腦活動**(`src/muninn/contracts/activity.v1.md`):電腦上的收集器送來的東西;
   Mac 收集器(`src/muninn/collectors/mac`,用設定頁上那一行指令安裝)送出非 AFK 時的
   ActivityWatch 視窗活動(跟瀏覽器擴充功能重疊的 Chrome 視窗會帶
   `browser_profile=work`;擴充功能只裝在工作用的 profile)、筆電的 commit metadata,
@@ -166,8 +166,9 @@ src/muninn/adapters/   store (SQLite), plans (YAML), sources, LLM backends,
 src/muninn/adapters/web/ts/   the PWA in TypeScript (strict), compiled into web/static/
                        by `npm run build`; the compiled .js is not committed
 src/muninn/main.py     composition root and CLI (the only place adapters are chosen)
+src/muninn/contracts/  the interfaces other systems read or post, and the formats Muninn reads
+                       (schemas, model decision points), shipped inside the package
 examples/              config.yaml and attribution.yaml templates for data/
-contracts/             JSON Schemas of what other systems read or post
 ```
 
 儲存層是 `core/ports.py` 裡的一組小 port,每種紀錄一個
@@ -175,7 +176,7 @@ contracts/             JSON Schemas of what other systems read or post
 所以另一種後端可以一個 port 一個 port 地寫;`Store` 是全部合在一起,
 只有 composition root 和 engine 會拿它(`tests/test_architecture.py` 會檢查這點)。
 
-其他系統依賴四個介面,每個都發佈在 `contracts/` 裡並帶版本
+其他系統依賴四個介面,每個都發佈在 `src/muninn/contracts/` 裡並帶版本
 (每個 payload 都有 `"v": 1`):`muninn handoffs --json`、
 `muninn digests --json`、`muninn tasks --json` 和 `POST /api/messages`。
 新增欄位不換版本;改名或改變意義就是新版本,跟舊版本並存,直到讀取端都搬過去。

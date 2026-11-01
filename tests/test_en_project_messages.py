@@ -9,6 +9,7 @@ from datetime import timedelta
 
 from muninn.core import ph
 from muninn.languages import language
+from muninn.package import CONTRACTS
 
 from conftest import at, make_harness
 
@@ -28,7 +29,7 @@ def rec(type_, key, ext="acts/0.4", id_=None, origin="requester", by="hub:regist
 def out(h):
     records, cursor = h.engine.records_out.since(P, 0)
     h.engine.records_ack(P, cursor)
-    exts = ph.extensions(__import__("pathlib").Path(__file__).resolve().parents[1] / "contracts" / "vendor" / "principal-handoff")
+    exts = ph.extensions(CONTRACTS / "vendor" / "principal-handoff")
     for r in records:
         assert ph.validate(r, exts[r["ext"]], h.engine.parties)[1] == [], r
     return records

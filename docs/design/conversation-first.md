@@ -118,7 +118,7 @@ Under this rule:
 1. **Every message is first judged for who it is for**. A new decision point, `turn_topic` (multiple choice, `kind: decide`): does this message continue the current topic, switch to another
    ongoing topic (listed), or start a new thing? Like other decisions it follows the routing setting (the user's setting is everything to the cloud); messages marked
    local-only, such as deep-talk handoffs, are not included. Messages that name a number ("continue the idea1 discussion") do not ask the model and go straight to that thing's conversation. It is registered in
-   `contracts/llm-points.yaml`, and its accuracy is measured with evals.
+   `src/muninn/contracts/llm-points.yaml`, and its accuracy is measured with evals.
 2. **The topic decides who takes over**: general matters go to Muninn itself (the current understanding and tools); a project's or an idea's experiment goes to that project's session.
    Borrowing is automatic when needed: when the user asks about a project ("How far along is the drainage in the garden project?"), the `talk_to_project` tool hands this part of the conversation to
    that project's session; when an idea needs an experiment, it is handed to its sandbox. Returning happens without asking: when the session says it has gone idle, or the user moves on to something else, it is handed back

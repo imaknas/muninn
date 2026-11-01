@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 
 from muninn.adapters.project_records import FileProjectRecords, owners_match, parse_todos, unowned_headings
+from muninn.package import CONTRACTS
 
 FIXTURES = Path(__file__).parent / "fixtures" / "project_records"
 TODOS = FIXTURES / "todo.md"
@@ -68,7 +69,7 @@ def test_registered_lines_follow_the_owner_label_from_the_contract_fixture():
 
     from muninn.core.open_items import registered_marker
 
-    lines = (Path(__file__).parent.parent / "contracts/vendor/records/fixtures/state-todo.v1.example.md").read_text().splitlines()
+    lines = (CONTRACTS / "vendor" / "records" / "fixtures" / "state-todo.v1.example.md").read_text().splitlines()
     keyed = [line for line in lines if "task-example" in line]
     assert len(keyed) == 2 and all(registered_marker("我")(line) for line in keyed)
     assert not any(registered_marker("Ada")(line) for line in keyed)

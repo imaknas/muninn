@@ -1,4 +1,4 @@
-"""Computer activity from any collector (contracts/activity.v1.md): what keeps to the contract is kept, as the core
+"""Computer activity from any collector (src/muninn/contracts/activity.v1.md): what keeps to the contract is kept, as the core
 reads it, and what does not is refused with why while the rest of the post is kept."""
 
 from __future__ import annotations

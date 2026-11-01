@@ -28,9 +28,9 @@ change by accident; when one fails, it says what to run:
 - `tests/golden/command_prompt.txt` is the routing prompt word for word. A change to a tool's description or to the
   prompt shows up there; look at the diff, then write the new one:
   `uv run python bin/prompt_snapshot.py --language zh-TW | jq -j .route > tests/golden/command_prompt.txt`.
-- `contracts/web-api.v1.schema.json` is generated from `ts/types.ts`: change the types, then run
+- `src/muninn/contracts/web-api.v1.schema.json` is generated from `ts/types.ts`: change the types, then run
   `uv run python bin/web_api_schema.py`.
-- `contracts/llm-points.yaml` declares every place a model is asked something, with the schema of its reply; a new
+- `src/muninn/contracts/llm-points.yaml` declares every place a model is asked something, with the schema of its reply; a new
   `LLMRequest.task` needs an entry there (docs/design/llm-points.md).
 
 Tests use invented people, companies and data only, never anything real.

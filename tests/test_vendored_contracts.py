@@ -1,5 +1,5 @@
 """Muninn reads three formats another system produces, kept here as copies
-(contracts/vendor/records/). The producer checks nightly that the copies still
+(src/muninn/contracts/vendor/records/). The producer checks nightly that the copies still
 match its originals; these tests check that Muninn's readers agree with the
 copies, using the producer's own example files. `{owner}` in the contracts is
 the user's label from config; the examples use 「我」."""
@@ -13,8 +13,9 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from muninn.adapters.project_records import parse_todos, unowned_headings
+from muninn.package import CONTRACTS
 
-VENDOR = Path(__file__).parent.parent / "contracts" / "vendor" / "records"
+VENDOR = CONTRACTS / "vendor" / "records"
 OWNER = "我"
 
 
@@ -101,7 +102,7 @@ def test_the_handover_has_what_the_summary_card_shows():
 
 
 def test_muninns_permission_request_contract_v2_says_what_is_asked_by_kind():
-    d = _defs("permission-requests.v2.schema.json")  # Muninn's own, in contracts/
+    d = _defs("permission-requests.v2.schema.json")  # Muninn's own, in src/muninn/contracts/
     assert not list(d["request"].iter_errors({"v": 2, "id": "L:t", "lease": "L", "project": "garden", "kind": "open_web",
                                               "summary": "打開 arxiv 的論文頁", "target": "https://arxiv.org/abs/1"}))
     assert not list(d["request"].iter_errors({"v": 2, "id": "L:q", "kind": "ask_user", "summary": "問你要哪個", "question": {

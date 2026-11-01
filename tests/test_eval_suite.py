@@ -9,8 +9,9 @@ from muninn.adapters.llm.reply_check import ReplyCheck, schemas
 from muninn.core import eval_suite
 from muninn.core.eval_suite import SuiteCase, in_wrong_language, score
 from muninn.main import load_suite, suite_systems
+from muninn.package import CONTRACTS
 
-CONTRACTS = Path(__file__).resolve().parents[1] / "contracts"
+CONTRACTS = CONTRACTS
 
 
 SAID_RIGHT = {"zh-TW": "好", "en": "Done"}  # a route reply in each language

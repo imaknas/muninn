@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The web API contract (contracts/web-api.v1.schema.json), generated from the pages' own
+"""The web API contract (src/muninn/contracts/web-api.v1.schema.json), generated from the pages' own
 declarations of what the server answers (src/muninn/adapters/web/ts/types.ts).
 
 types.ts uses a small part of TypeScript: interfaces and type aliases made of strings, numbers,
@@ -25,7 +25,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 TYPES = ROOT / "src" / "muninn" / "adapters" / "web" / "ts" / "types.ts"
-CONTRACT = ROOT / "contracts" / "web-api.v1.schema.json"
+CONTRACT = ROOT / "src" / "muninn" / "contracts" / "web-api.v1.schema.json"
 
 TOKEN = re.compile(r'\s*(?:(//[^\n]*)|("(?:[^"\\]|\\.)*")|([A-Za-z_][A-Za-z0-9_]*)|(\d+)|(\S))')
 GENERIC = {"List", "Record", "Partial"}

@@ -1,4 +1,4 @@
-"""The registry of the model's decision points (contracts/llm-points.yaml) and the code agree:
+"""The registry of the model's decision points (src/muninn/contracts/llm-points.yaml) and the code agree:
 every point the code asks a model about is declared, every declared point is used, and each one
 says what it answers with, what happens when the model fails, and how it is scored."""
 
@@ -14,10 +14,11 @@ from ruamel.yaml import YAML
 
 from muninn.core.evals import SCORERS
 from muninn.core.task_models import GROUPS
+from muninn.package import CONTRACTS
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "muninn"
-REGISTRY = YAML(typ="safe").load((ROOT / "contracts" / "llm-points.yaml").read_text(encoding="utf-8"))
+REGISTRY = YAML(typ="safe").load((CONTRACTS / "llm-points.yaml").read_text(encoding="utf-8"))
 POINTS: dict = REGISTRY["points"]
 ON_FAILURE = {"skip", "retry_later", "ask_user", "say_so", "default"}
 MATERIAL = {"cloud_safe", "personal", "sensitive", "local_only"}
@@ -58,13 +59,13 @@ def tasks_in_code() -> set[str]:
 def test_the_registry_keeps_to_the_shared_format():
     import jsonschema
 
-    shared = json.loads((ROOT / "contracts" / "vendor" / "records" / "llm-points.v1.schema.json").read_text(encoding="utf-8"))
+    shared = json.loads((CONTRACTS / "vendor" / "records" / "llm-points.v1.schema.json").read_text(encoding="utf-8"))
     jsonschema.validate(REGISTRY, shared)
 
 
 def test_every_point_the_code_asks_about_is_declared_and_every_declared_one_is_used():
     code = tasks_in_code()
-    assert code - set(POINTS) == set(), "asked of a model but not in contracts/llm-points.yaml"
+    assert code - set(POINTS) == set(), "asked of a model but not in src/muninn/contracts/llm-points.yaml"
     assert set(POINTS) - code == set(), "declared but no longer asked"
 
 
@@ -84,7 +85,7 @@ def test_each_point_says_what_it_needs_to(name):
     out = p["output"]
     assert out["format"] in ("json", "text")
     if out["format"] == "json":
-        schema = ROOT / "contracts" / out["schema"]  # relative to the registry's own directory
+        schema = CONTRACTS / out["schema"]  # relative to the registry's own directory
         assert schema.is_file(), f"{name}: no schema {out['schema']}"
         assert json.loads(schema.read_text(encoding="utf-8"))["type"] == "object"
 
@@ -130,7 +131,7 @@ def _enums(schema, path: str = "") -> dict[str, list]:
 
 
 def _schema(name: str) -> dict:
-    return json.loads((ROOT / "contracts" / POINTS[name]["output"]["schema"]).read_text(encoding="utf-8"))
+    return json.loads((CONTRACTS / POINTS[name]["output"]["schema"]).read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("name", sorted(n for n, p in POINTS.items()

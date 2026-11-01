@@ -1,6 +1,6 @@
 # Decision point registry (design proposal)
 
-Status: done (2026-10-24): contracts/llm-points.yaml, contracts/llm/*.schema.json, tests/test_llm_points.py, `muninn eval --coverage`. The format is shared with another system (contracts/vendor/records/llm-points.v1.schema.json), and the tests validate against it.
+Status: done (2026-10-24): src/muninn/contracts/llm-points.yaml, src/muninn/contracts/llm/*.schema.json, tests/test_llm_points.py, `muninn eval --coverage`. The format is shared with another system (src/muninn/contracts/vendor/records/llm-points.v1.schema.json), and the tests validate against it.
 
 ## The problem
 
@@ -16,7 +16,7 @@ list saying what each point judges, what its output looks like, what happens whe
 
 ## Proposal: one registry file, plus tests that block
 
-`contracts/llm-points.yaml`, one entry per decision point:
+`src/muninn/contracts/llm-points.yaml`, one entry per decision point:
 
 ```yaml
 v: 1

@@ -25,7 +25,7 @@ mail_accounts: []              # example below; kind work = sensitive (local unl
 #  - {name: personal, kind: personal, provider: gmail}
 #  - {name: work, kind: work, provider: outlook}
 cloud_mail: false              # true: personal mail may be read by the cloud model
-# Where your projects live. "local": plain folders (only the ones listed take part; contracts/local-projects.v1.md
+# Where your projects live. "local": plain folders (only the ones listed take part; src/muninn/contracts/local-projects.v1.md
 # says what Muninn reads and writes in them). "external": another system keeps them (the settings below).
 projects:
   side: local

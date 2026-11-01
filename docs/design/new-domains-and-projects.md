@@ -56,10 +56,10 @@ The wiring code picks the implementations from the settings; the core only sees 
 **Implementation two: a built-in local version** (so people who have only Muninn can use it too):
 - Projects: folders allowed in the settings (not everything under workspace_roots may be lent; in privacy mode work projects cannot be sent to the cloud).
 - To-dos, status: TODO.md / STATE.md in the folder.
-- Handing off: written into `<project>/.muninn/inbox.md`; receiving: read from `<project>/.muninn/outbox.yaml` (format in contracts/local-projects.v1.md).
+- Handing off: written into `<project>/.muninn/inbox.md`; receiving: read from `<project>/.muninn/outbox.yaml` (format in src/muninn/contracts/local-projects.v1.md).
 - That project's agent has to know to read the inbox: this is written in the docs and the user adds it themselves; Muninn does not modify other projects' CLAUDE.md.
 - Deep sessions: done last. Not just running `claude -p` once; it needs the same contract: permission cards, idle reclaim, quota, handoff summary, and real write-blocking settings (writing it only in the prompt is not enough).
-- The formats of both implementations (to-dos, status, handoffs, inbox/outbox) all go into `contracts/` and run the same set of contract tests.
+- The formats of both implementations (to-dos, status, handoffs, inbox/outbox) all go into `src/muninn/contracts/` and run the same set of contract tests.
 - Two levels of read/write: by default, read-only discussion; writing files and running tools is a separate level that needs the user's permission.
 
 ## Order and division of work

@@ -66,7 +66,7 @@ sources ──► attribution ──► store ──► drift rules ──► co
 - **Claude Code transcripts**: timestamps, working directory and session id;
   only *attended* activity counts (a human prompt and the 10 minutes after
   it), so an agent running on its own is not the user's time. No message text.
-- **Computer activity** (`contracts/activity.v1.md`): what a collector on a
+- **Computer activity** (`src/muninn/contracts/activity.v1.md`): what a collector on a
   computer sends; the Mac collector (`src/muninn/collectors/mac`, installed with
   the line on the settings page) sends ActivityWatch
   window activity while not AFK (Chrome windows overlapping the browser
@@ -202,8 +202,9 @@ src/muninn/adapters/   store (SQLite), plans (YAML), sources, LLM backends,
 src/muninn/adapters/web/ts/   the PWA in TypeScript (strict), compiled into web/static/
                        by `npm run build`; the compiled .js is not committed
 src/muninn/main.py     composition root and CLI (the only place adapters are chosen)
+src/muninn/contracts/  the interfaces other systems read or post, and the formats Muninn reads
+                       (schemas, model decision points), shipped inside the package
 examples/              config.yaml and attribution.yaml templates for data/
-contracts/             JSON Schemas of what other systems read or post
 ```
 
 Storage is a set of small ports in `core/ports.py`, one per kind of record
@@ -212,7 +213,7 @@ ones it uses, so another backend can be written port by port; `Store` is all
 of them together, and only the composition root and the engine take it
 (`tests/test_architecture.py` checks this).
 
-Other systems rely on four interfaces, each published in `contracts/` with a
+Other systems rely on four interfaces, each published in `src/muninn/contracts/` with a
 version (`"v": 1` in every payload): `muninn handoffs --json`,
 `muninn digests --json`, `muninn tasks --json` and `POST /api/messages`.
 Adding a field keeps the version; renaming one or changing its meaning is a

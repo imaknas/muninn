@@ -7,7 +7,7 @@ and the tests will tell you what broke.
 
 - **Source**: `src/muninn/adapters/web/ts/types.ts`. The final `Api` interface is "each path → what it returns on success";
   the other interfaces are the various shapes inside the responses.
-- **Generated**: `uv run python bin/web_api_schema.py` turns it into `contracts/web-api.v1.schema.json` (JSON Schema).
+- **Generated**: `uv run python bin/web_api_schema.py` turns it into `src/muninn/contracts/web-api.v1.schema.json` (JSON Schema).
   Rerun it after changing types.ts; a test checks that the two agree.
 - **Rules**: a response may carry extra fields (adding is not breaking); a declared field without `?` must be present, with the right type.
   4xx always returns `ErrorReply` (`{error}`). Removing a field or changing its type = changing this contract, and the screens must change at the same time.

@@ -8,6 +8,7 @@ from datetime import timedelta
 import pytest
 
 from muninn.core import ph
+from muninn.package import CONTRACTS
 
 from conftest import at, make_harness
 
@@ -32,7 +33,7 @@ def out(h, project=P):
     """What the project reads, and has (it acknowledges what it read)."""
     records, cursor = h.engine.records_out.since(project, 0)
     h.engine.records_ack(project, cursor)
-    exts = ph.extensions(__import__("pathlib").Path(__file__).resolve().parents[1] / "contracts" / "vendor" / "principal-handoff")
+    exts = ph.extensions(CONTRACTS / "vendor" / "principal-handoff")
     for r in records:  # everything Muninn tells is a valid record from the principal side (in 0.4, whatever its label)
         assert ph.validate(ph.upgraded(r), exts[ph.upgraded(r)["ext"]], h.engine.parties)[1] == [], r
     return records

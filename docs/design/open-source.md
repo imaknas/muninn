@@ -62,7 +62,7 @@ Line numbers are as of main at d488f16.
 **JSON**
 - There is only one flag, json_mode: Ollama writes it into the prompt (ollama.py:34-36); neither the CLI nor the API uses it (claude_cli.py:135-165, anthropic_api.py:56-70).
 - core has 15 places that tolerate bad output with `find("{")`, spread over 14 files.
-- There are 18 output schemas (contracts/llm/); the 22 decision points are in contracts/llm-points.yaml:21-280.
+- There are 18 output schemas (src/muninn/contracts/llm/); the 22 decision points are in src/muninn/contracts/llm-points.yaml:21-280.
 
 **Failures and lost login**
 - `stood_in` only means the local model stood in for the cloud (llm_router.py:178).
@@ -101,7 +101,7 @@ Line numbers are as of main at d488f16.
 - External contracts:
   - `handoffs --json` (main.py:594-606);
   - POST /api/messages (README.md:79-85);
-  - contracts/*.v1;
+  - src/muninn/contracts/*.v1;
   - Principal Handoff 0.3 (vendored, Apache-2.0, with LICENSE and NOTICE).
 - Principal Handoff files are read by repo path (main.py:274, assembly.py:168).
 
@@ -117,7 +117,7 @@ Line numbers are as of main at d488f16.
 **Other**
 - command_trust's rules are written for macOS (command_trust.py:18-19, :27).
 - ClaudeCodeSource is always built (main.py:191) and reads ~/.claude/projects (config.py:61); if the directory doesn't exist it is skipped (claude_code.py:99-100); reflection reads it too (main.py:259).
-- A copy of the platform contracts is in contracts/vendor/records/ (synced from agent-hub, checked by the platform every night).
+- A copy of the platform contracts is in src/muninn/contracts/vendor/records/ (synced from agent-hub, checked by the platform every night).
 - **agent-hub's name appears in code and docs**:
   - Where: llm_config.py:3, :9, :137, config.py:67, examples/config.yaml:51, README.md:114.
   - The wording is "the config shape is the same as agent-hub's".
@@ -255,7 +255,7 @@ Based on version two of agent-hub's provider design (10-29) and its reply of 10-
 | Tiers | fast / standard / strong | Same | — |
 | Per-decision-point override | `llm.points.<point>: {provider, model}` | Only `llm.models` (per task group) | Add `llm.points` with the same name and shape; a point's setting overrides its group's |
 | Model context | `{name, context}`, length checked before sending | Read but unused | Don't send when over the context; the failure reason says "prompt too long" |
-| Structured output | Use the provider's schema mode where available; strip `<think>`; validate against the schema; on a failure, retry once with the error attached; no retry on truncation | One json_mode flag, plus 15 places in core that tolerate bad output with `find("{")` | Follow the platform's approach, in one place in the router, validating with contracts/llm/*.schema.json; the 15 tolerant spots collapse into one ✅ |
+| Structured output | Use the provider's schema mode where available; strip `<think>`; validate against the schema; on a failure, retry once with the error attached; no retry on truncation | One json_mode flag, plus 15 places in core that tolerate bad output with `find("{")` | Follow the platform's approach, in one place in the router, validating with src/muninn/contracts/llm/*.schema.json; the 15 tolerant spots collapse into one ✅ |
 | Keys | File is the default, env an option; set-key reads from stdin; doctor checks in the same environment as the scheduler | Both file and env; no set-key | A key pasted on the settings page is written to secrets (600); `muninn check` checks env keys in the service's environment |
 | Redaction before sending | Everything sent to any provider passes one redaction point that masks credential-like strings | None | The router redacts before sending to the cloud |
 | Local | `location: local` allows only loopback, private ranges and the tailnet | ✅ Same (plus host.docker.internal); at most one | `use`, `llm.models` and `llm.points` can point only at cloud providers: the local provider is only for privacy routing (the platform's points can point at the local provider; this differs on purpose, so the same backend never counts as both cloud and local in routing) |
@@ -272,7 +272,7 @@ Based on version two of agent-hub's provider design (10-29) and its reply of 10-
 
 **openai (Chat Completions-compatible)**: covers OpenAI, OpenRouter, Gemini's compatible endpoint, LM Studio and vLLM.
 - Photos are sent as data URIs; PDFs are not sent by default, only when declared in the config.
-- A strict schema needs every field to be required and `additionalProperties: false`; contracts/llm/*.schema.json doesn't meet that, and sending it as is gets a 400. So convert first, and use non-strict when conversion isn't possible.
+- A strict schema needs every field to be required and `additionalProperties: false`; src/muninn/contracts/llm/*.schema.json doesn't meet that, and sending it as is gets a 400. So convert first, and use non-strict when conversion isn't possible.
 - When a gateway rejects `response_format`, put the requirement in the prompt instead, log one warning per model, and list it in check. This does not count as switching models or services.
 
 **ollama (native API)**
@@ -491,5 +491,5 @@ Every step goes through deploy.sh's tests and smoke, and after each one the owne
 7. **Providers**: the default is four: claude, anthropic, openai and ollama, named the same as on the platform; native Gemini is deferred, and Gemini users go through its OpenAI-compatible endpoint.
 8. **Whether unknown models can read files**: the default is text only; they can read files once declared. Example: add one line in llm.capabilities and it can read photos.
 9. **Whether prompts fork per provider**: the default is no fork. Example: if a small model keeps getting route wrong, change the shared prompt first, verify it on both providers, then ship it.
-10. **The macOS laptop agent**: the default is to keep it, marked macOS-only and optional. The work folder and Chrome profile become parameters; the token is pasted in by hand instead of read from the server over ssh. ✅ (10-30) Computer activity is now an interface: `contracts/activity.v1.md`; `/api/ingest` checks against the contract (records that don't fit are rejected one by one with an explanation, and the rest are accepted); Muninn serves the collectors for download itself; the settings page gives a one-line install command and a passcode; the Mac collector is the first implementation.
+10. **The macOS laptop agent**: the default is to keep it, marked macOS-only and optional. The work folder and Chrome profile become parameters; the token is pasted in by hand instead of read from the server over ssh. ✅ (10-30) Computer activity is now an interface: `src/muninn/contracts/activity.v1.md`; `/api/ingest` checks against the contract (records that don't fit are rejected one by one with an explanation, and the rest are accepted); Muninn serves the collectors for download itself; the settings page gives a one-line install command and a passcode; the Mac collector is the first implementation.
 11. **Thinking effort and budget** (new): the default is the lowest thinking effort for the fast tier, the provider's default for standard, and no budget. Example: when the API bill for a month runs over expectations, set `budget.daily_usd`; once it is exceeded, non-essential decisions stop and a push goes out once.
