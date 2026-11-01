@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "core/schemas/record.schema.json",
-  "title": "Principal Handoff Core 0.4 record",
-  "description": "Members shared by every record, whatever its extension. Receivers MUST ignore members they do not know.",
+  "title": "Principal Handoff Core 0.5 record",
+  "description": "Members shared by every record, whatever its extension, module records included. Receivers MUST ignore members they do not know.",
   "type": "object",
   "required": [
     "ph",
@@ -18,10 +18,10 @@
   "properties": {
     "ph": {
       "description": "Core version.",
-      "const": "0.4"
+      "const": "0.5"
     },
     "ext": {
-      "description": "Extension name and version, e.g. acts/0.4.",
+      "description": "Extension name and version, e.g. acts/0.5.",
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*/[0-9]+\\.[0-9]+$"
     },
@@ -31,18 +31,9 @@
       "pattern": "^\\S{1,256}$"
     },
     "type": {
+      "description": "A core record type, or a module record type an extension's table lists (core sections 4 and 11).",
       "type": "string",
-      "enum": [
-        "raised",
-        "amended",
-        "withdrawn",
-        "settled",
-        "reopened",
-        "claimed",
-        "related",
-        "note",
-        "approved"
-      ]
+      "pattern": "^[a-z][a-z_]*$"
     },
     "origin": {
       "description": "Role that emitted the record.",
@@ -94,7 +85,7 @@
       }
     },
     "terms_rev": {
-      "description": "Terms version (need records), the version a settlement or approval was made against, or the version a claim or note refers to.",
+      "description": "Terms version (need records), the version a settlement was made against, or the version a claim or note refers to.",
       "type": "integer"
     },
     "outcome": {
@@ -102,7 +93,7 @@
       "pattern": "^[a-z][a-z_]*$"
     },
     "terms_digest": {
-      "description": "On settled: the terms digest (core section 5.3) of the need record it was made against.",
+      "description": "On settled: the terms digest (core section 4) of the need record it was made against.",
       "type": "string",
       "pattern": "^sha-256:[0-9a-f]{64}$"
     },
@@ -128,7 +119,8 @@
         },
         "under": {
           "type": "string",
-          "pattern": "\\S"
+          "pattern": "\\S",
+          "description": "Reference to the mandate; opaque except for the prefixes modules reserve (core section 11)."
         },
         "chain": {
           "type": "array",
@@ -157,107 +149,9 @@
         "basis": {
           "type": "string",
           "pattern": "\\S"
-        },
-        "proof": {
-          "type": "string",
-          "pattern": "\\S"
-        },
-        "verifiable": {
-          "description": "Independently verifiable proofs of facts (core section 5.2). Each entry carries exactly one of proof and proof_ref.",
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "id",
-              "format",
-              "statement"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-              },
-              "format": {
-                "type": "string",
-                "pattern": "^\\S{1,128}$"
-              },
-              "statement": {
-                "type": "string",
-                "pattern": "\\S"
-              },
-              "proof": {
-                "type": "string",
-                "pattern": "\\S"
-              },
-              "proof_ref": {
-                "type": "object",
-                "required": [
-                  "uri",
-                  "digest"
-                ],
-                "properties": {
-                  "uri": {
-                    "type": "string",
-                    "pattern": "\\S"
-                  },
-                  "digest": {
-                    "type": "string",
-                    "pattern": "^sha-256:[0-9a-f]{64}$"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "verified": {
-          "description": "What the principal side checked (core section 5.2); on settlements and principal-side notes only.",
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "of",
-              "verifier",
-              "result",
-              "at"
-            ],
-            "properties": {
-              "of": {
-                "type": "object",
-                "required": [
-                  "record",
-                  "entry"
-                ],
-                "properties": {
-                  "record": {
-                    "type": "string",
-                    "pattern": "^\\S{1,256}$"
-                  },
-                  "entry": {
-                    "type": "string",
-                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-                  }
-                }
-              },
-              "verifier": {
-                "type": "string",
-                "pattern": "^\\S{1,256}$"
-              },
-              "result": {
-                "type": "string",
-                "enum": [
-                  "valid",
-                  "invalid",
-                  "unsupported"
-                ]
-              },
-              "at": {
-                "type": "string",
-                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?([Zz]|[+-][0-9]{2}:[0-9]{2})$"
-              }
-            }
-          }
         }
-      }
+      },
+      "description": "Core members; other members are defined by modules (Evidence) and ignored by receivers that do not implement them."
     },
     "relation": {
       "type": "object",
@@ -293,22 +187,6 @@
               "pattern": "\\S"
             }
           }
-        },
-        "active": {
-          "type": "boolean"
-        }
-      }
-    },
-    "approval": {
-      "description": "On approved: what the approval binds (core section 5.3).",
-      "type": "object",
-      "required": [
-        "active"
-      ],
-      "properties": {
-        "terms_digest": {
-          "type": "string",
-          "pattern": "^sha-256:[0-9a-f]{64}$"
         },
         "active": {
           "type": "boolean"

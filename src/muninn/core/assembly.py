@@ -174,9 +174,11 @@ class Muninn:
         self.permissions = None  # PermissionDesk (what a lent session asks to do), set with the leases
         # Principal Handoff: who the user and Muninn are in its records, and the extensions Muninn implements
         self.parties = parties or handoff_records.parties_from(None, owner_label)
-        exts = ph_extensions or ph.extensions(Path(__file__).resolve().parents[1] / "contracts" / "vendor" / "principal-handoff")
-        self.records_in = handoff_records.Inbox(store, clock, self.parties, exts, self.messages, self.tasks, words=words)
-        self.records_out = handoff_records.Outbox(store, clock, self.parties, exts, words=words)
+        vendor = Path(__file__).resolve().parents[1] / "contracts" / "vendor"
+        exts = ph_extensions or ph.extensions(vendor / "principal-handoff", vendor / "principal-handoff-0.4")
+        self.handoff_versions = handoff_records.Versions(store)
+        self.records_in = handoff_records.Inbox(store, clock, self.parties, exts, self.messages, self.tasks, self.handoff_versions, words=words)
+        self.records_out = handoff_records.Outbox(store, clock, self.parties, exts, self.handoff_versions, words=words)
         self.open_items = open_items or OpenItems([
             DeadlineItems(self.understanding_plans, lambda: self.store.completed(), self.review_decisions),
             TrackerItems(self.understanding_plans),

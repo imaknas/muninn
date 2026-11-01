@@ -649,13 +649,14 @@ class EvalStore(Protocol):
 class RecordStore(Protocol):
     """The Principal Handoff records the projects sent, kept as they came (core section 10's deduplication)."""
 
-    def add_record(self, record: dict[str, Any], at: datetime, canonical: Callable[[dict[str, Any]], str]) -> str:
-        """Keeps the record: "new"; already held: "duplicate"; its id held with other content: the greater
-        canonical form is kept ("replaced" when that is this one)."""
+    def add_record(self, ext: str, record: dict[str, Any], at: datetime, canonical: Callable[[dict[str, Any]], str]) -> str:
+        """Keeps the record, as it came, among those of the extension named `ext` (whatever its version): "new";
+        already held: "duplicate"; its id held with other content: the greater canonical form is kept ("replaced"
+        when that is this one). `canonical` reads both in one version."""
         ...
 
     def records_of(self, ext: str, project: str, key: str) -> list[dict[str, Any]]:
-        """Every record held for one item, in arrival order."""
+        """Every record held for one item (`ext`: its extension by name), as each came, in arrival order."""
         ...
 
 

@@ -1,5 +1,6 @@
-"""Muninn as the principal side of Principal Handoff 0.4: the projects' records carried out through the tasks and
-questions, and what Muninn tells them read back as records that say who decided, valid by the specification."""
+"""Muninn as the principal side of Principal Handoff 0.5: the projects' records carried out through the tasks and
+questions, and what Muninn tells them read back as records that say who decided, valid by the specification in the
+version each project speaks."""
 
 from __future__ import annotations
 
@@ -15,8 +16,8 @@ from conftest import at, make_harness
 P = "garden"
 
 
-def rec(type_, key, ext="acts/0.4", id_=None, origin="requester", by="hub:registrar", **more):
-    return {"ph": "0.4", "ext": ext, "id": id_ or f"{type_[0]}:{key}", "type": type_, "origin": origin, "by": by,
+def rec(type_, key, ext="acts/0.5", id_=None, origin="requester", by="hub:registrar", **more):
+    return {"ph": ext.split("/")[1], "ext": ext, "id": id_ or f"{type_[0]}:{key}", "type": type_, "origin": origin, "by": by,
             "key": key, "project": P, "ts": "2026-10-22T09:00:00Z", **more}
 
 
@@ -33,8 +34,8 @@ def out(h, project=P):
     """What the project reads, and has (it acknowledges what it read)."""
     records, cursor = h.engine.records_out.since(project, 0)
     h.engine.records_ack(project, cursor)
-    exts = ph.extensions(CONTRACTS / "vendor" / "principal-handoff")
-    for r in records:  # everything Muninn tells is a valid record from the principal side (in 0.4, whatever its label)
+    exts = ph.extensions(CONTRACTS / "vendor" / "principal-handoff", CONTRACTS / "vendor" / "principal-handoff-0.4")
+    for r in records:  # everything Muninn tells is a valid record from the principal side, in the version it is told in
         assert ph.validate(ph.upgraded(r), exts[ph.upgraded(r)["ext"]], h.engine.parties)[1] == [], r
     return records
 
@@ -119,7 +120,7 @@ def test_a_project_no_longer_needing_the_only_ask_leaves_it_open_and_asks_him(h)
 
 
 def test_a_question_raised_waits_for_him_and_his_answer_is_the_principals(h):
-    q = {"ext": "decisions/0.4"}
+    q = {"ext": "decisions/0.5"}
     h.engine.records_in.receive([{**rec("raised", "dec-rose", id_="r:dec-rose", terms={"text": "紅的還白的?"}, terms_rev=1), **q}])
     [open_q] = h.engine.messages.open_questions()
     assert (open_q["id"], open_q["text"]) == ("dec-rose", "紅的還白的?")
@@ -127,17 +128,17 @@ def test_a_question_raised_waits_for_him_and_his_answer_is_the_principals(h):
                                         supersedes=["r:dec-rose"]), **q}])
     assert h.engine.messages.open_questions()[0]["text"] == "紅的、白的還粉的?"
     h.engine.messages.answer("dec-rose", "紅的")
-    [s] = [r for r in out(h) if r["ext"] == "decisions/0.4"]
+    [s] = [r for r in out(h) if r["ext"] == "decisions/0.5"]
     assert (s["outcome"], s["answer"], s["terms_rev"]) == ("decided", {"text": "紅的"}, 2)
     assert s["authority"] == {"kind": "principal", "decider": h.engine.parties.principal}
 
 
 def test_a_question_let_go_is_dismissed_and_one_answered_in_the_project_leaves_his_list(h):
-    q = {"ext": "decisions/0.4"}
+    q = {"ext": "decisions/0.5"}
     h.engine.records_in.receive([{**rec("raised", "dec-a", id_="r:dec-a", terms={"text": "A?"}, terms_rev=1), **q},
                                  {**rec("raised", "dec-b", id_="r:dec-b", terms={"text": "B?"}, terms_rev=1), **q}])
     h.engine.messages.dismiss("dec-a")
-    [s] = [r for r in out(h) if r["ext"] == "decisions/0.4"]
+    [s] = [r for r in out(h) if r["ext"] == "decisions/0.5"]
     assert s["outcome"] == "dismissed" and "answer" not in s
     h.engine.records_in.receive([{**rec("claimed", "dec-b", id_="c:dec-b", origin="agent", by="hub:garden", outcome="decided",
                                         answer={"text": "B 選二"}, evidence={"basis": "他在 session 裡說的"}), **q}])
@@ -151,7 +152,7 @@ def test_a_merge_and_a_date_he_moved_are_told_as_a_relation_and_a_note(h):
     h.engine.tasks.set_due("task-pots-1", "2026-11-02")
     records = out(h)
     [rel] = [r for r in records if r["type"] == "related"]
-    assert rel["key"] == "task-pots-2" and rel["relation"]["target"] == {"ext": "acts/0.4", "project": P, "key": "task-pots-1"}
+    assert rel["key"] == "task-pots-2" and rel["relation"]["target"] == {"ext": "acts/0.5", "project": P, "key": "task-pots-1"}
     assert any(r["type"] == "note" and r["about"] == {"key": "task-pots-1"} and "2026-11-02" in r["note"] for r in records)
     assert not [x for x in h.engine.handoffs() if x.get("effect") in ("same_as", "premise")]  # never a v1 handoff
 
@@ -193,19 +194,35 @@ def test_the_web_takes_and_gives_records_with_the_token(tmp_path):
 
 
 
-def test_a_project_still_speaking_0_3_is_read_as_0_4_and_answered_as_it_speaks(h):
+def test_a_project_is_told_in_the_version_it_is_configured_to_speak_and_first_spoke(h, caplog):
     old = {**raised("task-pots-1", "買陶盆"), "ph": "0.3", "ext": "acts/0.3"}
     assert h.engine.records_in.receive([old]) == [{"id": "r:task-pots-1", "status": "accepted"}]
     assert h.engine.records_in.receive([old])[0]["status"] == "duplicate"  # sent again: the same record
+    assert h.engine.records_in.receive([raised("task-pots-1", "買陶盆")])[0]["status"] == "duplicate"  # and in 0.5 too
     h.engine.tasks.close("task-pots-1", why="買好了")
     h.clock.t += timedelta(hours=1)
     [s] = [r for r in out(h) if r["type"] == "settled"]
     assert (s["ph"], s["ext"]) == ("0.3", "acts/0.3")
-    assert s["terms_digest"] == ph.terms_digest(ph.upgraded(old))  # over the record as 0.4 reads it (acts section 8)
-    h.engine.records_in.receive([raised("task-pots-2", "量陽台")])  # it speaks 0.4 now: answered so from here on
+    h.engine.records_in.receive([raised("task-pots-2", "量陽台")])  # a 0.5 record is read, but what it is told is configured
+    assert "configured to speak 0.3" in caplog.text
+    h.engine.handoff_versions.set("*", "acts", "0.5")  # every project, this one too, and those to come
+    assert h.engine.handoff_versions.of("blog", "acts") == "0.5"
     h.engine.tasks.close("task-pots-2", why="量好了")
     h.clock.t += timedelta(hours=1)
-    assert [(r["ph"], r["ext"]) for r in out(h) if r["type"] == "settled" and r["key"] == "task-pots-2"] == [("0.4", "acts/0.4")]
+    [s] = [r for r in out(h) if r["type"] == "settled" and r["key"] == "task-pots-2"]
+    assert (s["ph"], s["ext"], s["terms_digest"]) == ("0.5", "acts/0.5", ph.terms_digest(raised("task-pots-2", "量陽台")))
+
+
+def test_a_project_that_speaks_0_4_is_checked_under_0_4_and_told_in_it_bound_to_04s_digest(h):
+    need = rec("raised", "task-pots-1", ext="acts/0.4", id_="r:task-pots-1", terms={"text": "買陶盆"}, terms_rev=1)
+    claim = rec("claimed", "task-pots-1", ext="acts/0.4", id_="c:1", origin="agent", by="hub:garden", outcome="done",
+                evidence={"verifiable": [{"id": "x", "format": "f", "statement": "s"}]})  # no terms_rev: invalid in 0.4 only
+    assert [g["status"] for g in h.engine.records_in.receive([need, claim])] == ["accepted", "invalid"]
+    h.engine.tasks.close("task-pots-1", why="買好了")
+    h.clock.t += timedelta(hours=1)
+    [s] = [r for r in out(h) if r["type"] == "settled"]
+    assert (s["ph"], s["ext"]) == ("0.4", "acts/0.4")
+    assert s["terms_digest"] == ph._terms_digest_04(need) != ph.terms_digest(need)
 
 
 def test_a_task_that_came_the_v1_way_is_settled_the_v1_way(h):
@@ -234,20 +251,68 @@ def test_muninns_times_only_rise_and_another_projects_item_is_named_only_by_a_ur
     assert set(r["relation"]["target"]) == {"uri"} and "kitchen" not in r["relation"]["target"]["uri"] and rel
 
 
-def test_an_act_raised_again_under_another_key_waits_beside_it_and_is_his_to_settle(h):
-    h.engine.records_in.receive([raised("task-pots-1", "買陶盆"), raised("task-pots-2", "買兩個陶盆")])
-    h.engine.records_in.receive([rec("related", "task-pots-1", id_="rel:1", relation={"kind": "replaced_by", "active": True,
-                                                                                        "target": {"ext": "acts/0.4", "project": P, "key": "task-pots-2"}}),
-                                 rec("withdrawn", "task-pots-1", id_="w:1", reason="replaced", supersedes=["r:task-pots-1"])])
-    assert h.engine.tasks.get("task-pots-1")["status"] == "open" and not h.engine.pending_confirmations()  # not asked apart
-    h.engine.tasks.close("task-pots-2", why="買好了")
+def replace(h, old, new, rel_id="rel:1"):
+    h.engine.records_in.receive([rec("related", old, id_=rel_id, relation={"kind": "replaced_by", "active": True,
+                                                                         "target": {"ext": "acts/0.5", "project": P, "key": new}}),
+                                 rec("withdrawn", old, id_=f"w:{old}", reason="replaced", supersedes=[f"r:{old}"])])
+
+
+def replaced_question(h):
     [c] = [c for c in h.engine.pending_confirmations() if c.kind == "replaced"]
-    assert "買陶盆" in c.question and "買兩個陶盆" in c.question and c.data["neutral"]  # beside it, nothing put forward
+    return c
+
+
+def test_an_act_raised_again_is_asked_about_with_its_replacement_and_is_his_to_settle(h):
+    h.engine.records_in.receive([raised("task-pots-1", "買陶盆"), raised("task-pots-2", "買兩個陶盆")])
+    replace(h, "task-pots-1", "task-pots-2")
+    c = replaced_question(h)
+    assert "買陶盆" in c.question and "買兩個陶盆" in c.question and c.data["together"] and c.data["neutral"]
+    assert h.engine.tasks.get("task-pots-1")["status"] == "open"
+    h.engine.answer(c.id, c.options[0])  # the same as the new one
+    h.clock.t += timedelta(hours=1)
+    [s] = [r for r in out(h) if r["type"] == "settled" and r["key"] == "task-pots-1"]
+    assert (s["outcome"], s["authority"]["kind"]) == ("dropped", "principal") and "買兩個陶盆" in s["note"]
+    assert h.engine.tasks.get("task-pots-2")["status"] == "open"
+
+
+def test_once_its_replacement_is_settled_a_replaced_act_is_asked_about_on_its_own_never_settled_with_it(h):
+    h.engine.records_in.receive([raised("task-pots-1", "買陶盆"), raised("task-pots-2", "買兩個陶盆")])
+    replace(h, "task-pots-1", "task-pots-2")
+    together = replaced_question(h)
+    h.engine.tasks.close("task-pots-2", why="買好了")
+    c = replaced_question(h)
+    assert c.id != together.id and not c.data["together"] and c.data["neutral"]  # the earlier question taken back
     assert h.engine.tasks.get("task-pots-1")["status"] == "open"  # never settled from the replacement's settlement
     h.engine.answer(c.id, c.options[1])
     h.clock.t += timedelta(hours=1)
     [s] = [r for r in out(h) if r["type"] == "settled" and r["key"] == "task-pots-1"]
     assert (s["outcome"], s["authority"]["kind"]) == ("dropped", "principal")
+
+
+def test_a_replaced_act_whose_replacement_is_taken_back_or_withdrawn_is_asked_about_on_its_own(h):
+    h.engine.records_in.receive([raised("task-pots-1", "買陶盆"), raised("task-pots-2", "買兩個陶盆"), raised("task-pots-3", "量陽台"),
+                                 raised("task-pots-4", "量兩個陽台")])
+    replace(h, "task-pots-1", "task-pots-2")
+    h.engine.records_in.receive([rec("related", "task-pots-1", id_="rel:2", supersedes=["rel:1"],
+                                     relation={"kind": "replaced_by", "active": False,
+                                               "target": {"ext": "acts/0.5", "project": P, "key": "task-pots-2"}})])
+    assert not replaced_question(h).data["together"]  # no longer its single replacement
+    replace(h, "task-pots-3", "task-pots-4", rel_id="rel:3")
+    h.engine.records_in.receive([rec("withdrawn", "task-pots-4", id_="w:4", reason="not_needed", supersedes=["r:task-pots-4"])])
+    [c] = [c for c in h.engine.pending_confirmations() if c.kind == "replaced" and c.data["task"] == "task-pots-3"]
+    assert not c.data["together"] and "量兩個陽台" in c.question  # what became of its replacement is said
+
+
+def test_a_replaced_act_he_keeps_is_not_asked_about_again_and_a_claim_on_it_is_still_his_to_settle(h):
+    h.engine.tasks.grant_claims_mandate("專案說做完了就記成做完,我可以撤回")
+    h.engine.records_in.receive([raised("task-pots-1", "買陶盆"), raised("task-pots-2", "買兩個陶盆")])
+    replace(h, "task-pots-1", "task-pots-2")
+    h.engine.answer(replaced_question(h).id, replaced_question(h).options[2])  # both still to do
+    h.engine.tasks.close("task-pots-2", why="買好了")
+    assert not [c for c in h.engine.pending_confirmations() if c.kind == "replaced"]
+    h.engine.records_in.receive([rec("claimed", "task-pots-1", id_="c:1:agent", origin="agent", by="hub:garden", outcome="done",
+                                     evidence={"basis": "收據在 repo 裡"})])
+    assert h.engine.tasks.get("task-pots-1")["status"] == "open"  # not under the standing permission: he is asked
 
 
 def test_a_record_with_a_member_name_twice_is_refused_alone(tmp_path):
@@ -269,7 +334,7 @@ def test_a_record_with_a_member_name_twice_is_refused_alone(tmp_path):
     assert [r["status"] for r in got["results"]] == ["invalid", "accepted"]
 
 
-def test_records_kept_under_0_3_read_as_0_4_and_ids_are_unique_per_origin(tmp_path):
+def test_records_are_kept_as_they_came_and_an_id_is_unique_per_origin_and_type(tmp_path):
     import json
     import sqlite3
 
@@ -277,23 +342,25 @@ def test_records_kept_under_0_3_read_as_0_4_and_ids_are_unique_per_origin(tmp_pa
 
     db = tmp_path / "m.db"
     SqliteStore(db)
-    con = sqlite3.connect(db)  # as an older Muninn kept them
+    con = sqlite3.connect(db)  # as Muninn kept them under 0.4
     con.execute("DROP TABLE ph_records")
-    con.execute("CREATE TABLE ph_records (seq INTEGER PRIMARY KEY AUTOINCREMENT, ext TEXT NOT NULL, project TEXT NOT NULL, id TEXT NOT NULL,"
-                " key TEXT NOT NULL, record TEXT NOT NULL, received TEXT NOT NULL, UNIQUE (ext, project, id))")
-    old = {**raised("task-pots-1", "買陶盆"), "ph": "0.3", "ext": "acts/0.3"}
-    con.execute("INSERT INTO ph_records (ext, project, id, key, record, received) VALUES (?,?,?,?,?,?)",
-                ("acts/0.3", P, old["id"], old["key"], json.dumps(old), "2026-10-22T09:00:00+00:00"))
+    con.execute("CREATE TABLE ph_records (seq INTEGER PRIMARY KEY AUTOINCREMENT, ext TEXT NOT NULL, project TEXT NOT NULL,"
+                " origin TEXT NOT NULL, id TEXT NOT NULL, key TEXT NOT NULL, record TEXT NOT NULL, received TEXT NOT NULL,"
+                " UNIQUE (ext, project, origin, id))")
+    old = rec("raised", "task-pots-1", ext="acts/0.4", id_="r:task-pots-1", terms={"text": "買陶盆"}, terms_rev=1)
+    con.execute("INSERT INTO ph_records (ext, project, origin, id, key, record, received) VALUES (?,?,?,?,?,?,?)",
+                ("acts/0.4", P, "requester", old["id"], old["key"], json.dumps(old), "2026-10-22T09:00:00+00:00"))
     con.commit()
     con.close()
     store = SqliteStore(db)
-    [kept] = store.records_of("acts/0.4", P, "task-pots-1")
-    assert (kept["ph"], kept["ext"]) == ("0.4", "acts/0.4")
-    assert store.add_record(ph.upgraded(old), at(2026, 10, 22, 10), ph.canonical) == "duplicate"
-    assert store.get_state(ph.SPEAKS) == {P: "0.3"}  # answered as it last spoke, until it sends again
-    agents = {**ph.upgraded(old), "origin": "agent", "type": "note", "about": {"key": "task-pots-1"}}
-    assert store.add_record(agents, at(2026, 10, 22, 10), ph.canonical) == "new"  # the same id from another origin
-
+    assert store.records_of("acts", P, "task-pots-1") == [old]  # as it came
+    same = lambda r: ph.canonical(ph.converted(r))  # noqa: E731
+    assert store.add_record("acts", ph.converted(old), at(2026, 10, 22, 10), same) == "duplicate"  # the same record in 0.5
+    amended = {**ph.converted(old), "type": "amended", "terms": {"text": "買兩個陶盆"}, "terms_rev": 2}
+    assert store.add_record("acts", amended, at(2026, 10, 22, 10), same) == "new"  # the same id, another type (core section 10)
+    agents = {**ph.converted(old), "origin": "agent", "type": "note", "about": {"key": "task-pots-1"}}
+    assert store.add_record("acts", agents, at(2026, 10, 22, 10), same) == "new"  # the same id from another origin
+    assert [r["ph"] for r in store.records_of("acts", P, "task-pots-1")] == ["0.4", "0.5", "0.5"]
 
 
 def test_under_his_standing_permission_an_agents_claim_is_settled_as_delegated_and_a_registrars_is_still_asked(h):

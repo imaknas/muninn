@@ -21,15 +21,15 @@ def english(text: str) -> bool:
     return re.search(r"[一-鿿]", text) is None
 
 
-def rec(type_, key, ext="acts/0.4", id_=None, origin="requester", by="hub:registrar", **more):
-    return {"ph": "0.4", "ext": ext, "id": id_ or f"{type_[0]}:{key}", "type": type_, "origin": origin, "by": by,
+def rec(type_, key, ext="acts/0.5", id_=None, origin="requester", by="hub:registrar", **more):
+    return {"ph": ext.split("/")[1], "ext": ext, "id": id_ or f"{type_[0]}:{key}", "type": type_, "origin": origin, "by": by,
             "key": key, "project": P, "ts": "2026-10-22T09:00:00Z", **more}
 
 
 def out(h):
     records, cursor = h.engine.records_out.since(P, 0)
     h.engine.records_ack(P, cursor)
-    exts = ph.extensions(CONTRACTS / "vendor" / "principal-handoff")
+    exts = ph.extensions(CONTRACTS / "vendor" / "principal-handoff", CONTRACTS / "vendor" / "principal-handoff-0.4")
     for r in records:
         assert ph.validate(r, exts[r["ext"]], h.engine.parties)[1] == [], r
     return records
@@ -43,11 +43,11 @@ def test_progress_lands_in_the_inbox_titled_in_english():
 
 def test_a_question_let_go_tells_the_project_in_english_and_is_still_a_dismissal():
     h = make_harness(at(2026, 10, 22, 10), lang="en")
-    q = {"ext": "decisions/0.4"}
+    q = {"ext": "decisions/0.5"}
     h.engine.records_in.receive([{**rec("raised", "dec-a", id_="r:dec-a", terms={"text": "Red or white roses?"}, terms_rev=1), **q}])
     hand = h.engine.messages.dismiss("dec-a")
     assert hand["fact"].startswith("This question needs no answer") and hand["dismissed"] is True
-    [s] = [r for r in out(h) if r["ext"] == "decisions/0.4"]
+    [s] = [r for r in out(h) if r["ext"] == "decisions/0.5"]
     assert s["outcome"] == "dismissed" and s["note"] == "You skipped this question in Muninn" and "answer" not in s
 
 

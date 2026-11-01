@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "acts/schemas/raised.schema.json",
-  "title": "Principal Handoff Acts 0.4: raised",
+  "title": "Principal Handoff Acts 0.5: raised",
   "description": "Requester -> principal side: a new item.",
   "$ref": "../../core/schemas/record.schema.json",
   "required": [
@@ -10,7 +10,7 @@
   ],
   "properties": {
     "ext": {
-      "const": "acts/0.4"
+      "const": "acts/0.5"
     },
     "type": {
       "const": "raised"

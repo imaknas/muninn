@@ -40,7 +40,8 @@ MatchTasks = Callable[[Sequence[dict[str, Any]], Sequence[dict[str, Any]]], "dic
 class TaskStorage(TaskStore, ActionLog, StateStore, ConfirmationStore, Protocol):
     """The tasks, the merge actions logged for undo, the matching cursor, and what the user is asked about them."""
 
-REPLACED = "replaced"  # the question about an act whose replacement was settled (acts section 2)
+REPLACED = "replaced"  # the question about an act its project raised again under another key (acts section 2)
+KEPT = "replaced:kept"  # a link marking a replaced act the user kept as a to-do
 # state: the user's standing permission for Muninn to take a project's own word that a task is done (or will not be),
 # instead of asking each time: {id, granted, words, revoked}. Kept after a revocation, so what was settled under it
 # can still name it. A registrar's reading of a line (gone, ticked) is never covered: what happened to a line is not
@@ -82,8 +83,9 @@ class TaskRegistry:
         """A project says the task is done (or will not be done): only the user settles it, so Muninn takes the claim
         as its evidence (undoably), or asks first when the sender only inferred it. `claim`: the claim's own id."""
         status = "done" if outcome == "done" else "dropped"
-        mandate = None if inferred else self.claims_mandate()
         t = self._store.task(key)
+        # a replaced act is settled only by the user himself (acts section 2): never under the standing permission
+        mandate = None if inferred or any(x.startswith("replaced") for x in (t or {}).get("links", [])) else self.claims_mandate()
         if t is None and inferred:
             return "unknown task"  # someone's guess that a task we never had is done: nothing to ask about
         if t is None:
@@ -118,24 +120,42 @@ class TaskRegistry:
         self._store.set_state(CLAIMS_MANDATE, {**m, "revoked": self._clock.now().isoformat()})
         return True
 
-    def withdrawn(self, key: str, project: str, why: str = "", *, replaced_by: str | None = None) -> str:
+    def withdrawn(self, key: str, project: str, why: str = "", *, replaced: bool = False, replaced_by: str | None = None) -> str:
         """A project no longer needs the task. Others that still do keep it as it was; when no one else does, it may
         still be something the user promised: it stays open, and the user is asked whether to drop it. One the project
-        raised again under another key (`replaced_by`, still open) is not asked about: it stays open beside its
-        replacement, and once that one is settled the user is asked what became of this one."""
+        raised again under another key (`replaced`; `replaced_by`: that key, when there is a single one) is asked about
+        as `replaced` says."""
         t = self._store.task(key)
         if t is None or t["status"] != "open":
             return "nothing open"
-        if replaced_by is not None and (new := self._store.task(replaced_by)) is not None and new["status"] == "open":
-            self._store.update_task(t["key"], self._clock.now(), links=[*t["links"], f"replaced_by:{new['key']}"])
-            return "replaced"
+        for old in self.open():  # an act it replaced is asked about on its own now
+            if f"replaced_by:{t['key']}" in old["links"]:
+                self.replaced(old["key"], project, t["key"], ended=True)
         if any(o["project"] != project for o in t["origins"]):
             for o in t["origins"]:
                 if o["project"] == project:
                     self._store.remove_task_origin(t["key"], o["ref"])
             return "origin withdrawn"
+        if replaced:
+            self.replaced(t["key"], project, replaced_by)
+            return "replaced"
         self.close(t["key"], "dropped", by=project, why=why or self.words("tasks.not_needed_by", project=project), inferred=True)
         return "asked"
+
+    def replaced(self, key: str, project: str, by: str | None, *, ended: bool = False) -> None:
+        """The act `key`, withdrawn as replaced, has `by` as its single replacement (None: none, or more than one).
+        While that one is open the user is asked about the two together; once it is settled or withdrawn, or is no
+        longer the single replacement, about this one on its own. Either way nothing is chosen for him, and only he
+        settles it, never the replacement's settlement (acts section 2). `ended`: its project withdrew the replacement."""
+        t = self._store.task(key)
+        if t is None or t["status"] != "open":
+            return
+        new = self._store.task(by) if by else None
+        beside = new if new is not None and new["status"] == "open" and not ended else None
+        links = [x for x in t["links"] if not x.startswith("replaced")] + [f"replaced_by:{beside['key']}" if beside else "replaced"]
+        if links != t["links"]:
+            t = self._store.update_task(t["key"], self._clock.now(), links=links)
+        self._ask_about_replaced(t, beside, new)
 
     def amended(self, key: str, project: str, text: str, due: str | None) -> str:
         """A project changed what it asks: the task's words and date are the new ones."""
@@ -274,27 +294,42 @@ class TaskRegistry:
         self._tell(t, "done" if status == "done" else "dropped", why, hold=hold, only_to=only_to, decided=decided)
         if self._on_close and status == "done":
             self._on_close(t)
-        self._ask_about_replaced(t, status)
+        for old in self.open():  # the act it replaced is now asked about on its own
+            if f"replaced_by:{t['key']}" in old["links"]:
+                self.replaced(old["key"], "", t["key"])
         return t, prev
 
-    def _ask_about_replaced(self, new: dict[str, Any], status: str) -> None:
-        """Its replacement settled: the replaced act is shown beside it, and the user settles it himself, nothing
-        chosen for him (acts section 2: never settled from the replacement's settlement)."""
-        for old in self.open():
-            if f"replaced_by:{new['key']}" not in old["links"]:
-                continue
-            w = self.words
-            self._store.add_confirmation(Confirmation(
-                None, self._clock.now(), REPLACED,
-                w("tasks.replaced_asked", old=old["title"], new=new["title"], how=w(f"tasks.replaced_{status}")),
-                (w("tasks.replaced_answer_done"), w("tasks.replaced_answer_dropped"), w("tasks.replaced_answer_keep")),
-                {"task": old["key"], "by": new["key"], "neutral": True}, key=f"{REPLACED}:{old['key']}"))
+    def _ask_about_replaced(self, old: dict[str, Any], beside: dict[str, Any] | None, new: dict[str, Any] | None) -> None:
+        """The question about a replaced act: with its replacement while that is open (`beside`), else on its own
+        (`new`: the replacement, if Muninn has it, for what became of it). An earlier one about it is taken back."""
+        w, data = self.words, {"task": old["key"], "by": (beside or new or {}).get("key"), "neutral": True, "together": beside is not None}
+        for c in self._store.confirmations():
+            if c.kind == REPLACED and c.data.get("task") == old["key"]:
+                if c.data == data:
+                    return
+                self._store.answer_confirmation(c.id, "", self._clock.now())  # no longer the question
+        if beside is not None:
+            question = w("tasks.replaced_together", old=old["title"], new=beside["title"])
+            options = (w("tasks.replaced_answer_same"), w("tasks.replaced_answer_done"), w("tasks.replaced_answer_keep"))
+        else:
+            how = w("tasks.replaced_withdrawn") if new is not None and new["status"] == "open" else w(f"tasks.replaced_{new['status']}") \
+                if new is not None and new["status"] in ("done", "dropped") else None
+            question = w("tasks.replaced_asked", old=old["title"], new=new["title"], how=how) if how else w("tasks.replaced_alone", old=old["title"])
+            options = (w("tasks.replaced_answer_done"), w("tasks.replaced_answer_dropped"), w("tasks.replaced_answer_keep"))
+        self._store.add_confirmation(Confirmation(None, self._clock.now(), REPLACED, question, options, data, key=f"{REPLACED}:{old['key']}"))
 
     def replaced_answered(self, c: Confirmation, answer: str) -> None:
-        """The user's own settlement of a replaced act (or keeping it open)."""
-        status = {self.words("tasks.replaced_answer_done"): "done", self.words("tasks.replaced_answer_dropped"): "dropped"}.get(answer)
+        """The user's own settlement of a replaced act, or keeping it as a to-do of his own (then it is not asked about
+        again)."""
+        w = self.words
+        status = {w("tasks.replaced_answer_done"): "done", w("tasks.replaced_answer_dropped"): "dropped",
+                  w("tasks.replaced_answer_same"): "dropped"}.get(answer)
         if status is not None:
-            self.close(str(c.data["task"]), status, by="user")
+            new = self._store.task(str(c.data.get("by") or ""))
+            same = answer == w("tasks.replaced_answer_same") and new is not None
+            self.close(str(c.data["task"]), status, by="user", why=w("tasks.replaced_same", new=new["title"]) if same else "")
+        elif (t := self._store.task(str(c.data["task"]))) is not None:  # his own to-do now: still settled only by him
+            self._store.update_task(t["key"], self._clock.now(), links=[x for x in t["links"] if not x.startswith("replaced")] + [KEPT])
 
     def change_due(self, key: str, due: str) -> tuple[dict[str, Any], str | None] | None:
         """The user's own date for it: the projects that asked hear the premise changed (what they ask is theirs to

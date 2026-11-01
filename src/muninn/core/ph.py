@@ -1,12 +1,18 @@
-"""Principal Handoff 0.4, as the principal side reads it: is a record well formed and allowed to its emitter
-(core sections 3 to 5), what state an item is in from the records held for it, in any order (section 6), and the terms
-digest a settlement or an approval is bound to (section 5.3).
+"""Principal Handoff 0.5, as the principal side reads it: is a record well formed and allowed to its emitter
+(core sections 3 to 5), what state an item is in from the records held for it, in any order (sections 6 and 10), the
+terms digest a settlement is bound to (section 4), and a record in the version before, which a project may still speak
+(section 14).
 
-An item belongs to one extension (`acts/0.4`: a to-do only the user can do; `decisions/0.4`: a question only the user
-can answer). Each extension is described by data (`Ext`): where its schemas are, what happens to an item whose need was
-withdrawn while it is still open, the rules its schemas cannot state, and which terms an approval may be in force for.
-The schemas are the specification's own, vendored unchanged (contracts/vendor/principal-handoff); the folder they are
-read from is given. The reading follows the specification's reference implementation (reference/ph_core.py).
+An item belongs to one extension (`acts`: a to-do only the user can do; `decisions`: a question only the user can
+answer), named without its version: the name, the project and the key are the item, and a record id is unique within
+the name, the project and its origin (core section 10). Each version of an extension is described by data (`Ext`):
+where its schemas are, what happens to an item whose need was withdrawn while it is still open, the rules its schemas
+cannot state, and the module records it lists. Muninn thinks in 0.5. A project that still speaks 0.4 has its records
+checked under 0.4's own rules, kept as they were sent and converted to 0.5 whenever they are read; what Muninn tells
+it is converted to 0.4. One that speaks 0.3 is read as 0.4 with only `ph` and `ext` changed (acts 0.4 section 8).
+The schemas are the specification's own, vendored unchanged (contracts/vendor/principal-handoff, and
+principal-handoff-0.4 for the version before); the folders they are read from are given. The reading follows the
+specification's reference implementation (reference/ph_core.py).
 """
 
 from __future__ import annotations
@@ -17,25 +23,30 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable, Mapping
 
-PH = "0.4"
+PH = "0.5"
+OLDER = "0.4"  # the version before: a project may still speak it (core section 14)
+OLDEST = "0.3"  # before that: read as 0.4, only `ph` and `ext` changed
+VERSIONS = (OLDEST, OLDER, PH)
+ACTS, DECISIONS = "acts", "decisions"  # the extensions, by name
 NEED = ("raised", "amended", "withdrawn")
 SETTLEMENT = ("settled", "reopened")
-TYPES = NEED + SETTLEMENT + ("approved", "claimed", "related", "note")  # core section 4
+TYPES = NEED + SETTLEMENT + ("claimed", "related", "note")  # core section 4
 OWNER = {"raised": {"requester"}, "amended": {"requester"}, "withdrawn": {"requester"},
          "settled": {"principal"}, "reopened": {"principal"}, "approved": {"principal"}}  # the extensions' schemas narrow it
 RELATION_ORIGIN = {"same_as": "principal", "derived_from": "requester", "replaced_by": "requester"}  # core section 7
-APPROVAL_PREFIX = "approval:"  # authority.under naming an approval of the same item (core section 5.3)
+APPROVAL_PREFIX = "approval:"  # 0.4: authority.under naming an approval of the same item
 
 
-@dataclass(frozen=True)
-class Ext:
-    name: str  # "acts/0.4"
-    schemas: Path
-    withdrawn: str  # "keep": still open, and the user is asked; "stop": no longer presented
-    check: Callable[[dict[str, Any]], list[str]] = field(default=lambda r: [])
-    approvable: Callable[[dict[str, Any]], bool] = field(default=lambda terms: True)  # terms an approval can be in force for
+def label(name: str, version: str = PH) -> str:
+    """An extension's `ext` in one version: "acts/0.5"."""
+    return f"{name}/{version}"
+
+
+def name(ext: str) -> str:
+    """An extension's name, without its version: what scopes an item and a record id."""
+    return str(ext).split("/")[0]
 
 
 @dataclass(frozen=True)
@@ -47,13 +58,80 @@ class Parties:
     legal: bool = False  # the principal is a legal person (then a representative is required)
 
 
-def _acts(r: dict[str, Any]) -> list[str]:
+Check = Callable[[dict[str, Any], Parties], list[str]]
+
+
+@dataclass(frozen=True)
+class Ext:
+    name: str  # "acts/0.5"
+    schemas: Path
+    withdrawn: str  # "keep": still open, and the user is asked; "stop": no longer presented
+    check: Check = field(default=lambda r, parties: [])  # the version's rules a schema cannot state
+    types: tuple[str, ...] = TYPES  # the record types its core folds
+    modules: Mapping[str, frozenset[str]] = field(default_factory=dict)  # a module's record type -> who may emit it
+
+
+def _acts(r: dict[str, Any], parties: Parties) -> list[str]:
     text = (r.get("terms") or {}).get("text") if isinstance(r.get("terms"), dict) else None
     return ["terms.text is a single line"] if isinstance(text, str) and ("\n" in text or "\r" in text) else []
 
 
+def _decisions(r: dict[str, Any], parties: Parties) -> list[str]:
+    t, out = r.get("type"), []
+    if t == "settled" and r.get("outcome") == "decided" and "answer" not in r:
+        out.append("decided needs answer")
+    if t in ("raised", "amended") and isinstance(r.get("terms"), dict):
+        ids = [o.get("id") for o in r["terms"].get("options") or [] if isinstance(o, dict)]
+        if len(ids) != len(set(ids)):
+            out.append("option ids are unique within the terms")
+    return out
+
+
+def extensions(root: Path, older: Path) -> dict[str, Ext]:
+    """The two extensions Muninn implements, by `ext`: in 0.5 (schemas under `root`) and in 0.4 (under `older`)."""
+    acts, decisions, acts_04, decisions_04 = label(ACTS), label(DECISIONS), label(ACTS, OLDER), label(DECISIONS, OLDER)
+    return {acts: Ext(acts, root / "acts" / "schemas", "keep", _acts),
+            # Decisions section 3: `approved` is the Criteria module's, which Muninn does not implement
+            decisions: Ext(decisions, root / "decisions" / "schemas", "stop", _decisions, modules={"approved": frozenset({"principal"})}),
+            acts_04: Ext(acts_04, older / "acts" / "schemas", "keep", _older(_acts, approvals=False)),
+            decisions_04: Ext(decisions_04, older / "decisions" / "schemas", "stop", _older(_decisions, approvals=True),
+                              types=TYPES + ("approved",))}
+
+
+# ── 0.4's own rules ────────────────────────────────────────────────────────
+# What 0.5 moved into its Evidence and Criteria modules was a validity rule in 0.4, and a record a project sends in 0.4
+# is checked under 0.4 (core section 14).
+
+
+def _older(check: Check, *, approvals: bool) -> Check:
+    def rules(r: dict[str, Any], parties: Parties) -> list[str]:
+        out, t = check(r, parties) + _evidence(r), r.get("type")
+        times = [v.get("at") for v in ((r.get("evidence") or {}).get("verified") or []) if isinstance(v, dict)]
+        if any(isinstance(x, str) and instant(x) is None for x in times):
+            out.append("a time that is not an RFC 3339 date-time")
+        under = str((r.get("authority") or {}).get("under", ""))
+        if t == "settled" and under.startswith(APPROVAL_PREFIX):
+            if r["authority"].get("kind") != "delegated":
+                out.append("a settlement under an approval is delegated")
+            if under == APPROVAL_PREFIX:
+                out.append("approval: names no record")
+            if not approvals:
+                out.append("this extension has no approvals")
+            else:
+                verified = (r.get("evidence") or {}).get("verified") or []
+                if r.get("outcome") != "decided":
+                    out.append("a settlement under an approval records the approved answer")
+                if not verified or any(v.get("result") != "valid" for v in verified if isinstance(v, dict)):
+                    out.append("a settlement under an approval carries only valid verification results")
+        if t == "approved":
+            out += _approval(r, parties)
+        if approvals and t in ("raised", "amended") and isinstance(r.get("terms"), dict):
+            out += _criteria(r["terms"])
+        return out
+    return rules
+
+
 def _criteria(terms: dict[str, Any]) -> list[str]:
-    """decisions section 2.1: rules on criteria a schema cannot state."""
     c = terms.get("criteria")
     if not isinstance(c, dict):
         return []
@@ -71,48 +149,42 @@ def _criteria(terms: dict[str, Any]) -> list[str]:
     return out
 
 
-def _decisions(r: dict[str, Any]) -> list[str]:
-    t, out = r.get("type"), []
-    if t == "settled" and r.get("outcome") == "decided" and "answer" not in r:
-        out.append("decided needs answer")
-    if t in ("raised", "amended") and isinstance(r.get("terms"), dict):
-        ids = [o.get("id") for o in r["terms"].get("options") or [] if isinstance(o, dict)]
-        if len(ids) != len(set(ids)):
-            out.append("option ids are unique within the terms")
-        out += _criteria(r["terms"])
-    if t == "settled" and str((r.get("authority") or {}).get("under", "")).startswith(APPROVAL_PREFIX):
-        verified = (r.get("evidence") or {}).get("verified") or []
-        if r.get("outcome") != "decided":
-            out.append("a settlement under an approval records the approved answer")
-        if not verified or any(v.get("result") != "valid" for v in verified if isinstance(v, dict)):
-            out.append("a settlement under an approval carries only valid verification results")
+def _approval(r: dict[str, Any], parties: Parties) -> list[str]:
+    ap = r.get("approval") or {}
+    if not ap.get("active", True):
+        out = [] if r.get("supersedes") else ["a retraction lists the approval it retracts in supersedes"]
+        return out + (["terms_digest only on a grant"] if "terms_digest" in ap else [])
+    out = ["a grant needs terms_rev"] if "terms_rev" not in r else []
+    out += ["a grant needs approval.terms_digest"] if "terms_digest" not in ap else []
+    a = r.get("authority")
+    if not isinstance(a, dict):
+        return out + ["an approval needs authority"]
+    out += _authority(r, parties)
+    if a.get("kind") not in ("principal", "confirmed"):
+        out.append("an approval comes from the principal: kind principal or confirmed")
+    if "presented" not in (r.get("evidence") or {}):
+        out.append("an approval needs evidence.presented")
     return out
 
 
-ACTS, DECISIONS = f"acts/{PH}", f"decisions/{PH}"
-# the version before, which a project may still speak: its records read as this version's (acts section 8: only `ph` and
-# `ext` change), and what Muninn sends that project is labelled as it speaks
-OLDER, OLDER_EXTS = "0.3", {"acts/0.3": ACTS, "decisions/0.3": DECISIONS}
-SPEAKS = "ph:speaks"  # state: by project, the version of the records it last sent (what it is answered in)
-
-
-def upgraded(r: dict[str, Any]) -> dict[str, Any]:
-    """A record as this version reads it: one of the version before, relabelled; any other as it came."""
-    return {**r, "ph": PH, "ext": OLDER_EXTS[r["ext"]]} if r.get("ph") == OLDER and r.get("ext") in OLDER_EXTS else r
-
-
-def labelled(r: dict[str, Any], ph: str) -> dict[str, Any]:
-    """A record Muninn made, as a project that speaks `ph` reads it (its content is this version's either way)."""
-    if ph != OLDER:
-        return r
-    back = {new: old for old, new in OLDER_EXTS.items()}
-    return {**r, "ph": OLDER, "ext": back.get(r["ext"], r["ext"])}
-
-
-def extensions(root: Path) -> dict[str, Ext]:
-    """The two extensions Muninn implements, their schemas under `root`."""
-    return {ACTS: Ext(ACTS, root / "acts" / "schemas", "keep", _acts),
-            DECISIONS: Ext(DECISIONS, root / "decisions" / "schemas", "stop", _decisions, lambda terms: "criteria" in terms)}
+def _evidence(r: dict[str, Any]) -> list[str]:
+    ev, t, out = r.get("evidence") or {}, r.get("type"), []
+    if not isinstance(ev, dict):
+        return out
+    entries = ev.get("verifiable")
+    if isinstance(entries, list):
+        if t not in ("claimed", "note", "settled"):
+            out.append("verifiable only on claims, notes and settlements")
+        if "terms_rev" not in r:
+            out.append("a record with verifiable entries carries terms_rev")
+        ids = [x.get("id") for x in entries if isinstance(x, dict)]
+        if len(ids) != len(set(ids)):
+            out.append("verifiable entry ids are unique within the record")
+        if any(isinstance(x, dict) and ("proof" in x) == ("proof_ref" in x) for x in entries):
+            out.append("a verifiable entry carries exactly one of proof and proof_ref")
+    if "verified" in ev and not (t == "settled" or (t == "note" and r.get("origin") == "principal")):
+        out.append("verified only on settlements and principal-side notes")
+    return out
 
 
 # ── validation ─────────────────────────────────────────────────────────────
@@ -120,10 +192,13 @@ def extensions(root: Path) -> dict[str, Ext]:
 _TYPES = {"object": lambda v: isinstance(v, dict), "array": lambda v: isinstance(v, list), "string": lambda v: isinstance(v, str),
           "boolean": lambda v: isinstance(v, bool), "integer": lambda v: isinstance(v, int) and not isinstance(v, bool),
           "number": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool), "null": lambda v: v is None}
+_WS = "\t\n\v\f\r    -     　﻿"  # ECMAScript's \s
 
 
 def _ecma(pattern: str) -> str:
-    """ECMAScript's $ matches only at the very end of the string; Python's also before a final newline."""
+    r"""ECMAScript's $ matches only at the very end of the string, Python's also before a final newline; and the two
+    disagree on what \s is. The schemas use \s and \S outside character classes only."""
+    pattern = pattern.replace("\\S", f"[^{_WS}]").replace("\\s", f"[{_WS}]")
     return re.sub(r"(?<!\\)\$", r"\\Z", pattern)
 
 
@@ -155,19 +230,21 @@ def _schema_errors(instance: Any, schema: dict[str, Any], base: Path, path: str 
 
 
 def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, list[str]]:
-    """The schema the record validates against (its type), and every way it is not a valid record from its emitter."""
+    """The schema the record validates against (its type), and every way it is not a valid record from its emitter.
+    A module's record gets the core's checks only: the rest is the module's (core section 11)."""
     t = r.get("type")
+    if t in e.modules:
+        core = e.schemas.parent.parent / "core" / "schemas" / "record.schema.json"
+        errs = _schema_errors(r, json.loads(core.read_text(encoding="utf-8")), core.parent) + _common(r, parties)
+        if r.get("ext") != e.name:
+            errs.append(f"ext is not {e.name}")
+        if r.get("origin") not in e.modules[t]:
+            errs.append(f"origin {r.get('origin')!r} may not emit {t}")
+        return t, errs
     path = e.schemas / f"{t}.schema.json"
-    if t not in TYPES or not path.exists():
+    if t not in e.types or not path.exists():
         return None, ["no schema for this type"]
-    errs = _schema_errors(r, json.loads(path.read_text(encoding="utf-8")), e.schemas)
-    if _twice(r):
-        errs.append("a member name appears twice (not I-JSON)")
-    if not _bounded(r):
-        errs.append("numbers are integers within 2^53 - 1")
-    times = [r.get("ts")] + [v.get("at") for v in ((r.get("evidence") or {}).get("verified") or []) if isinstance(v, dict)]
-    if any(isinstance(x, str) and instant(x) is None for x in times):
-        errs.append("a time that is not an RFC 3339 date-time")
+    errs = _schema_errors(r, json.loads(path.read_text(encoding="utf-8")), e.schemas) + _common(r, parties)
     due = (r.get("terms") or {}).get("due") if isinstance(r.get("terms"), dict) else None
     if isinstance(due, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", due):
         try:
@@ -176,8 +253,6 @@ def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, l
             errs.append("terms.due is not a calendar date")
     if t in OWNER and r.get("origin") not in OWNER[t]:  # R1, R2
         errs.append(f"origin {r.get('origin')!r} may not emit {t}")
-    if r.get("by") == parties.principal:  # R6: the principal's decisions are recorded by the principal side
-        errs.append("the principal identifier cannot emit records")
     rev = r.get("terms_rev")
     if t == "amended" and isinstance(rev, int) and rev < 2:
         errs.append("amended terms_rev must be at least 2")
@@ -189,24 +264,28 @@ def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, l
         errs += _relation(r)
     if t == "settled":
         errs += _authority(r, parties)
-        under = str((r.get("authority") or {}).get("under", ""))
-        if under.startswith(APPROVAL_PREFIX) and r["authority"].get("kind") != "delegated":
-            errs.append("a settlement under an approval is delegated")
-        if under.startswith(APPROVAL_PREFIX) and not (e.schemas / "approved.schema.json").exists():
-            errs.append("this extension has no approvals")
-        if under == APPROVAL_PREFIX:
-            errs.append("approval: names no record")
-    if t == "approved":
-        errs += _approval(r, parties)
-    if r.get("adopts") and (t != "settled" or (r.get("authority") or {}).get("kind") not in ("confirmed", "attested")):
+    if "adopts" in r and (t != "settled" or (r.get("authority") or {}).get("kind") not in ("confirmed", "attested")):
         errs.append("adopts only on confirmed or attested settlements")
-    errs += _evidence(r)
-    errs += e.check(r)
+    errs += e.check(r, parties)
     if t == "note" and len((r.get("about") or {}).keys() & {"key", "quote"}) != 1:
         errs.append("about has exactly one of key and quote")
     if t == "note" and "key" in (r.get("about") or {}) and r["about"]["key"] != r.get("key"):
         errs.append("a note about a key carries that key")
     return t, errs
+
+
+def _common(r: dict[str, Any], parties: Parties) -> list[str]:
+    """What every record is checked for, a module's too (core sections 4, 11 and R6)."""
+    errs = []
+    if _twice(r):
+        errs.append("a member name appears twice (not I-JSON)")
+    if not _bounded(r):
+        errs.append("numbers are integers within 2^53 - 1")
+    if isinstance(r.get("ts"), str) and instant(r["ts"]) is None:
+        errs.append("ts is not an RFC 3339 date-time")
+    if r.get("by") == parties.principal:  # R6: the principal's decisions are recorded by the principal side
+        errs.append("the principal identifier cannot emit records")
+    return errs
 
 
 def _bounded(v: Any) -> bool:
@@ -265,46 +344,6 @@ def _authority(r: dict[str, Any], parties: Parties) -> list[str]:
     return out
 
 
-def _approval(r: dict[str, Any], parties: Parties) -> list[str]:
-    """core section 5.3: an approval in force comes from a person; a retraction only narrows."""
-    ap = r.get("approval") or {}
-    if not ap.get("active", True):
-        out = [] if r.get("supersedes") else ["a retraction lists the approval it retracts in supersedes"]
-        return out + (["terms_digest only on a grant"] if "terms_digest" in ap else [])
-    out = ["a grant needs terms_rev"] if "terms_rev" not in r else []
-    out += ["a grant needs approval.terms_digest"] if "terms_digest" not in ap else []
-    a = r.get("authority")
-    if not isinstance(a, dict):
-        return out + ["an approval needs authority"]
-    out += _authority(r, parties)
-    if a.get("kind") not in ("principal", "confirmed"):
-        out.append("an approval comes from the principal: kind principal or confirmed")
-    if "presented" not in (r.get("evidence") or {}):
-        out.append("an approval needs evidence.presented")
-    return out
-
-
-def _evidence(r: dict[str, Any]) -> list[str]:
-    """core section 5.2: verifiable entries and verification results."""
-    ev, t, out = r.get("evidence") or {}, r.get("type"), []
-    if not isinstance(ev, dict):
-        return out
-    entries = ev.get("verifiable")
-    if isinstance(entries, list):
-        if t not in ("claimed", "note", "settled"):
-            out.append("verifiable only on claims, notes and settlements")
-        if "terms_rev" not in r:
-            out.append("a record with verifiable entries carries terms_rev")
-        ids = [x.get("id") for x in entries if isinstance(x, dict)]
-        if len(ids) != len(set(ids)):
-            out.append("verifiable entry ids are unique within the record")
-        if any(isinstance(x, dict) and ("proof" in x) == ("proof_ref" in x) for x in entries):
-            out.append("a verifiable entry carries exactly one of proof and proof_ref")
-    if "verified" in ev and not (t == "settled" or (t == "note" and r.get("origin") == "principal")):
-        out.append("verified only on settlements and principal-side notes")
-    return out
-
-
 # ── time, canonical form, terms digest ─────────────────────────────────────
 
 _TS = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?"
@@ -345,7 +384,14 @@ def canonical(v: Any) -> str:
 
 
 def terms_digest(need: dict[str, Any]) -> str:
-    """core section 5.3: the digest a settlement or an approval binds, over the item and its terms at one terms_rev."""
+    """core section 4: the digest a settlement binds, over the item (its extension by name) and its terms at one
+    terms_rev."""
+    bound = {"ext": name(need["ext"]), **{k: need[k] for k in ("project", "key", "terms_rev", "terms")}}
+    return "sha-256:" + hashlib.sha256(canonical(bound).encode("utf-8")).hexdigest()
+
+
+def _terms_digest_04(need: dict[str, Any]) -> str:
+    """0.4's terms digest, over the full `ext` (its version included): only to convert to and from 0.4."""
     bound = {k: need[k] for k in ("ext", "project", "key", "terms_rev", "terms")}
     return "sha-256:" + hashlib.sha256(canonical(bound).encode("utf-8")).hexdigest()
 
@@ -366,6 +412,51 @@ def _twice(v: Any) -> bool:
     if isinstance(v, dict):
         return TWICE in v or any(_twice(x) for x in v.values())
     return isinstance(v, list) and any(_twice(x) for x in v)
+
+
+# ── versions (core section 14) ─────────────────────────────────────────────
+
+
+def upgraded(r: dict[str, Any]) -> dict[str, Any]:
+    """A 0.3 record as 0.4 reads it (only `ph` and `ext` change); any other as it came."""
+    if r.get("ph") == OLDEST and r.get("ext") in (label(ACTS, OLDEST), label(DECISIONS, OLDEST)):
+        return {**r, "ph": OLDER, "ext": label(name(r["ext"]), OLDER)}
+    return r
+
+
+def convert(r: dict[str, Any], version: str, held: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """`r` (0.4 or 0.5) in `version` (0.4 or 0.5) of its extension, given the records held about its item, in either
+    version: the id kept, `evidence.proof` removed, and a settlement's terms digest that of the held need record at its
+    terms_rev whose digest matches it in the version it came in (kept when none does: made on other terms, or its need
+    record is not held yet, and the next conversion after it comes replaces it). A relation naming an item of the same
+    extension names it in the same version."""
+    ext = name(r["ext"])
+    out = {**r, "ph": version, "ext": label(ext, version)}
+    if "evidence" in r:
+        ev = {k: v for k, v in (r.get("evidence") or {}).items() if k != "proof"}
+        if ev:
+            out["evidence"] = ev
+        else:
+            del out["evidence"]
+    if r.get("type") == "settled" and "terms_digest" in r:
+        before, after = (_terms_digest_04, terms_digest) if version == PH else (terms_digest, _terms_digest_04)
+        needs = [upgraded(n) for n in held if n.get("type") in ("raised", "amended") and n.get("terms_rev") == r.get("terms_rev")]
+        match = [n for n in needs if before({**n, "ext": r["ext"]}) == r["terms_digest"]]
+        if match:
+            out["terms_digest"] = after({**match[0], "ext": out["ext"]})
+    target = (r.get("relation") or {}).get("target") or {}
+    if "ext" in target and name(target["ext"]) == ext:
+        out["relation"] = {**r["relation"], "target": {**target, "ext": out["ext"]}}
+    return out
+
+
+def converted(r: dict[str, Any], version: str = PH, held: Iterable[dict[str, Any]] = ()) -> dict[str, Any]:
+    """`r`, in any version Muninn reads, in `version` (0.3, 0.4 or 0.5), given the records held about its item."""
+    r, held = upgraded(r), list(held)
+    if version == OLDEST:
+        down = converted(r, OLDER, held)
+        return {**down, "ph": OLDEST, "ext": label(name(down["ext"]), OLDEST)}
+    return r if r.get("ph") == version and "proof" not in (r.get("evidence") or {}) else convert(r, version, held)
 
 
 # ── state ──────────────────────────────────────────────────────────────────
@@ -397,56 +488,39 @@ def _cycle(by_id: dict[str, dict[str, Any]]) -> bool:
 
 
 def _register(records: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, bool]:
-    """The current record of one register (the latest head, ties to the greater id) and whether it conflicts."""
+    """The current record of one register (the latest head, ties to the greater id) and whether it conflicts. A
+    record that lists itself is still a head, and a cycle."""
     if not records:
         return None, False
     by_id = {r["id"]: r for r in records}
-    replaced = {s for r in records for s in r.get("supersedes", []) if s in by_id}
+    replaced = {s for r in records for s in r.get("supersedes", []) if s in by_id and s != r["id"]}
     heads = [r for r in records if r["id"] not in replaced] or records
     return _latest(heads), len(heads) > 1 or _cycle(by_id)
 
 
-def _approval_in_force(approvals: list[dict[str, Any]], needs: list[dict[str, Any]], need: dict[str, Any] | None,
-                       conflict: bool, settlements: list[dict[str, Any]], e: Ext) -> dict[str, Any] | None:
-    """core section 6: the approval in force, if any."""
-    if need is None or conflict or need["type"] == "withdrawn" or not e.approvable(need["terms"]):
-        return None
-    rev = need["terms_rev"]
-    if rev != max(n["terms_rev"] for n in needs if n["type"] != "withdrawn"):
-        return None
-    digest = terms_digest(need)
-    if any(terms_digest(n) != digest for n in needs if n["type"] != "withdrawn" and n["terms_rev"] == rev):
-        return None
-    replaced = {s for r in approvals for s in r.get("supersedes", [])}
-    used = {r["authority"]["under"][len(APPROVAL_PREFIX):] for r in settlements
-            if r["type"] == "settled" and r["authority"].get("under", "").startswith(APPROVAL_PREFIX)}
-    live = [r for r in approvals if r["approval"]["active"] and r["id"] not in replaced and r["id"] not in used
-            and r["terms_rev"] == rev and r["approval"]["terms_digest"] == digest
-            and not any(_when(s) >= _when(r) for s in settlements)]
-    return _latest(live) if live else None
+def held(records: Iterable[dict[str, Any]], e: Ext, parties: Parties) -> list[dict[str, Any]]:
+    """The valid records of the types the core folds, one per (origin, type, id): an invalid record never blocks a
+    valid one with the same id, an id reused with different valid content keeps the greater canonical form, and a
+    record never displaces one of another type (core section 10)."""
+    seen: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for r in records:
+        if r.get("type") not in e.types or validate(r, e, parties)[1]:
+            continue
+        k = (r["origin"], r["type"], r["id"])
+        if k not in seen or canonical(r) > canonical(seen[k]):
+            seen[k] = r
+    return list(seen.values())
 
 
 def fold(records: list[dict[str, Any]], e: Ext, parties: Parties) -> dict[str, Any]:
-    """One item's state from every record held for it, whatever their order. Invalid records are left out (and
-    listed); ids are scoped by origin, and an id reused with different valid content keeps the greater canonical form."""
-    seen: dict[tuple[str, str], dict[str, Any]] = {}
-    ignored: set[str] = set()
-    for r in records:
-        if validate(r, e, parties)[1]:
-            if r.get("id") is not None:
-                ignored.add(r["id"])
-            continue
-        old = seen.get((r["origin"], r["id"]))
-        if old is None or canonical(r) > canonical(old):
-            seen[(r["origin"], r["id"])] = r
-    ignored -= {i for _, i in seen}
-    valid = list(seen.values())
+    """One item's state from every record held for it, whatever their order (core section 6). Invalid records are
+    left out and listed; a module's records are its own, neither folded nor listed (section 11)."""
+    valid = held(records, e, parties)
+    ignored = {r["id"] for r in records if r.get("id") is not None and validate(r, e, parties)[1]} - {r["id"] for r in valid}
     needs = [r for r in valid if r["type"] in NEED]
     need, need_conflict = _register(needs)
-    settlements = [r for r in valid if r["type"] in SETTLEMENT]
-    settle, settle_conflict = _register(settlements)
+    settle, settle_conflict = _register([r for r in valid if r["type"] in SETTLEMENT])
     terms_rev = max((r.get("terms_rev", 0) for r in valid if r["type"] in ("raised", "amended")), default=0)
-    approval = _approval_in_force([r for r in valid if r["type"] == "approved"], needs, need, need_conflict, settlements, e)
     settled = settle if settle and settle["type"] == "settled" else None
     if settled:
         state = "settled"
@@ -460,5 +534,5 @@ def fold(records: list[dict[str, Any]], e: Ext, parties: Parties) -> dict[str, A
                 need is not None and need["type"] != "withdrawn" and need["terms_rev"] == settled["terms_rev"]
                 and terms_digest(need) != settled["terms_digest"]))),
             "withdrawn": bool(need and need["type"] == "withdrawn"), "terms_rev": terms_rev,
-            "conflict": need_conflict or settle_conflict, "approval": approval["id"] if approval else None,
+            "conflict": need_conflict or settle_conflict,
             "claims": sorted(r["id"] for r in valid if r["type"] == "claimed"), "ignored": sorted(ignored)}

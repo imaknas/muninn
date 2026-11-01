@@ -33,7 +33,7 @@ MACHINES = {
     "POST /api/ingest/focus": "an iOS Shortcut (Focus on and off)",
     "POST /api/messages": "src/muninn/contracts/messages.v1.schema.json",
     "POST /api/records": "Principal Handoff records from the projects (src/muninn/contracts/vendor/principal-handoff)",
-    "GET /api/records": "Principal Handoff 0.3 records for a project, read from a cursor",
+    "GET /api/records": "Principal Handoff records for a project, read from a cursor",
     "POST /api/records/ack": "a project acknowledging records up to a cursor",
     "POST /api/permission-requests": "src/muninn/contracts/permission-requests.v2.schema.json",
     "GET /api/permission-requests/{rid}": "src/muninn/contracts/permission-requests.v2.schema.json",

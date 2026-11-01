@@ -1,5 +1,5 @@
 {
-  "suite": "acts/0.4",
+  "suite": "acts/0.5",
   "principal": "p:owner",
   "description": "Records one receiver holds for one act -> its state (core §6; a withdrawn act stays open, acts §2).",
   "cases": [
@@ -8,8 +8,8 @@
       "spec": "core §6",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -33,7 +33,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -43,8 +42,8 @@
       "spec": "core §6",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -58,8 +57,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -69,7 +68,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -86,7 +85,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -96,8 +94,8 @@
       "spec": "core §10: an id counts once",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -111,8 +109,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -122,15 +120,15 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
           }
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -140,7 +138,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -157,7 +155,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -167,8 +164,8 @@
       "spec": "core §6: the superseding settlement is current",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -182,8 +179,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -193,15 +190,15 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
           }
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s2",
           "type": "settled",
           "origin": "principal",
@@ -211,7 +208,7 @@
           "ts": "2026-10-29T08:00:00Z",
           "outcome": "dropped",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -231,7 +228,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -241,8 +237,8 @@
       "spec": "core §6: supersedes, not arrival",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s2",
           "type": "settled",
           "origin": "principal",
@@ -252,7 +248,7 @@
           "ts": "2026-10-29T08:00:00Z",
           "outcome": "dropped",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -262,8 +258,8 @@
           ]
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -277,8 +273,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -288,7 +284,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -305,7 +301,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -315,8 +310,8 @@
       "spec": "core §6: two heads, later ts current, conflict",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -330,8 +325,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -341,15 +336,15 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
           }
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "b1",
           "type": "settled",
           "origin": "principal",
@@ -359,7 +354,7 @@
           "ts": "2026-10-28T09:00:00Z",
           "outcome": "dropped",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -376,7 +371,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": true,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -386,8 +380,8 @@
       "spec": "core §6: reopened settlement leaves the need deciding",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -401,8 +395,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -412,15 +406,15 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
           }
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "o1",
           "type": "reopened",
           "origin": "principal",
@@ -444,7 +438,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -454,8 +447,8 @@
       "spec": "core §6 and the extension's policy (open)",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -469,8 +462,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "w1",
           "type": "withdrawn",
           "origin": "requester",
@@ -494,7 +487,6 @@
         "withdrawn": true,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -504,8 +496,8 @@
       "spec": "core §2: a withdrawal settles nothing, a settlement stands",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -519,8 +511,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "w1",
           "type": "withdrawn",
           "origin": "requester",
@@ -534,8 +526,8 @@
           ]
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -545,7 +537,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -562,7 +554,6 @@
         "withdrawn": true,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -572,8 +563,8 @@
       "spec": "core §6: settled against terms_rev 1, terms now at 2",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -587,8 +578,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "a1",
           "type": "amended",
           "origin": "requester",
@@ -605,8 +596,8 @@
           ]
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -616,7 +607,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -633,7 +624,6 @@
         "withdrawn": false,
         "terms_rev": 2,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -643,8 +633,8 @@
       "spec": "core R3",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -658,8 +648,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "c1",
           "type": "claimed",
           "origin": "agent",
@@ -683,7 +673,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [
           "c1"
         ],
@@ -695,8 +684,8 @@
       "spec": "core R2, §10: an invalid record is ignored",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -710,8 +699,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "x1",
           "type": "settled",
           "origin": "requester",
@@ -721,7 +710,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -738,7 +727,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": [
           "x1"
@@ -750,8 +738,8 @@
       "spec": "core §5",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -765,8 +753,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "d1",
           "type": "settled",
           "origin": "principal",
@@ -776,7 +764,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "delegated",
             "decider": "ps:assistant",
@@ -798,7 +786,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -808,8 +795,8 @@
       "spec": "core §10: ordering not guaranteed",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -836,7 +823,6 @@
         "withdrawn": false,
         "terms_rev": 0,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -846,8 +832,8 @@
       "spec": "core §6: equal ts, the greater id is current; two heads are a conflict",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -861,8 +847,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -872,15 +858,15 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
           }
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "b2",
           "type": "settled",
           "origin": "principal",
@@ -890,7 +876,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "dropped",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -907,7 +893,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": true,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -917,8 +902,8 @@
       "spec": "core §6: no head, latest ts among all, conflict",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -932,8 +917,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "y1",
           "type": "settled",
           "origin": "principal",
@@ -943,7 +928,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -953,8 +938,8 @@
           ]
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "y2",
           "type": "settled",
           "origin": "principal",
@@ -964,7 +949,7 @@
           "ts": "2026-10-29T08:00:00Z",
           "outcome": "dropped",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -984,7 +969,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": true,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -994,8 +978,8 @@
       "spec": "core §10: an invalid record does not block a valid one with the same id",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -1009,8 +993,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "requester",
@@ -1020,15 +1004,15 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
           }
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -1038,7 +1022,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -1055,7 +1039,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -1065,8 +1048,8 @@
       "spec": "core §10: an id reused with different valid content keeps the greater canonical form",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r1",
           "type": "raised",
           "origin": "requester",
@@ -1080,8 +1063,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -1091,7 +1074,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -1099,8 +1082,8 @@
           "note": "a"
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -1110,7 +1093,7 @@
           "ts": "2026-10-28T08:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:dc05886825de87865e26048e39557fbe33dfd2adcddf9bccf1ffbad570498efb",
+          "terms_digest": "sha-256:822c2dd81bb89e7b23b00bbcc0fab64bf83b0d1994f541ff45467f984ef11f2a",
           "authority": {
             "kind": "principal",
             "decider": "p:owner"
@@ -1128,7 +1111,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
@@ -1138,8 +1120,8 @@
       "spec": "core §6, acts §2",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r:task-demo-aaaaaaaaaa",
           "type": "raised",
           "origin": "requester",
@@ -1153,8 +1135,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "w2",
           "type": "withdrawn",
           "origin": "requester",
@@ -1168,8 +1150,8 @@
           ]
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "l9",
           "type": "related",
           "origin": "requester",
@@ -1180,7 +1162,7 @@
           "relation": {
             "kind": "replaced_by",
             "target": {
-              "ext": "acts/0.4",
+              "ext": "acts/0.5",
               "project": "demo",
               "key": "task-demo-bbbbbbbbbb"
             },
@@ -1198,18 +1180,17 @@
         "withdrawn": true,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": []
       }
     },
     {
       "id": "attested-from-verified-claim",
-      "spec": "core §5.2, §7",
+      "spec": "Evidence §2, §5 and core §7",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r:task-demo-aaaaaaaaaa",
           "type": "raised",
           "origin": "requester",
@@ -1223,8 +1204,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "c1",
           "type": "claimed",
           "origin": "agent",
@@ -1250,8 +1231,8 @@
           }
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "s1",
           "type": "settled",
           "origin": "principal",
@@ -1261,7 +1242,7 @@
           "ts": "2026-10-28T09:00:00Z",
           "outcome": "done",
           "terms_rev": 1,
-          "terms_digest": "sha-256:055e6474b086333549731a4bc7fa9cfa16775b3d0d9bc34a8c911d300798afaa",
+          "terms_digest": "sha-256:d6e2c9081330e227efda1f79a58b15e98413e8b66a594d671b93f6d2ef3d0e40",
           "authority": {
             "kind": "attested",
             "decider": "ps:verifier"
@@ -1295,7 +1276,6 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [
           "c1"
         ],
@@ -1307,8 +1287,8 @@
       "spec": "acts §3",
       "records": [
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "r:task-demo-aaaaaaaaaa",
           "type": "raised",
           "origin": "requester",
@@ -1322,8 +1302,8 @@
           "terms_rev": 1
         },
         {
-          "ph": "0.4",
-          "ext": "acts/0.4",
+          "ph": "0.5",
+          "ext": "acts/0.5",
           "id": "ap1",
           "type": "approved",
           "origin": "principal",
@@ -1333,7 +1313,7 @@
           "ts": "2026-10-27T09:00:00Z",
           "terms_rev": 1,
           "approval": {
-            "terms_digest": "sha-256:055e6474b086333549731a4bc7fa9cfa16775b3d0d9bc34a8c911d300798afaa",
+            "terms_digest": "sha-256:d6e2c9081330e227efda1f79a58b15e98413e8b66a594d671b93f6d2ef3d0e40",
             "active": true
           },
           "authority": {
@@ -1355,11 +1335,113 @@
         "withdrawn": false,
         "terms_rev": 1,
         "conflict": false,
-        "approval": null,
         "claims": [],
         "ignored": [
           "ap1"
         ]
+      }
+    },
+    {
+      "id": "settlement-on-other-terms-is-stale",
+      "spec": "core §6: a settlement whose terms digest is not the current need record's at the same terms_rev is stale",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "r1",
+          "type": "raised",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "terms": {
+            "text": "Renew the domain"
+          },
+          "terms_rev": 1
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "s:other",
+          "type": "settled",
+          "origin": "principal",
+          "by": "ps:assistant",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-28T08:00:00Z",
+          "outcome": "done",
+          "terms_rev": 1,
+          "terms_digest": "sha-256:2222222222222222222222222222222222222222222222222222222222222222",
+          "authority": {
+            "kind": "principal",
+            "decider": "p:owner"
+          }
+        }
+      ],
+      "expect": {
+        "state": "settled",
+        "outcome": "done",
+        "settlement": "s:other",
+        "authority": "principal",
+        "answer": null,
+        "stale": true,
+        "withdrawn": false,
+        "terms_rev": 1,
+        "conflict": false,
+        "claims": [],
+        "ignored": []
+      }
+    },
+    {
+      "id": "ids-scoped-by-origin",
+      "spec": "core §10: ids are scoped by origin, so a claim reusing the raised id displaces nothing",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "r1",
+          "type": "raised",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "terms": {
+            "text": "Renew the domain"
+          },
+          "terms_rev": 1
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "r1",
+          "type": "claimed",
+          "origin": "agent",
+          "by": "agent:other",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-28T08:00:00Z",
+          "outcome": "done",
+          "evidence": {
+            "basis": "The principal said it was done."
+          }
+        }
+      ],
+      "expect": {
+        "state": "open",
+        "outcome": null,
+        "settlement": null,
+        "authority": null,
+        "answer": null,
+        "stale": false,
+        "withdrawn": false,
+        "terms_rev": 1,
+        "conflict": false,
+        "claims": [
+          "r1"
+        ],
+        "ignored": []
       }
     }
   ]

@@ -346,7 +346,7 @@ def build(config: Config, *, dry_run: bool = False) -> App:
         gate=gate,
         owner_label=str(cfg["owner_label"]),
         parties=handoff_records.parties_from(cfg["principal_id"], str(cfg["owner_label"])),
-        ph_extensions=ph.extensions(CONTRACTS / "vendor" / "principal-handoff"),
+        ph_extensions=ph.extensions(CONTRACTS / "vendor" / "principal-handoff", CONTRACTS / "vendor" / "principal-handoff-0.4"),
         running=running_version(Path(__file__).resolve().parents[2], cfg.data_dir, words),
         **project_side(cfg, words),
     )
@@ -871,6 +871,9 @@ def main(argv: list[str] | None = None) -> int:
     p_hand.add_argument("--since", type=int, default=0, help="only handoffs with a larger id (not for delivery: a held handoff can come due below it)")
     p_hand.add_argument("--json", action="store_true")
     p_hand.add_argument("--delivered", type=int, nargs="*", help="mark these ids delivered")
+    p_ver = sub.add_parser("handoff-version", help="which Principal Handoff version each project is told its records in "
+                           "(with PROJECT EXT VERSION: set it; PROJECT * is every project, those to come too)")
+    p_ver.add_argument("setting", nargs="*", metavar="PROJECT EXT VERSION")
     p_dig = sub.add_parser("digests", help="one week's conversation digests (summaries, never conversation text)")
     p_dig.add_argument("--week", help="ISO week, e.g. 2026-W42 (default: the last complete week)")
     p_dig.add_argument("--json", action="store_true")
@@ -1099,6 +1102,16 @@ def main(argv: list[str] | None = None) -> int:
             for h in items:
                 item = e.words("main.handoff_item", effect=h["effect"], item=h["item"]) if h.get("item") else ""
                 print(f"#{h['id']} [{h['project']}] {h['fact']}{item} {h.get('why') or ''}")
+        return 0
+    if args.cmd == "handoff-version":
+        if args.setting:
+            if len(args.setting) != 3:
+                parser.error("handoff-version takes PROJECT EXT VERSION, e.g. agent-hub acts 0.5")
+            try:
+                e.handoff_versions.set(*args.setting)
+            except ValueError as err:
+                parser.error(str(err))
+        print(json.dumps(e.handoff_versions.table(), ensure_ascii=False, indent=1))
         return 0
     if args.cmd == "digests":
         week = args.week or iso_week(e.clock.now() - timedelta(days=7))

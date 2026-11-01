@@ -19,10 +19,9 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Sequence
 
-from muninn.core.ph import OLDER_EXTS, PH, SPEAKS
 from muninn.core.models import ActionRecord, Confirmation, InboxItem, Observation, Prepared, Sensitivity, Turn
 
-SCHEMA_VERSION = 1  # raised with every change to the schema or to what the migrations do
+SCHEMA_VERSION = 2  # raised with every change to the schema or to what the migrations do
 MIN_READABLE = 1  # raised only for a change an older version cannot read past
 KEEP_BACKUPS = 3  # copies made before a migration, newest first
 
@@ -94,10 +93,11 @@ CREATE TABLE IF NOT EXISTS handoffs (
 );
 CREATE INDEX IF NOT EXISTS handoffs_status ON handoffs(status, id);
 CREATE TABLE IF NOT EXISTS ph_records (
-  seq INTEGER PRIMARY KEY AUTOINCREMENT, ext TEXT NOT NULL, project TEXT NOT NULL, origin TEXT NOT NULL, id TEXT NOT NULL,
-  key TEXT NOT NULL, record TEXT NOT NULL, received TEXT NOT NULL, UNIQUE (ext, project, origin, id)
+  seq INTEGER PRIMARY KEY AUTOINCREMENT, ext TEXT NOT NULL, project TEXT NOT NULL, origin TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT '', id TEXT NOT NULL, key TEXT NOT NULL, record TEXT NOT NULL, received TEXT NOT NULL,
+  UNIQUE (ext, project, origin, type, id)
 );
-CREATE INDEX IF NOT EXISTS ph_records_item ON ph_records(ext, project, key);
+CREATE INDEX IF NOT EXISTS ph_records_by_item ON ph_records(project, key);
 CREATE TABLE IF NOT EXISTS tasks (
   key TEXT PRIMARY KEY, n INTEGER NOT NULL UNIQUE, title TEXT NOT NULL, due TEXT, status TEXT NOT NULL,
   context TEXT, links TEXT NOT NULL, created TEXT NOT NULL, closed TEXT, closed_by TEXT, why TEXT
@@ -225,7 +225,7 @@ class SqliteStore:
         self._add_column("permission_requests", "v", "INTEGER NOT NULL DEFAULT 1")
         self._kinds_for_old_requests()
         self._usage_from_cases()
-        self._records_as_04()
+        self._records_by_type()
         self._migrate_handoffs()
         self._migrate_threads()
         self._handover_cards()
@@ -722,44 +722,43 @@ class SqliteStore:
 
     # Principal Handoff records the projects sent
 
-    def add_record(self, record: dict[str, Any], at: datetime, canonical: Callable[[dict[str, Any]], str]) -> str:
-        key = (record["ext"], record["project"], record["origin"], record["id"])  # an id is unique per origin (core section 10)
+    def add_record(self, ext: str, record: dict[str, Any], at: datetime, canonical: Callable[[dict[str, Any]], str]) -> str:
+        """Kept under the `ext` label it came with; the same record is the same (ext name, project, origin, type, id),
+        whichever version it came in (core section 10)."""
+        scope = (record["project"], record["origin"], record["type"], record["id"], ext)
         text = json.dumps(record, ensure_ascii=False)
         with self._write() as db:
-            old = db.execute("SELECT record FROM ph_records WHERE ext = ? AND project = ? AND origin = ? AND id = ?", key).fetchone()
+            old = db.execute("SELECT seq, record FROM ph_records WHERE project = ? AND origin = ? AND type = ? AND id = ?"
+                             " AND ext LIKE ? || '/%'", scope).fetchone()
             if old is None:
-                db.execute("INSERT INTO ph_records (ext, project, origin, id, key, record, received) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                           (*key, record["key"], text, _ts(at)))
+                db.execute("INSERT INTO ph_records (ext, project, origin, type, id, key, record, received) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                           (record["ext"], *scope[:4], record["key"], text, _ts(at)))
                 return "new"
             if canonical(record) > canonical(json.loads(old["record"])):  # an id reused: the greater form, whatever came first
-                db.execute("UPDATE ph_records SET record = ? WHERE ext = ? AND project = ? AND origin = ? AND id = ?", (text, *key))
+                db.execute("UPDATE ph_records SET ext = ?, record = ? WHERE seq = ?", (record["ext"], text, old["seq"]))
                 return "replaced"
             return "duplicate"
 
-    def _records_as_04(self) -> None:
-        """Records kept under Principal Handoff 0.3 read as 0.4 (acts section 8: only `ph` and `ext` change), so one sent
-        again is the same record; and a record's id is unique per origin from now on (core section 10)."""
+    def _records_by_type(self) -> None:
+        """A record's id is unique per origin and type (core section 10), and a record is kept as it came, under its
+        own `ext` label. A row an older version wrote has its type filled in."""
         sql = (self._db.execute("SELECT sql FROM sqlite_master WHERE name = 'ph_records'").fetchone() or [""])[0]
-        if "origin" not in sql:
-            self._db.execute("ALTER TABLE ph_records RENAME TO ph_records_03")
+        if " type " not in sql:
+            for index in ("ph_records_item", "ph_records_by_item"):  # made again for the new table
+                self._db.execute(f"DROP INDEX IF EXISTS {index}")
+            self._db.execute("ALTER TABLE ph_records RENAME TO ph_records_before")
             for statement in _statements(SCHEMA):
                 if "ph_records" in statement:
                     self._db.execute(statement)
-            self._db.execute("INSERT INTO ph_records (seq, ext, project, origin, id, key, record, received) SELECT seq, ext, project,"
-                             " COALESCE(json_extract(record, '$.origin'), ''), id, key, record, received FROM ph_records_03")
-            self._db.execute("DROP TABLE ph_records_03")
-        # what each project sent last is what it speaks, until it sends again (so it is answered as it reads)
-        latest = self._db.execute("SELECT project, json_extract(record, '$.ph') AS ph FROM ph_records r WHERE seq ="
-                                  " (SELECT MAX(seq) FROM ph_records WHERE project = r.project)").fetchall()
-        if latest and not self._db.execute("SELECT 1 FROM state WHERE key = ?", (SPEAKS,)).fetchall():
-            self._db.execute("INSERT INTO state VALUES (?, ?)", (SPEAKS, json.dumps({x["project"]: x["ph"] for x in latest})))
-        for old, new in OLDER_EXTS.items():
-            self._db.execute("UPDATE ph_records SET ext = ?, record = json_set(record, '$.ph', ?, '$.ext', ?) WHERE ext = ?",
-                             (new, PH, new, old))
+            origin = "COALESCE(json_extract(record, '$.origin'), '')" if "origin" not in sql else "origin"
+            self._db.execute(f"INSERT INTO ph_records (seq, ext, project, origin, type, id, key, record, received) SELECT seq, ext,"
+                             f" project, {origin}, COALESCE(json_extract(record, '$.type'), ''), id, key, record, received FROM ph_records_before")
+            self._db.execute("DROP TABLE ph_records_before")
+        self._db.execute("UPDATE ph_records SET type = COALESCE(json_extract(record, '$.type'), '') WHERE type = ''")
 
     def records_of(self, ext: str, project: str, key: str) -> list[dict[str, Any]]:
-        return [json.loads(r["record"]) for r in self._q("SELECT record FROM ph_records WHERE ext = ? AND project = ? AND key = ? ORDER BY seq",
-                                                          (ext, project, key))]
+        return [json.loads(r["record"]) for r in self._q("SELECT record FROM ph_records WHERE ext LIKE ? || '/%' AND project = ? AND key = ?"
+                                                          " ORDER BY seq", (ext, project, key))]
 
     def handoffs_to(self, project: str, since: int = 0, key: str | None = None) -> list[dict[str, Any]]:
         where, args = ("AND json_extract(data, '$.reply_to') = ?", (key,)) if key is not None else ("", ())
