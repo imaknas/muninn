@@ -36,6 +36,7 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from muninn.adapters.channels.webpush import VapidKeys
+from muninn.package import version
 from muninn.adapters.sources.health import parse_health
 from muninn.adapters.web.devices import DeviceRegistry
 from muninn.adapters.web.lease_feed import LeaseFeed
@@ -57,6 +58,7 @@ from muninn.core.timewin import local_date
 
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
+VERSION = version()
 SCRIPTS = ("app.js", "sw.js")  # what the TypeScript build makes (npm run build): without them the page is empty
 
 
@@ -190,7 +192,7 @@ def create_app(
         return FileResponse(privacy_page, headers={"Cache-Control": "no-cache"})
 
     async def health(request: Request) -> Response:
-        return JSONResponse({"ok": True})
+        return JSONResponse({"ok": True, "version": VERSION})  # the version answering (what an upgrade waits for)
 
     @authed
     async def today(request: Request) -> Response:

@@ -1,0 +1,172 @@
+"""Where a release comes from, how this Muninn was installed and how it runs in the background: the pieces
+`muninn upgrade` (upgrade.py) is given, one implementation each."""
+
+from __future__ import annotations
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Callable
+
+import httpx
+
+from muninn.upgrade import PACKAGE, Release, UpgradeError, stable
+
+TIMEOUT_S = 15
+INSTALL_TIMEOUT_S = 600
+
+
+# ── where a release comes from ────────────────────────────────────────────
+
+
+class PyPI:
+    """The latest stable release on the Python Package Index: not a pre-release, and not yanked."""
+
+    def __init__(self, get: Callable[[str], Any] | None = None, package: str = PACKAGE):
+        self._get = get or (lambda url: httpx.get(url, timeout=TIMEOUT_S, follow_redirects=True))
+        self._package = package
+
+    def latest(self) -> Release | None:
+        try:
+            r = self._get(f"https://pypi.org/pypi/{self._package}/json")
+        except httpx.HTTPError as e:
+            raise UpgradeError(f"PyPI did not answer ({e})") from None
+        if r.status_code == 404:
+            return None  # not published yet
+        if r.status_code != 200:
+            raise UpgradeError(f"PyPI answered {r.status_code}")
+        releases = (r.json() or {}).get("releases") or {}
+        live = [v for v, files in releases.items() if files and stable(v) and not all(f.get("yanked") for f in files)]
+        if not live:
+            return None
+        from packaging.version import Version
+
+        best = max(live, key=Version)
+        return Release(best, f"{self._package}=={best}")
+
+
+class WheelFile:
+    """A release named by hand (`muninn upgrade --from <wheel>`): a package file's path or address."""
+
+    NAME = re.compile(r"muninn_ai-(?P<version>[^-]+)-")
+
+    def __init__(self, target: str):
+        self._target = target
+
+    def latest(self) -> Release | None:
+        m = self.NAME.search(Path(self._target.split("?")[0]).name)
+        if not m:
+            raise UpgradeError(f"{self._target} is not a muninn-ai package file (muninn_ai-<version>-…whl)")
+        return Release(m["version"], self._target)
+
+
+# ── how this Muninn was installed ─────────────────────────────────────────
+
+
+class UvTool:
+    """Installed by the installer (or `uv tool install muninn-ai`): it replaces itself."""
+
+    kind = "uv tool"
+
+    def __init__(self, uv: str, python: str, run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
+        self._uv, self._python, self._run = uv, python, run
+
+    def refusal(self) -> str | None:
+        return None
+
+    def install(self, spec: str) -> None:
+        try:
+            done = self._run([self._uv, "tool", "install", "--force", "--python", self._python, spec],
+                             capture_output=True, text=True, timeout=INSTALL_TIMEOUT_S)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise UpgradeError(f"uv could not run ({e})") from None
+        if done.returncode != 0:
+            raise UpgradeError((done.stderr or done.stdout or "uv failed").strip().splitlines()[-1])
+
+
+class Refused:
+    """An install that does not replace itself: what upgrades it instead."""
+
+    def __init__(self, kind: str, why: str):
+        self.kind, self._why = kind, why
+
+    def refusal(self) -> str | None:
+        return self._why
+
+    def install(self, spec: str) -> None:
+        raise UpgradeError(self._why)
+
+
+def installation(prefix: Path = Path(sys.prefix), package_dir: Path = Path(__file__).resolve().parents[1],
+                 env: dict[str, str] | None = None, which: Callable[[str], str | None] = shutil.which) -> Any:
+    """How the running Muninn was installed, read from where it runs."""
+    env = dict(os.environ) if env is None else env
+    if env.get("MUNINN_CONTAINER"):
+        return Refused("container", "this Muninn runs in a container: upgrade it with docker compose pull && docker compose up -d")
+    root = package_dir.parents[1]  # <checkout>/src/muninn
+    if (root / ".git").exists() and (root / "pyproject.toml").is_file():
+        return Refused("checkout", f"this Muninn runs from a source checkout ({root}): install the released package "
+                                   f"instead (uv tool install {PACKAGE}), or check out the release's tag there")
+    if (prefix / "uv-receipt.toml").is_file():
+        uv = which("uv") or next((str(p) for p in (Path.home() / ".local/bin/uv", Path.home() / ".cargo/bin/uv") if p.is_file()), None)
+        if uv is None:
+            return Refused("uv tool", "uv, which installed this Muninn, is not found: install uv, then run muninn upgrade again")
+        return UvTool(uv, f"{sys.version_info.major}.{sys.version_info.minor}")
+    return Refused("other", f"this Muninn was not installed by the installer: upgrade it the way it was installed "
+                            f"(pip install --upgrade {PACKAGE})")
+
+
+# ── how it runs in the background ─────────────────────────────────────────
+
+
+class Launchd:
+    def __init__(self, label: str, run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
+        self._label, self._run = label, run
+
+    def restart(self) -> bool:
+        done = self._run(["launchctl", "kickstart", "-k", f"gui/{os.getuid()}/{self._label}"], capture_output=True, timeout=TIMEOUT_S)
+        if done.returncode != 0:
+            raise UpgradeError(f"launchd did not restart {self._label}")
+        return True
+
+
+class SystemdUser:
+    def __init__(self, unit: str, run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
+        self._unit, self._run = unit, run
+
+    def restart(self) -> bool:
+        done = self._run(["systemctl", "--user", "restart", self._unit], capture_output=True, timeout=TIMEOUT_S)
+        if done.returncode != 0:
+            raise UpgradeError(f"systemd did not restart {self._unit}")
+        return True
+
+
+class NoService:
+    def restart(self) -> bool:
+        return False
+
+
+def service(home: Path = Path.home(), platform: str = sys.platform) -> Any:
+    """The background service the installer made (launchd on macOS, systemd --user on Linux), if there is one."""
+    if platform == "darwin" and (home / "Library/LaunchAgents/app.muninn.plist").is_file():
+        return Launchd("app.muninn")
+    unit = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config") / "systemd/user/muninn.service"
+    if platform.startswith("linux") and unit.is_file():
+        return SystemdUser("muninn.service")
+    return NoService()
+
+
+def served_version(port: int, get: Callable[[str], Any] | None = None) -> Callable[[], str | None]:
+    """The version the local server answers with, or None while it does not answer."""
+    get = get or (lambda url: httpx.get(url, timeout=3))
+
+    def served() -> str | None:
+        try:
+            r = get(f"http://127.0.0.1:{port}/healthz")
+            return (r.json() or {}).get("version") if r.status_code == 200 else None
+        except (httpx.HTTPError, ValueError):
+            return None
+    return served

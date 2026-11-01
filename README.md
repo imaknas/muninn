@@ -244,6 +244,11 @@ Or, with [uv](https://docs.astral.sh/uv/): `uv tool install muninn-ai`, then
 `muninn init` and `muninn serve`, and open the setup link it prints (the
 package is muninn-ai; the command is `muninn`).
 
+To move to a newer release, run `muninn upgrade`: it installs the latest
+stable one, restarts the background service on it and checks that it answers,
+and puts the version before back if it does not (`muninn upgrade --check` only
+says what is installed and what is out). In Docker, pull the new image instead.
+
 On a NAS or a server, `docker compose up -d` (see `compose.yaml`); the setup
 link is in `docker compose logs`. Either way your phone reaches Muninn over
 HTTPS: Tailscale (`tailscale serve`) is the shortest way there. `muninn backup

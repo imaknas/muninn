@@ -10,6 +10,7 @@ dependencies = [
     "anthropic>=2.3.0",
     "httpx>=0.27",
     "jsonschema>=4.26.0",
+    "packaging>=24",
     "pypdf>=6.21.1",
     "pywebpush>=2.0",
     "ruamel.yaml>=0.18",

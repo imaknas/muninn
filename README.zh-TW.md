@@ -200,6 +200,10 @@ curl -fsSL <address of install.sh> | sh
 或用 [uv](https://docs.astral.sh/uv/):`uv tool install muninn-ai`,再執行
 `muninn init` 和 `muninn serve`,打開它印出的設定連結(套件叫 muninn-ai,指令是 `muninn`)。
 
+要升到新版本就執行 `muninn upgrade`:它會裝上最新的穩定版、用新版重啟背景服務並確認它有回應,
+沒有回應就換回原本的版本(`muninn upgrade --check` 只說裝的是哪一版、最新的是哪一版)。
+用 Docker 的話,改成拉新的 image。
+
 在 NAS 或伺服器上用 `docker compose up -d`(見 `compose.yaml`);設定頁的連結
 在 `docker compose logs` 裡。不管哪種方式,你的手機都透過 HTTPS 連到 Muninn:
 Tailscale(`tailscale serve`)是最快的路。`muninn backup DIR` 會複製資料庫、計畫和設定;`muninn check` 會告訴你設定裡有哪些照寫的樣子沒辦法運作。

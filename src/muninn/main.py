@@ -54,7 +54,7 @@ from muninn.adapters.sources.conversations import TranscriptTextSource
 from muninn.adapters.sources.git import GitSource
 from muninn.adapters.store_sqlite import SqliteStore, StoreTooNew
 from muninn.core.redact import redact
-from muninn.package import CONTRACTS
+from muninn.package import CONTRACTS, version
 from muninn.setup_flow import Setup
 from muninn.core.language import Language
 from muninn.languages import CODES, language
@@ -771,6 +771,39 @@ def restart_self() -> bool:
     return True
 
 
+def upgrade(args: argparse.Namespace) -> int:
+    """`muninn upgrade`: wired here, the steps are upgrade.py's. In the old code it installs the release, then the
+    new code (run as its own process, since the files under this one were replaced) restarts and checks."""
+    from muninn.adapters import installs
+    from muninn.upgrade import Upgrader
+
+    try:
+        port = int(Config.load(args.data)["port"])
+    except BadSetting as err:
+        print(err, file=sys.stderr)
+        return 2
+    source = installs.WheelFile(args.wheel) if args.wheel else installs.PyPI()
+    up = Upgrader(version(), source, installs.installation(), installs.service(), installs.served_version(port), lambda line: print(line, flush=True))
+    if args.finish:
+        return up.finish(args.finish, args.to)
+    if args.check:
+        from muninn.upgrade import UpgradeError
+
+        try:
+            up.check()
+        except UpgradeError as err:
+            print(f"could not tell the latest release: {err}", file=sys.stderr)
+            return 1
+        return 0
+
+    def handover(previous: str, target: str) -> int:
+        new = Path(sys.prefix) / "bin" / "muninn"  # the same place, now the new release's
+        data = ["--data", args.data] if args.data else []
+        return subprocess.run([str(new), *data, "upgrade", "--finish", previous, "--to", target]).returncode
+
+    return up.run(handover)
+
+
 def print_config(cfg: Config) -> None:
     from ruamel.yaml import YAML
 
@@ -784,6 +817,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--data", help="data directory (default: $MUNINN_DATA or ./data)")
     parser.add_argument("--dry-run", action="store_true", help="print pushes instead of sending them")
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("--version", action="version", version=f"muninn {version()}")
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("tick", "morning", "evening", "weekly", "serve", "init", "status"):
         sub.add_parser(name)
@@ -841,6 +875,11 @@ def main(argv: list[str] | None = None) -> int:
     p_bak = sub.add_parser("backup", help="copy the database, plans and settings into a new folder under DIR")
     p_bak.add_argument("dir")
     p_bak.add_argument("--secrets", action="store_true", help="the keys too (the copy is then as sensitive as they are)")
+    p_up = sub.add_parser("upgrade", help="install the latest stable release and restart on it (put back if it does not come up)")
+    p_up.add_argument("--check", action="store_true", help="only say which version is installed and which is the latest")
+    p_up.add_argument("--from", dest="wheel", help="a muninn-ai package file (path or address) instead of the latest on PyPI")
+    p_up.add_argument("--finish", help=argparse.SUPPRESS)  # the previous version: the new code takes over from here
+    p_up.add_argument("--to", help=argparse.SUPPRESS)
     p_cfg = sub.add_parser("config", help="print the settings in effect (config.yaml over the defaults); changes nothing")
     p_cfg.add_argument("--effective", action="store_true", help="the merged settings, with what is worked out from them")
     args = parser.parse_args(argv)
@@ -851,6 +890,8 @@ def main(argv: list[str] | None = None) -> int:
             print(err, file=sys.stderr)
             return 2
         return 0
+    if args.cmd == "upgrade":  # before build(): the server migrates its own database once it runs the new version
+        return upgrade(args)
     if args.cmd == "backup":  # before build() too: a copy is taken of what is there, nothing is migrated first
         print(backup(Config.load(args.data), Path(args.dir).expanduser(), with_secrets=args.secrets))
         return 0

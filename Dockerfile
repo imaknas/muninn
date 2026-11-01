@@ -21,7 +21,7 @@ COPY --from=wheel /dist /dist
 RUN pip install --no-cache-dir /dist/*.whl && rm -rf /dist && useradd --create-home --uid 1000 muninn \
     && mkdir /data && chown muninn /data
 USER muninn
-ENV MUNINN_DATA=/data MUNINN_HOST=0.0.0.0 MUNINN_SERVICE=1 PYTHONUNBUFFERED=1
+ENV MUNINN_DATA=/data MUNINN_HOST=0.0.0.0 MUNINN_SERVICE=1 MUNINN_CONTAINER=1 PYTHONUNBUFFERED=1
 VOLUME /data
 EXPOSE 18795
 HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18795/healthz')"

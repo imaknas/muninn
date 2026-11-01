@@ -89,7 +89,8 @@ release notes.
 2. `git tag -a vX.Y.Z -m vX.Y.Z` on that commit, and push the commit and the tag.
 3. Build the package from that commit with its web app: `npm ci && npm run build`, then `uv build`.
 4. `gh release create vX.Y.Z dist/* --title "Muninn X.Y.Z" --notes "$(git cliff --latest --strip header)"`, and
-   publish the same files to PyPI as `muninn-ai`.
+   publish the same files to PyPI as `muninn-ai`: that is where `muninn upgrade` looks for the latest stable release
+   (a pre-release or a yanked version is never taken).
 
 ## Privacy
 
