@@ -3,6 +3,17 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.4.0 (2026-11-01)
+
+### New
+
+- **records:** Muninn speaks Principal Handoff 0.5, and still 0.4 to a project configured for it
+
+### Fixed
+
+- `muninn upgrade` installs a release published minutes ago, and says why when it cannot
+- **web:** Leaving the page no longer starts reads the browser refuses and reports as errors
+
 ## v0.3.0 (2026-11-01)
 
 ### New
