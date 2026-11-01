@@ -1,4 +1,7 @@
-# Muninn
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/imaknas/muninn/main/assets/logo/banner-en-dark.svg">
+  <img alt="Muninn: an always-on personal assistant you talk to in one conversation" src="https://raw.githubusercontent.com/imaknas/muninn/main/assets/logo/banner-en.svg" width="100%">
+</picture>
 
 English · [繁體中文](README.zh-TW.md)
 

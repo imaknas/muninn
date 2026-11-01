@@ -1,4 +1,7 @@
-# Muninn
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/imaknas/muninn/main/assets/logo/banner-zh-dark.svg">
+  <img alt="Muninn:全天候的個人助理,一切都在同一段對話裡" src="https://raw.githubusercontent.com/imaknas/muninn/main/assets/logo/banner-zh.svg" width="100%">
+</picture>
 
 [English](README.md) · 繁體中文
 
