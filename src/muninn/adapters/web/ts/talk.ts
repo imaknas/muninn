@@ -402,7 +402,7 @@ async function attach(project: string, confirm: boolean): Promise<void> {
 async function resumeLease(t: Conversation): Promise<void> {
   try {
     const info = await api<LeaseInfo>(`/api/leases?thread=${encodeURIComponent(t.thread || "")}`);
-    if (info.enabled && !info.lease && t.pastLease) return showPastLease(t);
+    if (info.enabled && !info.lease && t.pastLease) return await showPastLease(t);  // awaited: its failure is caught here
     if (!info.enabled || !info.lease) return;
     if (!shownLeases.has(info.lease.lease_id)) {  // coming back to it: its turns are already in the stream
       shownLeases.add(info.lease.lease_id);
