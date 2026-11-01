@@ -146,3 +146,25 @@ def test_a_failed_install_says_why_and_can_be_tried_again():
     assert f.state() == {"ready": False, "state": "failed", "said": "no space left on device", "refused": None}
     f.start()
     assert f.state()["state"] == "failed"
+
+
+def test_a_service_that_does_not_answer_while_listing_models_is_said_plainly(tmp_path):
+    class Down:
+        def models(self):
+            raise ConnectionError("Connection refused")
+
+    class Impl:
+        default_models, location, counts_tokens = {}, "cloud", True
+
+        @staticmethod
+        def label(words):
+            return "Down"
+
+        @staticmethod
+        def from_spec(spec, ctx):
+            return Down()
+
+    (tmp_path / "config.yaml").write_text("language: en\n")
+    s = Setup(Config.load(tmp_path), {**IMPLS, "openai": Impl}, restart=lambda: False)
+    with pytest.raises(RuntimeError, match="did not answer.*Connection refused"):
+        s.models({"impl": "openai", "base_url": "http://127.0.0.1:9", "key": "invented"})

@@ -147,7 +147,8 @@ def installation(prefix: Path = Path(sys.prefix), package_dir: Path = Path(__fil
     """How the running Muninn was installed, read from where it runs."""
     env = dict(os.environ) if env is None else env
     if env.get("MUNINN_CONTAINER"):
-        return Refused("container", "this Muninn runs in a container: upgrade it with docker compose pull && docker compose up -d",
+        return Refused("container", "this Muninn runs in a container: upgrade it where its repository is cloned, with "
+                                    "git pull && docker compose up -d --build",
                        "this Muninn runs in a container, which has no browser to fill forms in: for that, install Muninn on "
                        "a computer with the one-line installer")
     root = package_dir.parents[1]  # <checkout>/src/muninn

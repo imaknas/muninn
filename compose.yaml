@@ -1,6 +1,8 @@
 # docker compose up -d, then open the setup link it prints: docker compose logs muninn | grep "first run".
-# Reachable from this machine only; for your phone, put HTTPS in front (Tailscale serve, Caddy, Cloudflare Tunnel)
-# and set MUNINN_PUBLIC_URL to that address.
+# Reachable from this machine only (from another: ssh -L 18795:127.0.0.1:18795 <this machine>). Keep the port on
+# 127.0.0.1: a browser on this machine is then told apart by the container's gateway, and can finish setup without
+# HTTPS. For your phone, put HTTPS in front (Tailscale serve, Caddy, Cloudflare Tunnel) and set MUNINN_PUBLIC_URL to
+# that address (docs/install.md, "Docker"). Upgrade: git pull && docker compose up -d --build.
 services:
   muninn:
     build: .

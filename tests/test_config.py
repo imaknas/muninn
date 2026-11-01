@@ -155,3 +155,39 @@ def test_a_port_muninn_cannot_listen_on_is_said_before_anything_runs(tmp_path, p
     (tmp_path / "config.yaml").write_text(f"port: {port!r}\n" if not isinstance(port, str) else f"port: {port}\n")
     with pytest.raises(BadSetting, match="port"):
         _ = Config.load(tmp_path).port
+
+
+def test_without_a_data_folder_given_the_installers_one_is_found(tmp_path):
+    from muninn.config import default_data_dir
+
+    home, work = tmp_path / "home", tmp_path / "anywhere"
+    work.mkdir()
+    mac = home / "Library" / "Application Support" / "Muninn"
+    assert default_data_dir({}, work, home, "darwin") == work / "data"  # nothing installed: made here
+    mac.mkdir(parents=True)
+    (mac / "config.yaml").write_text("jobs: default\n")
+    assert default_data_dir({}, work, home, "darwin") == mac
+    linux = tmp_path / "xdg" / "muninn"
+    linux.mkdir(parents=True)
+    (linux / "config.yaml").write_text("jobs: default\n")
+    assert default_data_dir({"XDG_DATA_HOME": str(tmp_path / "xdg")}, work, home, "linux") == linux
+    (work / "data").mkdir()
+    (work / "data" / "config.yaml").write_text("{}\n")
+    assert default_data_dir({}, work, home, "darwin") == work / "data"  # a checkout's own comes first
+    assert default_data_dir({"MUNINN_DATA": str(tmp_path / "x")}, work, home, "darwin") == tmp_path / "x"
+
+
+@pytest.mark.parametrize("text,said", [
+    ("language: en\n  bad: indent\n", "not valid YAML at line 2"),
+    ("- a list\n", "should hold settings"),
+    ("llm: just-a-word\n", "llm: a section of settings"),
+])
+def test_a_config_that_does_not_read_as_settings_is_said_with_where(tmp_path, text, said):
+    (tmp_path / "config.yaml").write_text(text)
+    with pytest.raises(BadSetting, match=said):
+        Config.load(tmp_path)
+
+
+def test_a_section_left_empty_keeps_its_defaults(tmp_path):
+    (tmp_path / "config.yaml").write_text("llm:\n")
+    assert isinstance(Config.load(tmp_path)["llm"], dict)

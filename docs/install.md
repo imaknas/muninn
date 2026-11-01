@@ -18,14 +18,27 @@ package is muninn-ai; the command is `muninn`).
 To move to a newer release, run `muninn upgrade`: it installs the latest
 stable one, restarts the background service on it and checks that it answers,
 and puts the version before back if it does not (`muninn upgrade --check` only
-says what is installed and what is out). In Docker, pull the new image instead.
+says what is installed and what is out).
 
-On a NAS or a server, `docker compose up -d` (see `compose.yaml`); the setup
-link is in `docker compose logs`. Either way your phone reaches Muninn over
-HTTPS: Tailscale is the shortest way there. With Tailscale signed in on the
-computer (and HTTPS certificates on for the tailnet), the settings page's "Pair a
-phone" sets it up itself (`tailscale serve`, for your tailnet only) and restarts
-Muninn on the address; otherwise it says what is missing. `muninn backup
+Your phone reaches Muninn over HTTPS: Tailscale is the shortest way there. With
+Tailscale signed in on the computer (and HTTPS certificates on for the tailnet),
+the settings page's "Pair a phone" sets it up itself (`tailscale serve`, for your
+tailnet only) and restarts Muninn on the address; otherwise it says what is
+missing. The phone needs the Tailscale app too, signed in to the same account.
+Muninn runs while the computer is on and awake: on a laptop it pauses while the
+lid is closed.
+
+### Docker (a NAS or a server)
+
+Clone this repository there and run `docker compose up -d` (see `compose.yaml`);
+the setup link is in `docker compose logs muninn`. The port is published on that
+computer's own address only: from another computer, open it through SSH
+(`ssh -L 18795:127.0.0.1:18795 <server>`, then the link). To move to a newer
+release: `git pull && docker compose up -d --build`. For the phone, run Tailscale
+on the server itself (`tailscale serve --bg --https=8444 http://127.0.0.1:18795`),
+put the address it gives in `.env` as `MUNINN_PUBLIC_URL=https://<name>:8444`,
+and run `docker compose up -d` again; "Pair a phone" then shows the code. Ollama
+on the server is `http://host.docker.internal:11434` on the setup page. `muninn backup
 DIR` copies the database, plans and settings; `muninn check` says what in the
 settings cannot work as written.
 

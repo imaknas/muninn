@@ -49,6 +49,8 @@ function languages(redraw: () => void): HTMLElement {
 function chooseService(token: string, state: SetupState, error?: string): void {
   const form = el("form", { class: "pair-form", onsubmit: async (e) => {
     e.preventDefault();
+    const button = (e.target as HTMLFormElement).querySelector<HTMLButtonElement>("button[type=submit]");
+    if (button) { button.disabled = true; button.textContent = w.setup.checking; }  // the service is asked: it can take a while
     const f = new FormData(e.target as HTMLFormElement);
     const choice: Choice = { impl: String(f.get("impl")) };
     for (const k of ["key", "base_url", "label"] as const) if (f.get(k)) choice[k] = String(f.get(k));

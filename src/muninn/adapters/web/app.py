@@ -64,16 +64,20 @@ LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
 SCRIPTS = ("app.js", "sw.js")  # what the TypeScript build makes (npm run build): without them the page is empty
 
 
-def local_browser(request: Request) -> bool:
+LOCAL_PEERS = ("127.0.0.1", "::1")
+
+
+def local_browser(request: Request, peers: Sequence[str] = LOCAL_PEERS) -> bool:
     """A browser on this very computer: it asks for this computer's own address (Host) and connects from here. Both:
     a request through `tailscale serve` connects from here too, but asks for its tailnet name; a caller elsewhere can
-    write any Host, but cannot connect from here."""
+    write any Host, but cannot connect from here. `peers`: the addresses "from here" arrives from (in a container,
+    also the gateway this computer's published port arrives through)."""
     try:
         host = urlsplit("//" + (request.headers.get("host") or "")).hostname or ""
     except ValueError:
         return False
     client = request.client.host if request.client else ""
-    return host in LOOPBACK and client in ("127.0.0.1", "::1")
+    return host in LOOPBACK and client in peers
 
 
 def unbuilt() -> list[str]:
@@ -124,6 +128,7 @@ def create_app(
     tailscale: Any = None,
     port: int = 18795,
     form_filling: FormFilling | None = None,
+    local_peers: Sequence[str] = LOCAL_PEERS,
 ) -> Starlette:
     """`settings_view`: read-only facts about notification rules for the PWA.
     `messages`: what the projects post for the user; without it the
@@ -135,7 +140,8 @@ def create_app(
     without it those routes answer empty. `setup`: first-run setup (which model, its key, pairing the phone); open
     to the one-time token printed at start until a device is paired, then to paired devices only. `tailscale`: what
     gives Muninn (on `port`) an HTTPS address for the phone from the settings page (adapters/tailscale.py).
-    `form_filling`: adds the browser that fills in application forms, from the settings page (form_filling.py)."""
+    `form_filling`: adds the browser that fills in application forms, from the settings page (form_filling.py).
+    `local_peers`: where a browser on this computer connects from (see local_browser)."""
     settings_view = settings_view or {}
     words = engine.words  # what the server says itself (errors, the pages a sign-in returns to)
     lock = threading.RLock()  # engine calls touch YAML files; serialize them (re-entrant: a lease's thread
@@ -796,7 +802,7 @@ def create_app(
     async def setup_pair_here(request: Request) -> Response:
         """The browser on this computer, paired now (no HTTPS needed here): a code it pairs itself with."""
         await body(request)
-        if not local_browser(request):
+        if not local_browser(request, local_peers):
             return JSONResponse({"error": words("web.not_this_computer")}, status_code=403)
         return JSONResponse({"code": await run_in_threadpool(devices.new_pairing_code)})
 
@@ -846,7 +852,7 @@ def create_app(
             return JSONResponse({"error": "invalid or expired code"}, status_code=403)
         resp = JSONResponse({"ok": True})
         # Secure everywhere but a browser on this computer over plain http, which Safari would not keep it from
-        resp.set_cookie(COOKIE, token, max_age=COOKIE_MAX_AGE, httponly=True, secure=not local_browser(request),
+        resp.set_cookie(COOKIE, token, max_age=COOKIE_MAX_AGE, httponly=True, secure=not local_browser(request, local_peers),
                         samesite="strict", path="/")
         return resp
 

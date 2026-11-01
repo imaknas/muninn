@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import secrets
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from datetime import time
 from pathlib import Path
@@ -24,6 +25,7 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 
 from muninn.core.handoff_records import parties_from
 from muninn.languages import CODES, system_language
@@ -94,18 +96,56 @@ def _window(s: str) -> tuple[time, time]:
     return time.fromisoformat(a.strip()), time.fromisoformat(b.strip())
 
 
-def _deep_merge(base: dict[str, Any], over: dict[str, Any]) -> dict[str, Any]:
+def _deep_merge(base: dict[str, Any], over: dict[str, Any], where: str = "") -> dict[str, Any]:
+    """The defaults with config over them; a section config empties (`llm:` alone) keeps its defaults, and one that is
+    not a section at all is said, not found out later."""
     out = dict(base)
     for k, v in over.items():
-        out[k] = _deep_merge(base[k], v) if isinstance(v, dict) and isinstance(base.get(k), dict) else v
+        if isinstance(base.get(k), dict):
+            if v is None:
+                continue
+            if not isinstance(v, dict):
+                raise BadSetting(f"{where}{k}: a section of settings, not {v!r}")
+            out[k] = _deep_merge(base[k], v, f"{where}{k}.")
+        else:
+            out[k] = v
     return out
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
+    """A settings file; one that does not read as settings is said with where it goes wrong (BadSetting)."""
     if not path.is_file():
         return {}
-    data = YAML(typ="safe").load(path.read_text())
+    try:
+        data = YAML(typ="safe").load(path.read_text())
+    except YAMLError as e:
+        mark = getattr(e, "problem_mark", None)
+        at = f" at line {mark.line + 1}" if mark is not None else ""
+        raise BadSetting(f"{path} is not valid YAML{at}: {getattr(e, 'problem', None) or e}") from None
+    if data is not None and not isinstance(data, dict):
+        raise BadSetting(f"{path} should hold settings (name: value), not {type(data).__name__}")
     return dict(data or {})
+
+
+def installed_data_dir(environ: Mapping[str, str] = os.environ, home: Path | None = None, platform: str = sys.platform) -> Path:
+    """The data folder install.sh makes (kept the same as there)."""
+    home = home or Path.home()
+    if platform == "darwin":
+        return home / "Library" / "Application Support" / "Muninn"
+    return Path(environ.get("XDG_DATA_HOME") or home / ".local" / "share") / "muninn"
+
+
+def default_data_dir(environ: Mapping[str, str] = os.environ, cwd: Path | None = None, home: Path | None = None,
+                     platform: str = sys.platform) -> Path:
+    """Where Muninn's data is when no --data says: $MUNINN_DATA; else ./data where a checkout keeps it; else the
+    folder the installer made, so `muninn pair` and the rest find the Muninn that is running; else ./data, made new."""
+    if environ.get("MUNINN_DATA"):
+        return Path(environ["MUNINN_DATA"])
+    here = (cwd or Path.cwd()) / "data"
+    if (here / "config.yaml").is_file() or (here / "muninn.db").is_file():
+        return here
+    installed = installed_data_dir(environ, home, platform)
+    return installed if (installed / "config.yaml").is_file() else here
 
 
 def system_timezone(environ: Mapping[str, str] = os.environ, localtime: Path = Path("/etc/localtime"),
@@ -149,7 +189,7 @@ class Config:
 
     @classmethod
     def load(cls, data_dir: str | os.PathLike[str] | None = None) -> Config:
-        d = Path(data_dir or os.environ.get("MUNINN_DATA", "data")).expanduser().resolve()
+        d = Path(data_dir or default_data_dir()).expanduser().resolve()
         raw = _deep_merge(DEFAULTS, _load_yaml(d / "config.yaml"))
         if os.environ.get("MUNINN_HOST"):
             raw["host"] = os.environ["MUNINN_HOST"]

@@ -23,6 +23,7 @@ from ruamel.yaml import YAML
 from muninn.config import Config
 from muninn.languages import CODES, language
 from muninn.languages import language as words_for  # where a parameter is called language
+from muninn.core.ports import CloudLoginLost
 from muninn.llm_config import Implementation, ProviderContext, llm_setup
 
 # what the setup page offers: impl → how it is asked for (the page names each in its language)
@@ -93,8 +94,14 @@ class Setup:
             self._write_key(name, key)
         setup = llm_setup({"providers": {name: {**spec, "models": {"fast": "x"}}}}, self._impls)
         assert setup is not None
-        ctx = ProviderContext(self._cfg.data_dir, self._cfg.secrets_dir, words=language(self._cfg.language))
-        return self._impls[spec["impl"]].from_spec(setup.providers[name], ctx).models()
+        words = language(self._cfg.language)
+        ctx = ProviderContext(self._cfg.data_dir, self._cfg.secrets_dir, words=words)
+        try:
+            return self._impls[spec["impl"]].from_spec(setup.providers[name], ctx).models()
+        except CloudLoginLost:
+            raise
+        except Exception as e:  # noqa: BLE001 — down, rate-limited, unreachable: what it said is what the user is told
+            raise RuntimeError(words("setup_flow.no_list", why=str(e)[:300] or type(e).__name__)) from None
 
     def save(self, choice: Mapping[str, Any], fast: str, standard: str | None = None, language: str | None = None) -> bool:
         """Writes the provider and its models into config (cloud routing for a cloud provider; a local one is the

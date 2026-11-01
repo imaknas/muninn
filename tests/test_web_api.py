@@ -320,3 +320,14 @@ def test_the_contract_notices_a_field_that_changes_type_or_goes_missing(full):
     with pytest.raises(AssertionError, match="ideas"):
         conforms("GET /api/home", {k: v for k, v in home.items() if k != "ideas"})
     conforms("GET /api/home", {**home, "something_new": 1})  # an added field is fine
+
+
+def test_in_a_container_the_gateway_a_published_port_arrives_through_is_found(tmp_path):
+    from muninn.main import container_gateway
+
+    route = tmp_path / "route"
+    route.write_text("Iface\tDestination\tGateway\tFlags\n"
+                     "eth0\t00000000\t010011AC\t0003\n"  # default via 172.17.0.1
+                     "eth0\t000011AC\t00000000\t0001\n")
+    assert container_gateway(route) == ["172.17.0.1"]
+    assert container_gateway(tmp_path / "none") == []

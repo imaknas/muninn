@@ -15,13 +15,20 @@ curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh
 
 要升到新版本就執行 `muninn upgrade`:它會裝上最新的穩定版、用新版重啟背景服務並確認它有回應,
 沒有回應就換回原本的版本(`muninn upgrade --check` 只說裝的是哪一版、最新的是哪一版)。
-用 Docker 的話,改成拉新的 image。
 
-在 NAS 或伺服器上用 `docker compose up -d`(見 `compose.yaml`);設定頁的連結
-在 `docker compose logs` 裡。不管哪種方式,你的手機都透過 HTTPS 連到 Muninn:
-Tailscale 是最快的路:電腦上的 Tailscale 登入了(而且 tailnet 開了 HTTPS 憑證),
+你的手機透過 HTTPS 連到 Muninn:Tailscale 是最快的路:電腦上的 Tailscale 登入了(而且 tailnet 開了 HTTPS 憑證),
 設定頁的「配對手機」會自己設好(`tailscale serve`,只有你的 tailnet 連得到),用新位址重啟 Muninn;
-缺什麼它會告訴你。`muninn backup DIR` 會複製資料庫、計畫和設定;`muninn check` 會告訴你設定裡有哪些照寫的樣子沒辦法運作。
+缺什麼它會告訴你。手機也要裝 Tailscale App,登入同一個帳號。Muninn 只在電腦開著、醒著的時候運作:
+筆電闔上就會暫停。
+
+### Docker(NAS 或伺服器)
+
+在那台機器上 clone 這個 repo,執行 `docker compose up -d`(見 `compose.yaml`);設定頁的連結在
+`docker compose logs muninn` 裡。連接埠只開在那台機器自己的位址:從別台電腦要透過 SSH 打開
+(`ssh -L 18795:127.0.0.1:18795 <伺服器>`,再開那個連結)。升級:`git pull && docker compose up -d --build`。
+要給手機用,就在伺服器上執行 Tailscale(`tailscale serve --bg --https=8444 http://127.0.0.1:18795`),
+把它給的位址寫進 `.env` 的 `MUNINN_PUBLIC_URL=https://<名稱>:8444`,再執行一次 `docker compose up -d`;
+「配對手機」就會顯示配對碼。伺服器上的 Ollama 在設定頁填 `http://host.docker.internal:11434`。`muninn backup DIR` 會複製資料庫、計畫和設定;`muninn check` 會告訴你設定裡有哪些照寫的樣子沒辦法運作。
 
 ## 從 checkout 執行
 

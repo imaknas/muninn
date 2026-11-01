@@ -7,4 +7,5 @@ TEXTS = {
     "google_desktop": "That client is a Desktop app: create one of type \"Web application\" instead",
     "google_not_client": "That file has no Web application client in it (client_id and client_secret): download the client's JSON again",
     "google_redirect": "Add this to the client's Authorized redirect URIs in Google Cloud, save, and download the JSON again: {uri}",
+    "no_list": "The service did not answer, so its models cannot be listed; check the address and your connection, or try again in a minute: {why}",
 }

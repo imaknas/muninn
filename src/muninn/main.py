@@ -770,6 +770,22 @@ def first_run_token(cfg: Config, devices: DeviceRegistry) -> str | None:
     return token
 
 
+def container_gateway(route: Path = Path("/proc/net/route")) -> list[str]:
+    """In a container, the address its default route goes through: where a port the container publishes on this
+    computer's loopback (compose.yaml does) arrives from. None found: none."""
+    import socket
+    import struct
+
+    try:
+        for line in route.read_text().splitlines()[1:]:
+            fields = line.split()
+            if len(fields) > 2 and fields[1] == "00000000":  # the default route
+                return [socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))]
+    except (OSError, ValueError):
+        pass
+    return []
+
+
 def form_filling_ready() -> bool:
     """Whether application forms can be filled in here: the autofill extra, and the browser it drives."""
     from muninn.adapters.apply import browser
@@ -830,7 +846,8 @@ def print_config(cfg: Config) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="muninn")
-    parser.add_argument("--data", help="data directory (default: $MUNINN_DATA or ./data)")
+    parser.add_argument("--data", help="data directory (default: $MUNINN_DATA; else ./data if there is one; else the "
+                                       "folder the installer made)")
     parser.add_argument("--dry-run", action="store_true", help="print pushes instead of sending them")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--version", action="version", version=f"muninn {version()}")
@@ -1156,7 +1173,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "pair":
         code = app.devices.new_pairing_code()
-        print(f"pairing code (valid 10 minutes, single use): {code}")
+        print(f"pairing code (valid 10 minutes, single use): {code}  (Muninn in {app.config.data_dir})")
+        url_file = app.config.data_dir / "setup-url"
+        if url_file.is_file():  # not set up yet: the link that finishes it, which a closed tab took with it
+            print(f"to finish setting it up instead, open {url_file.read_text().strip()}")
         return 0
     if args.cmd == "devices":
         if args.revoke is not None:
@@ -1197,6 +1217,8 @@ def main(argv: list[str] | None = None) -> int:
             tailscale=Tailscale(),
             port=app.config.port,
             form_filling=FormFilling(installs.installation(), version(), form_filling_ready, restart_self),
+            # published on this computer's loopback alone, a container's port arrives through its gateway
+            local_peers=("127.0.0.1", "::1", *(container_gateway() if os.environ.get("MUNINN_CONTAINER") else [])),
         )
         try:
             jobs = scheduler.plan(app.config["jobs"])
