@@ -7,6 +7,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import re
+import signal
 import shutil
 import subprocess
 import sys
@@ -101,6 +102,10 @@ class UvTool:
         self._call([self._uv, "tool", "install", "--force", "--refresh-package", PACKAGE, "--python", self._python,
                     with_extras(spec, self._extras)], "uv")
 
+    def uninstall(self) -> str:
+        self._call([self._uv, "tool", "uninstall", PACKAGE], "uv")
+        return f"{PACKAGE} uninstalled"
+
     def add_extra(self, extra: str, version: str, then: list[str] | None = None) -> None:
         """This version again with `extra` too; `then`: what to run with this installation's Python after (the
         browser the extra drives, say)."""
@@ -123,8 +128,8 @@ class Refused:
     """An install that does not replace itself: what upgrades it instead (`why`), and what adds an optional part to
     it instead (`extra_why`)."""
 
-    def __init__(self, kind: str, why: str, extra_why: str | None = None):
-        self.kind, self._why, self._extra_why = kind, why, extra_why or why
+    def __init__(self, kind: str, why: str, extra_why: str | None = None, remove_why: str | None = None):
+        self.kind, self._why, self._extra_why, self._remove_why = kind, why, extra_why or why, remove_why or why
 
     def refusal(self) -> str | None:
         return self._why
@@ -138,6 +143,9 @@ class Refused:
     def add_extra(self, extra: str, version: str, then: list[str] | None = None) -> None:
         raise UpgradeError(self._extra_why)
 
+    def uninstall(self) -> str:
+        raise UpgradeError(self._remove_why)
+
 
 EXTRAS = {"autofill": "playwright"}  # each optional part, by a module only it brings
 
@@ -150,13 +158,15 @@ def installation(prefix: Path = Path(sys.prefix), package_dir: Path = Path(__fil
         return Refused("container", "this Muninn runs in a container: upgrade it where its repository is cloned, with "
                                     "git pull && docker compose up -d --build",
                        "this Muninn runs in a container, which has no browser to fill forms in: for that, install Muninn on "
-                       "a computer with the one-line installer")
+                       "a computer with the one-line installer",
+                       "this Muninn runs in a container: remove it with docker compose down (-v deletes its data too)")
     root = package_dir.parents[1]  # <checkout>/src/muninn
     if (root / ".git").exists() and (root / "pyproject.toml").is_file():
         return Refused("checkout", f"this Muninn runs from a source checkout ({root}): install the released package "
                                    f"instead (uv tool install {PACKAGE}), or check out the release's tag there",
                        f"this Muninn runs from a source checkout ({root}): run uv sync --extra autofill and "
-                       f"uv run playwright install chromium there")
+                       f"uv run playwright install chromium there",
+                       f"this Muninn runs from a source checkout ({root}): delete that folder to remove it")
     if (prefix / "uv-receipt.toml").is_file():
         uv = which("uv") or next((str(p) for p in (Path.home() / ".local/bin/uv", Path.home() / ".cargo/bin/uv") if p.is_file()), None)
         if uv is None:
@@ -167,15 +177,16 @@ def installation(prefix: Path = Path(sys.prefix), package_dir: Path = Path(__fil
     return Refused("other", f"this Muninn was not installed by the installer: upgrade it the way it was installed "
                             f"(pip install --upgrade {PACKAGE})",
                    f"this Muninn was not installed by the installer: add form filling the way it was installed "
-                   f"(pip install '{PACKAGE}[autofill]', then playwright install chromium)")
+                   f"(pip install '{PACKAGE}[autofill]', then playwright install chromium)",
+                   f"this Muninn was not installed by the installer: remove it the way it was installed (pip uninstall {PACKAGE})")
 
 
 # ── how it runs in the background ─────────────────────────────────────────
 
 
 class Launchd:
-    def __init__(self, label: str, run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
-        self._label, self._run = label, run
+    def __init__(self, label: str, plist: Path, run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
+        self._label, self._plist, self._run = label, plist, run
 
     def restart(self) -> bool:
         done = self._run(["launchctl", "kickstart", "-k", f"gui/{os.getuid()}/{self._label}"], capture_output=True, timeout=TIMEOUT_S)
@@ -183,10 +194,16 @@ class Launchd:
             raise UpgradeError(f"launchd did not restart {self._label}")
         return True
 
+    def remove(self) -> str:
+        """Stopped, and not started at login again."""
+        self._run(["launchctl", "bootout", f"gui/{os.getuid()}/{self._label}"], capture_output=True, timeout=TIMEOUT_S)
+        self._plist.unlink(missing_ok=True)
+        return f"launchd: {self._label} stopped and removed"
+
 
 class SystemdUser:
-    def __init__(self, unit: str, run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
-        self._unit, self._run = unit, run
+    def __init__(self, unit: str, path: Path, run: Callable[..., subprocess.CompletedProcess] = subprocess.run):
+        self._unit, self._path, self._run = unit, path, run
 
     def restart(self) -> bool:
         done = self._run(["systemctl", "--user", "restart", self._unit], capture_output=True, timeout=TIMEOUT_S)
@@ -194,19 +211,67 @@ class SystemdUser:
             raise UpgradeError(f"systemd did not restart {self._unit}")
         return True
 
+    def remove(self) -> str:
+        self._run(["systemctl", "--user", "disable", "--now", self._unit], capture_output=True, timeout=TIMEOUT_S)
+        self._path.unlink(missing_ok=True)
+        self._run(["systemctl", "--user", "daemon-reload"], capture_output=True, timeout=TIMEOUT_S)
+        return f"systemd: {self._unit} stopped and removed"
+
+
+class RunLoop:
+    """Where there was no service manager, install.sh keeps Muninn running with a loop of its own (run.sh), which
+    starts it again whenever it stops: it says its own process (run.pid) and Muninn's (run.child)."""
+
+    def __init__(self, data_dir: Path, kill: Callable[[int, int], None] = os.kill):
+        self._dir, self._kill = data_dir, kill
+
+    def _pid(self, name: str) -> int | None:
+        try:
+            return int((self._dir / name).read_text().strip())
+        except (OSError, ValueError):
+            return None
+
+    def restart(self) -> bool:
+        child = self._pid("run.child")
+        if child is None:
+            return False  # an older run.sh, which does not say: the user restarts it
+        try:
+            self._kill(child, signal.SIGTERM)  # the loop starts it again, on what is installed now
+        except OSError:
+            pass
+        return True
+
+    def remove(self) -> str:
+        loop = self._pid("run.pid")
+        if loop is not None:
+            try:
+                self._kill(loop, signal.SIGTERM)  # the loop stops Muninn as it ends
+            except OSError:
+                pass
+        for name in ("run.sh", "run.pid", "run.child"):
+            (self._dir / name).unlink(missing_ok=True)
+        return "the background loop stopped and removed"
+
 
 class NoService:
     def restart(self) -> bool:
         return False
 
+    def remove(self) -> str:
+        return "no background service was set up"
 
-def service(home: Path = Path.home(), platform: str = sys.platform) -> Any:
-    """The background service the installer made (launchd on macOS, systemd --user on Linux), if there is one."""
-    if platform == "darwin" and (home / "Library/LaunchAgents/app.muninn.plist").is_file():
-        return Launchd("app.muninn")
+
+def service(home: Path = Path.home(), platform: str = sys.platform, data_dir: Path | None = None) -> Any:
+    """The background service the installer made (launchd on macOS, systemd --user on Linux, or its own loop where
+    there is neither), if there is one."""
+    plist = home / "Library/LaunchAgents/app.muninn.plist"
+    if platform == "darwin" and plist.is_file():
+        return Launchd("app.muninn", plist)
     unit = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config") / "systemd/user/muninn.service"
     if platform.startswith("linux") and unit.is_file():
-        return SystemdUser("muninn.service")
+        return SystemdUser("muninn.service", unit)
+    if data_dir is not None and (data_dir / "run.pid").is_file():
+        return RunLoop(data_dir)
     return NoService()
 
 

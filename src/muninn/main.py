@@ -66,7 +66,7 @@ from muninn.core import eval_suite
 from muninn.core import commands as command_prompt, facts as facts_prompt
 from muninn.core.understanding import WORK_SYSTEM
 from muninn.adapters.web.devices import DeviceRegistry
-from muninn.config import BadSetting, Config, MissingSecret
+from muninn.config import BadSetting, Config, MissingSecret, default_data_dir
 from muninn.llm_config import LLMSetup, ProviderContext, llm_setup
 from muninn.core.cases import CaseFeedback
 from muninn.core.classify import LocalDomainClassifier
@@ -804,18 +804,50 @@ def restart_self() -> bool:
     return True
 
 
+def uninstall(args: argparse.Namespace, say: Callable[[str], None] = print) -> int:
+    """`muninn uninstall`: what the installer set up, taken away in the order nothing is left running on it: the
+    background service, the phone's HTTPS address, the data (only when asked), then Muninn itself."""
+    import shutil
+
+    from muninn.upgrade import UpgradeError
+
+    try:
+        cfg = Config.load(args.data)
+        data, port = cfg.data_dir, cfg.port
+    except BadSetting:  # settings that do not read still leave a Muninn to take away
+        data, port = Path(args.data or default_data_dir()).expanduser().resolve(), 18795
+    say(installs.service(data_dir=data).remove())
+    for url in Tailscale().unserve(port):
+        say(f"tailscale: {url} no longer serves Muninn")
+    if args.delete_data:
+        shutil.rmtree(data, ignore_errors=True)
+        say(f"deleted {data}")
+    elif data.is_dir():
+        say(f"kept {data} (your plans, history and keys): delete it yourself once you no longer want it")
+    try:
+        say(installs.installation().uninstall())
+    except UpgradeError as e:
+        say(str(e))
+        return 1
+    if sys.platform.startswith("linux"):
+        say("left as it is: loginctl enable-linger, which other services of yours may need (loginctl disable-linger undoes it)")
+    return 0
+
+
 def upgrade(args: argparse.Namespace) -> int:
     """`muninn upgrade`: wired here, the steps are upgrade.py's. In the old code it installs the release, then the
     new code (run as its own process, since the files under this one were replaced) restarts and checks."""
     from muninn.upgrade import Upgrader
 
     try:
-        port = Config.load(args.data).port
+        cfg = Config.load(args.data)
+        port = cfg.port
     except BadSetting as err:
         print(err, file=sys.stderr)
         return 2
     source = installs.WheelFile(args.wheel) if args.wheel else installs.PyPI()
-    up = Upgrader(version(), source, installs.installation(), installs.service(), installs.served_version(port), lambda line: print(line, flush=True))
+    up = Upgrader(version(), source, installs.installation(), installs.service(data_dir=cfg.data_dir), installs.served_version(port),
+                  lambda line: print(line, flush=True))
     if args.finish:
         return up.finish(args.finish, args.to)
     if args.check:
@@ -916,6 +948,8 @@ def main(argv: list[str] | None = None) -> int:
     p_up.add_argument("--from", dest="wheel", help="a muninn-ai package file (path or address) instead of the latest on PyPI")
     p_up.add_argument("--finish", help=argparse.SUPPRESS)  # the previous version: the new code takes over from here
     p_up.add_argument("--to", help=argparse.SUPPRESS)
+    p_un = sub.add_parser("uninstall", help="stop Muninn and take it off this computer (its data is kept unless --delete-data)")
+    p_un.add_argument("--delete-data", action="store_true", help="delete the data folder too: your plans, history and keys")
     p_cfg = sub.add_parser("config", help="print the settings in effect (config.yaml over the defaults); changes nothing")
     p_cfg.add_argument("--effective", action="store_true", help="the merged settings, with what is worked out from them")
     args = parser.parse_args(argv)
@@ -928,6 +962,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "upgrade":  # before build(): the server migrates its own database once it runs the new version
         return upgrade(args)
+    if args.cmd == "uninstall":  # before build(): nothing is opened, so nothing is left in use
+        return uninstall(args)
     if args.cmd == "backup":  # before build() too: a copy is taken of what is there, nothing is migrated first
         print(backup(Config.load(args.data), Path(args.dir).expanduser(), with_secrets=args.secrets))
         return 0

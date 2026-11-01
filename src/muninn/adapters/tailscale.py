@@ -55,6 +55,24 @@ class Tailscale:
                 return {"ready": True, "url": f"https://{name}:{https}", "https_port": https, "served": proxy is not None}
         return {"ready": False, "why": "no_port"}
 
+    def unserve(self, port: int) -> list[str]:
+        """Each HTTPS address that serves Muninn's port, taken off the tailnet: the addresses."""
+        if self._binary() is None:
+            return []
+        served = ((self._json("serve", "status") or {}).get("Web") or {})
+        gone = []
+        for where, conf in served.items():
+            proxy = (((conf or {}).get("Handlers") or {}).get("/") or {}).get("Proxy")
+            https = where.rsplit(":", 1)[-1]
+            if proxy == f"http://127.0.0.1:{port}" and https.isdigit():
+                try:
+                    done = self._run([self._binary(), "serve", f"--https={https}", "off"], capture_output=True, text=True, timeout=TIMEOUT_S)
+                except subprocess.TimeoutExpired:
+                    continue
+                if done.returncode == 0:
+                    gone.append(f"https://{where}")
+        return gone
+
     def serve(self, port: int) -> str:
         """Serves Muninn's port at its tailnet HTTPS address (kept across restarts); the address. RuntimeError, said."""
         st = self.state(port)

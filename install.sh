@@ -13,7 +13,7 @@
 #      background until the next reboot instead; MUNINN_NO_SERVICE=1 skips this, and you run
 #      `muninn --data <folder> serve` yourself;
 #   5. the setup page in your browser: pick a model, paste its key, pair your phone.
-# Safe to run again: it updates Muninn and leaves your data as it is.
+# Safe to run again: it updates Muninn and leaves your data as it is. `muninn uninstall` takes it away again.
 set -eu
 
 SOURCE="${MUNINN_SOURCE:-muninn-ai}"  # PyPI's "muninn" is another project
@@ -93,7 +93,8 @@ RestartSec=2
 WantedBy=default.target
 UN
   systemctl --user daemon-reload
-  systemctl --user enable --now muninn.service
+  systemctl --user enable muninn.service
+  systemctl --user restart muninn.service  # started, or started again: one already running is on the version before
   loginctl enable-linger "$(id -un)" >/dev/null 2>&1 || true  # keeps it running when you log out
   OPEN=xdg-open
   LOGS="journalctl --user -u muninn"
@@ -109,6 +110,7 @@ trap 'kill "\$child" 2>/dev/null; exit 0' TERM INT
 while :; do
   MUNINN_SERVICE=1 "$MUNINN" --data "$DATA" serve >> "$DATA/muninn.log" 2>&1 &
   child=\$!
+  echo "\$child" > "$DATA/run.child"  # what muninn upgrade stops, for the loop to start the new version
   wait "\$child"
   sleep 2
 done

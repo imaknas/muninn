@@ -15,6 +15,8 @@ curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh
 
 要升到新版本就執行 `muninn upgrade`:它會裝上最新的穩定版、用新版重啟背景服務並確認它有回應,
 沒有回應就換回原本的版本(`muninn upgrade --check` 只說裝的是哪一版、最新的是哪一版)。
+`muninn uninstall` 會把 Muninn 從電腦上拿掉:背景服務、手機用的 HTTPS 位址和 Muninn 本身;
+資料夾會留著,除非加上 `--delete-data`。
 
 你的手機透過 HTTPS 連到 Muninn:Tailscale 是最快的路:電腦上的 Tailscale 登入了(而且 tailnet 開了 HTTPS 憑證),
 設定頁的「配對手機」會自己設好(`tailscale serve`,只有你的 tailnet 連得到),用新位址重啟 Muninn;

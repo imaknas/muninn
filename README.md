@@ -43,8 +43,8 @@ On a NAS or a server: `docker compose up -d` (see [compose.yaml](https://github.
 4. The rest is on the settings page too: the folders it reads activity from, connecting Google (mail and calendar,
    step by step), and adding form filling.
 
-`muninn upgrade` moves to the latest release, `muninn check` says what in the settings cannot work as written, and
-`muninn backup DIR` copies your data.
+`muninn upgrade` moves to the latest release, `muninn check` says what in the settings cannot work as written,
+`muninn backup DIR` copies your data, and `muninn uninstall` takes Muninn off the computer again.
 
 ## What it does
 

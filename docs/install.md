@@ -18,7 +18,9 @@ package is muninn-ai; the command is `muninn`).
 To move to a newer release, run `muninn upgrade`: it installs the latest
 stable one, restarts the background service on it and checks that it answers,
 and puts the version before back if it does not (`muninn upgrade --check` only
-says what is installed and what is out).
+says what is installed and what is out). `muninn uninstall` takes Muninn off the
+computer again: the background service, the phone's HTTPS address, and Muninn
+itself; your data folder is kept unless you add `--delete-data`.
 
 Your phone reaches Muninn over HTTPS: Tailscale is the shortest way there. With
 Tailscale signed in on the computer (and HTTPS certificates on for the tailnet),
