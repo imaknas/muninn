@@ -20,9 +20,12 @@ from ruamel.yaml import YAML
 
 from muninn.config import Config
 from muninn.languages import CODES, language
+from muninn.languages import language as words_for  # where a parameter is called language
 from muninn.llm_config import Implementation, ProviderContext, llm_setup
 
 # what the setup page offers: impl → how it is asked for (the page names each in its language)
+# what a model chosen in setup is asked once, to see it answers at all (not a decision point: nothing is decided on it)
+PROBE = ("Answer with the single word OK.", "Are you there?")
 CHOICES = {
     "anthropic": {"needs_key": True, "base_url": None},
     "openai": {"needs_key": True, "base_url": "https://api.openai.com/v1"},
@@ -91,6 +94,9 @@ class Setup:
             raise ValueError(f"language: one of {', '.join(CODES)}")
         local = spec["impl"] == "ollama" or spec.get("location") == "local"
         spec["models"] = {"fast": fast} if local else {"fast": fast, "standard": standard or fast}
+        words = words_for(language or self._cfg.language)
+        for model in dict.fromkeys(spec["models"].values()):  # each model chosen answers before anything is written
+            self._answers(name, spec, model, words)
 
         def change(doc: Any) -> None:
             llm = doc.setdefault("llm", {})
@@ -107,6 +113,20 @@ class Setup:
 
         self._rewrite(change)
         return self._restart()
+
+    def _answers(self, name: str, spec: Mapping[str, Any], model: str, words: Any) -> None:
+        """Asks the model one short question, as Muninn will ask it things: one that cannot hold a conversation (an
+        embedding model, one the key may not use) is refused now, not found out after setup. ValueError, said."""
+        setup = llm_setup({"providers": {name: {**spec, "models": {"fast": model}}}}, self._impls)
+        assert setup is not None
+        ctx = ProviderContext(self._cfg.data_dir, self._cfg.secrets_dir, words=words)
+        backend = self._impls[spec["impl"]].from_spec(setup.providers[name], ctx).backend(model, 120)
+        try:
+            reply = backend.complete(*PROBE)
+        except Exception as e:  # noqa: BLE001 — whatever the service says is what the user is told
+            raise ValueError(words("setup_flow.no_answer", model=model, why=str(e)[:200])) from None
+        if not str(reply or "").strip():
+            raise ValueError(words("setup_flow.no_answer", model=model, why="(empty)"))
 
     def set_language(self, code: str) -> bool:
         """Writes the language Muninn speaks into config, then starts Muninn again; False when the user has to."""

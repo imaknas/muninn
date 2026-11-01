@@ -127,7 +127,18 @@ class OllamaProvider:
             r.raise_for_status()
         except httpx.HTTPError as e:
             raise RuntimeError(f"Ollama not reachable at {self._url}: {e}") from e
-        return sorted(str(m.get("name")) for m in r.json().get("models", []) if m.get("name"))
+        names = sorted(str(m.get("name")) for m in r.json().get("models", []) if m.get("name"))
+        return [n for n in names if self._chats(n)]
+
+    def _chats(self, name: str) -> bool:
+        """Whether the model holds a conversation, as Ollama says of it (an embedding model does not); when Ollama
+        says nothing (an older version), it is listed."""
+        try:
+            r = httpx.post(f"{self._url.rstrip('/')}/api/show", json={"model": name}, timeout=5)
+            caps = r.json().get("capabilities") if r.status_code == 200 else None
+        except (httpx.HTTPError, ValueError):
+            return True
+        return not caps or "completion" in caps
 
     def backend(self, model: str, timeout: float = 180.0) -> OllamaBackend:
         if (model, timeout) not in self._made:

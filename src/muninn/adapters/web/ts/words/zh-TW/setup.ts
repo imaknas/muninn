@@ -27,6 +27,7 @@ export const setup = {
   localModel: "本機模型",
   fastModel: "快的模型",
   goodModel: "好的模型",
+  checking: "確認模型能回答…",
   save: "存檔",
   restarting: "Muninn 重新啟動中⋯",
   lastStep: "最後一步:配對手機。",

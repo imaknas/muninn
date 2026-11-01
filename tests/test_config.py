@@ -95,6 +95,10 @@ def test_what_an_installation_does_without_is_said_with_what_turns_it_on(tmp_pat
     everything = Present(runner=True, google=True, microsoft=True, mail_accounts=("gmail",), mailboxes=1, reflect=True,
                          reflect_model=True, form_filling=True, project_folders=True, transcripts=True)
     assert features_off(everything, words=ZH) == []
+    nothing_understood = features_off(Present(runner=True, google=True, microsoft=True, mail_accounts=(), mailboxes=0, reflect=True,
+                                              reflect_model=True, form_filling=True, project_folders=True, transcripts=True,
+                                              model=False), words=ZH)
+    assert nothing_understood[0]["feature"].startswith("聽懂你說的話") and "llm.providers" in nothing_understood[0]["why"]
 
     (tmp_path / "config.yaml").write_text("language: zh-TW\nreflect: false\n")
     app = build(Config.load(tmp_path), dry_run=True)

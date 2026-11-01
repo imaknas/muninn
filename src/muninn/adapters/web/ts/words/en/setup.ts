@@ -31,6 +31,7 @@ export const setup: Words["setup"] = {
   fastModel: "Fast model",
   goodModel: "Good model",
   save: "Save",
+  checking: "Checking the model answers…",
   restarting: "Muninn is restarting…",
   lastStep: "Last step: pair the phone.",
   needsHttps: (port: string) => "The phone reaches Muninn over HTTPS. The easiest way is Tailscale: install it on both and sign in "

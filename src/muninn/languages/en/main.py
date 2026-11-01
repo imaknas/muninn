@@ -11,6 +11,8 @@ TEXTS = {
                          "tailscale serve in front.",
     "handoff_item": " → {effect} \"{item}\"",
     # features this installation does without (features_off): the feature, then why and what turns it on
+    "off_understanding": "Understanding what you say (anything you say is kept as a note; only rule reminders run)",
+    "why_no_model": "No model is set up: choose one on the setup page that `muninn serve` prints, or under llm.providers in config.yaml",
     "off_deep_talks": "Deep talks with projects (sandboxes, permission cards, asking a project, promoting an idea to a repo)",
     "off_calendar": "Calendar",
     "off_mail": "Mail",

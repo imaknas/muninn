@@ -84,6 +84,8 @@ function chooseModels(token: string, state: SetupState, choice: Choice, models: 
     el("form", { class: "pair-form", onsubmit: async (e) => {
       e.preventDefault();
       const f = new FormData(e.target as HTMLFormElement);
+      const button = (e.target as HTMLFormElement).querySelector<HTMLButtonElement>("button[type=submit]");
+      if (button) { button.disabled = true; button.textContent = w.setup.checking; }  // the model is asked once first
       try {
         const saved = await call<SetupSaved>(token, "/api/setup/save",
           { ...choice, key: undefined, fast: f.get("fast"), standard: local ? undefined : f.get("standard"), language: lang });

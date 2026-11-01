@@ -20,6 +20,13 @@ TOKEN = "invented-setup-token"
 
 class Listed(Setup):
     rejected = False
+    asked: list = []
+    silent = None  # a model that does not answer
+
+    def _answers(self, name, spec, model, words):
+        Listed.asked = [*Listed.asked, model]
+        if model == self.silent:
+            raise ValueError(words("setup_flow.no_answer", model=model, why="(empty)"))
 
     def models(self, choice):
         if self.rejected:
@@ -121,3 +128,39 @@ def test_the_setup_link_outlives_the_restart_saving_the_model_makes_until_a_phon
     assert first and again == first and (tmp_path / "setup-url").read_text().strip().endswith(f"#setup={first}")
     devices.pair(devices.new_pairing_code(), "phone")  # a phone paired: the link is done with
     assert first_run_token(Config.load(tmp_path), devices) is None and not (tmp_path / "setup-url").exists()
+
+
+
+def test_a_model_that_does_not_answer_is_refused_before_anything_is_written(web):
+    client, _, setup, tmp_path, restarts = web
+    before = (tmp_path / "config.yaml").read_text()
+    setup.silent = "bge-m3:latest"
+    r = client.post("/api/setup/save", headers={"X-Setup-Token": TOKEN},
+                    json={"impl": "ollama", "fast": "bge-m3:latest", "language": "en"})
+    assert r.status_code == 400 and "did not answer a plain question" in r.json()["error"]
+    assert (tmp_path / "config.yaml").read_text() == before and restarts == []
+
+
+def test_ollama_lists_only_the_models_that_hold_a_conversation(monkeypatch):
+    import httpx
+
+    from muninn.adapters.llm.ollama import OllamaProvider
+
+    tags = {"models": [{"name": "bge-m3:latest"}, {"name": "qwen2.5:7b"}, {"name": "old:1b"}]}
+    caps = {"bge-m3:latest": ["embedding"], "qwen2.5:7b": ["completion", "tools"], "old:1b": None}
+
+    class R:
+        def __init__(self, data):
+            self.status_code, self._data = 200, data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._data
+
+    monkeypatch.setattr(httpx, "get", lambda url, timeout: R(tags))
+    monkeypatch.setattr(httpx, "post", lambda url, json, timeout: R({"capabilities": caps[json["model"]]}))
+    provider = OllamaProvider.__new__(OllamaProvider)
+    provider._url = "http://127.0.0.1:11434"
+    assert provider.models() == ["old:1b", "qwen2.5:7b"]  # an Ollama too old to say is listed

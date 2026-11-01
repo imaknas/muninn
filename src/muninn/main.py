@@ -106,8 +106,8 @@ def running_version(code: Path, data_dir: Path, words: Language) -> RunningVersi
     install without git says it cannot tell, and nothing is taken to be live."""
     version = GitVersion.at(code, data_dir / "deploys.log")
     if version is None:
-        # an installed package, not a clone: normal, and nothing to put right
-        log.info("no git checkout at %s: requests for Muninn are not marked live by themselves", code)
+        # an installed package, not a clone: normal, and nothing to put right (said only when asked for detail)
+        log.debug("no git checkout at %s: requests for Muninn are not marked live by themselves", code)
         return UnknownVersion(words("main.no_git"))
     return version
 
@@ -372,7 +372,8 @@ def build(config: Config, *, dry_run: bool = False) -> App:
     have = Present(runner=lease_runner is not None, google=google.configured, microsoft=microsoft.configured,
                    mail_accounts=tuple(str(a.get("provider", "gmail")) for a in cfg["mail_accounts"]), mailboxes=len(mailboxes),
                    reflect=bool(cfg["reflect"]), reflect_model=side is None or bool(reflect_router.backends()),
-                   form_filling=bool(sites), project_folders=bool(ws), transcripts=bool(cfg.paths("transcript_roots")))
+                   form_filling=bool(sites), project_folders=bool(ws), transcripts=bool(cfg.paths("transcript_roots")),
+                   model=side is not None)
     return App(cfg, engine, keys, DeviceRegistry(cfg.db_path), documents, {"google": google, "microsoft": microsoft}, messages,
                lease_runner, permissions, smoke,
                model_problems(llm, cloud, local_side is not None, words=words) + budget_problems(cfg, side, words=words),
@@ -402,15 +403,19 @@ class Present:
     form_filling: bool  # a browser to fill application forms
     project_folders: bool  # workspace_roots
     transcripts: bool  # transcript_roots
+    model: bool = True  # any model to understand what the user says
 
 
 def features_off(have: Present, *, words: Language) -> list[dict[str, str]]:
     """The features this installation does without, each with why and what turns it on, in the order the user would
-    look for them; what needs a model is not listed (the settings say there is none)."""
+    look for them; with no model at all, that comes first (what else needs a model is not listed one by one)."""
     off = []
 
     def say(feature: str, why: str, **params: str) -> None:
         off.append({"feature": words(f"main.off_{feature}"), "why": words(f"main.why_{why}", **params)})
+
+    if not have.model:
+        say("understanding", "no_model")
 
     if not have.runner:
         say("deep_talks", "no_runner")

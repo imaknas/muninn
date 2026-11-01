@@ -116,11 +116,14 @@ class FitDecider:
 
 
 class ListedSetup(Setup):
-    """Setup whose service lists two models without being asked over the network."""
+    """Setup whose service lists two models, which both answer, without being asked over the network."""
 
     def models(self, choice):
         super()._spec(choice)
         return ["model-small", "model-large"]
+
+    def _answers(self, name, spec, model, words):
+        pass
 
 
 class World:

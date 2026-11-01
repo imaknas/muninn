@@ -8,6 +8,8 @@ TEXTS = {
                          "自己填那個 header。把 host 改回 127.0.0.1,讓 tailscale serve 在前面。",
     "handoff_item": " → {effect}「{item}」",
     # 這份安裝沒有的功能(features_off):功能,再來是為什麼、怎麼打開
+    "off_understanding": "聽懂你說的話(你說的都先記成筆記,只跑規則提醒)",
+    "why_no_model": "還沒設定模型:在 `muninn serve` 印出的設定頁選一個,或寫在 config.yaml 的 llm.providers",
     "off_deep_talks": "跟專案深談(沙盒、權限卡、問專案、把想法升級成 repo)",
     "off_calendar": "行事曆",
     "off_mail": "信件",
