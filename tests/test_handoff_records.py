@@ -236,6 +236,16 @@ def test_a_task_that_came_the_v1_way_and_is_raised_later_is_the_same_task_in_the
     assert s["terms_digest"] == ph.terms_digest(raised("task-pots-1", "買兩個陶盆", due="2026-11-05"))
 
 
+def test_an_item_merged_into_another_task_changes_only_its_own_words_there(h):
+    h.engine.records_in.receive([raised("task-pots-1", "買陶盆"), raised("task-pots-2", "買陶土盆")])
+    h.engine.tasks._match = lambda new, known: {"task-pots-2": "task-pots-1"}
+    h.engine.tasks.sort_new()
+    h.engine.records_in.receive([rec("amended", "task-pots-2", id_="a:task-pots-2:2", terms={"text": "買三個陶土盆"}, terms_rev=2,
+                                     supersedes=["r:task-pots-2"])])
+    t = h.engine.tasks.get("task-pots-1")
+    assert t["title"] == "買陶盆" and {o["ref"]: o["text"] for o in t["origins"]}["task-pots-2"] == "買三個陶土盆"
+
+
 def test_a_task_that_came_the_v1_way_is_settled_the_v1_way(h):
     h.engine.messages.receive([{"id": "m1", "project": P, "type": "task", "text": "買陶盆"}])
     [t] = h.engine.tasks.open()

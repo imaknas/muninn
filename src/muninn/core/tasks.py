@@ -158,15 +158,17 @@ class TaskRegistry:
         self._ask_about_replaced(t, beside, new)
 
     def amended(self, key: str, project: str, text: str, due: str | None) -> str:
-        """A project changed what it asks: the task's words and date are the new ones."""
+        """A project changed what it asks: the task's words and date are the new ones. When it was merged into
+        another task, only what that project asked is changed there: the task's own words are another item's."""
         t = self._store.task(key)
         if t is None:
             return "unknown task"
         for o in t["origins"]:
-            if o["project"] == project and o["ref"] == key:
+            if o["project"] == project and o["ref"] == key and o["text"] != text:
                 self._store.remove_task_origin(t["key"], o["ref"])
                 self._store.add_task_origin(t["key"], project, key, text)
-        self._store.update_task(t["key"], self._clock.now(), title=text, **({"due": _due(due)} if due else {}))
+        if t["key"] == key and (t["title"] != text or (due and _due(due) != t["due"])):
+            self._store.update_task(t["key"], self._clock.now(), title=text, **({"due": _due(due)} if due else {}))
         return "amended"
 
     def _intake(self, m: dict[str, Any]) -> str:
