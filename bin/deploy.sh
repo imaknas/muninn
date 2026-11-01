@@ -29,7 +29,12 @@
 #
 # Env overrides: MUNINN_RUNTIME (default ~/services/muninn), MUNINN_LABEL
 # (launchd label, default local.muninn), MUNINN_PORT (default 18795),
-# MUNINN_LOCK_WAIT (seconds to wait for another deploy, default 1200).
+# MUNINN_LOCK_WAIT (seconds to wait for another deploy, default 1200),
+# MUNINN_TESTS (how the pinned commit is tested: "platform" hands it to the
+# platform's test runner, `agenthub test --when deploy`, which runs the tiers the
+# project declares for a deploy on that commit exported and does not run again
+# a tree it already passed; "here" runs the unit and browser tests in this
+# checkout; unset: the platform's runner when it is installed, else here).
 # For testing this script against a scratch runtime without launchd:
 # MUNINN_RESTART_CMD (shell command that restarts the server instead of
 # launchctl kickstart), MUNINN_SMOKE_CMD (shell command that replaces the
@@ -111,13 +116,22 @@ echo "→ deploying $short (live now: $previous)"
 echo "→ build (TypeScript: type check and compile)"
 "$NPM" ci --no-audit --no-fund --silent || { echo "deploy: npm ci failed; nothing pushed" >&2; exit 4; }
 "$NPM" run --silent build || { echo "deploy: the TypeScript does not compile; nothing pushed" >&2; exit 4; }
-echo "→ tests"
-"$UV" run pytest -q -n 4 || { echo "deploy: tests failed; nothing pushed" >&2; exit 4; }
-echo "→ browser tests"
-"$UV" run pytest -q -m e2e -n 8 || {
-  echo "deploy: browser tests failed; nothing pushed (first time on this machine? run: uv run playwright install webkit)" >&2
-  exit 4
-}
+TESTS="${MUNINN_TESTS:-}"
+if [ -z "$TESTS" ]; then
+  if command -v agenthub >/dev/null 2>&1; then TESTS=platform; else TESTS=here; fi
+fi
+if [ "$TESTS" = platform ]; then
+  echo "→ tests (the platform's runner, on $short)"
+  agenthub test --when deploy --rev "$sha" || { echo "deploy: tests failed; nothing pushed" >&2; exit 4; }
+else
+  echo "→ tests"
+  "$UV" run pytest -q -n 4 || { echo "deploy: tests failed; nothing pushed" >&2; exit 4; }
+  echo "→ browser tests"
+  "$UV" run pytest -q -m e2e -n 8 || {
+    echo "deploy: browser tests failed; nothing pushed (first time on this machine? run: uv run playwright install webkit)" >&2
+    exit 4
+  }
+fi
 # The tests ran on this checkout's files: if main moved meanwhile (a merge
 # fast-forwards this checkout), they may have tested a mix, not the pinned commit.
 if [ "$(git rev-parse HEAD)" != "$sha" ]; then

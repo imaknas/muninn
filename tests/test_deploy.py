@@ -132,6 +132,7 @@ def world(tmp_path) -> World:
         "MUNINN_LOCK_WAIT": "30",
         "DEPLOY_TEST_EVENTS": str(events),
         "DEPLOY_TEST_ORIGIN": str(origin),
+        "MUNINN_TESTS": "here",  # the suites stubbed here, whatever runner this machine has
     }
     w = World(origin, checkout, runtime, events, env)
     subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], env=env, check=True)
@@ -294,3 +295,19 @@ def test_main_moving_after_the_tests_does_not_go_live(world):
     assert world.head(world.checkout) != pinned
     assert world.head(world.runtime) == pinned and not (world.runtime / "moved.txt").exists()
     assert world.head(world.origin, "main") == pinned
+
+
+
+def test_with_the_platforms_test_runner_the_pinned_commit_is_handed_to_it(world, tmp_path):
+    stub = tmp_path / "stubs" / "agenthub"
+    stub.write_text('#!/bin/sh\necho "agenthub $*" >> "$DEPLOY_TEST_EVENTS"\n')
+    stub.chmod(0o755)
+    sha = world.commit(world.checkout, "feat: something new")
+    code, out = world.deploy(MUNINN_TESTS="")  # unset: the runner is installed, so it is used
+    assert code == 0, out
+    assert f"agenthub test --when deploy --rev {sha}" in world.event_lines()
+    assert not [x for x in world.event_lines() if x.startswith("tests-start")]  # not run here as well
+    stub.write_text("#!/bin/sh\nexit 1\n")  # a tier fails
+    world.commit(world.checkout, "feat: something broken")
+    code, out = world.deploy(MUNINN_TESTS="platform")
+    assert code == 4 and "tests failed" in out

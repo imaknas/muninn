@@ -237,7 +237,8 @@ safe-area inset(iPhone 的瀏海)沒辦法模擬,所以版面檢查只是近似�
 ## 部署
 
 `bin/deploy.sh` 會釘住它開始時的那個 commit,編譯 TypeScript,
-跑單元測試和瀏覽器測試(型別錯誤或測試失敗會讓它停下來,什麼都沒改)。
+跑單元測試和瀏覽器測試(型別錯誤或測試失敗會讓它停下來,什麼都沒改);
+裝了平台的測試 runner(`agenthub test`)時,改成把那個 commit 交給它跑(用 `MUNINN_TESTS` 選)。
 接著執行期的 clone(`MUNINN_RUNTIME`,預設
 `~/services/muninn`)直接從這個 checkout 拿那個 commit,執行
 `uv sync`(含 `autofill` 選用套件和它用的 Chromium)和 `npm ci && npm run build`,重啟 launchd job,再執行

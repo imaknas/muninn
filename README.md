@@ -287,7 +287,8 @@ layout checks are approximate.
 
 `bin/deploy.sh` pins the commit it starts from, compiles the TypeScript and
 runs the unit and browser tests (a type error or a failing test stops it with
-nothing changed). The runtime clone (`MUNINN_RUNTIME`, default
+nothing changed); where a platform test runner is installed (`agenthub test`),
+it hands that commit to it instead (`MUNINN_TESTS` chooses). The runtime clone (`MUNINN_RUNTIME`, default
 `~/services/muninn`) then takes that commit straight from this checkout, runs
 `uv sync` (with the `autofill` extra, and Chromium for it) and `npm ci && npm run build`, restarts the launchd job and runs
 `bin/smoke.py`: the running server checks its own dependencies on `/api/smoke`
