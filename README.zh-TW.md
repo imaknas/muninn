@@ -77,14 +77,19 @@ sources ──► attribution ──► store ──► drift rules ──► co
 - **專案訊息**:`POST /api/messages`(同一個 bearer token),帶
   `{"messages": [{id, project, type: question|progress|done, text, handoff_id?}]}`,
   由維護專案紀錄的系統送來。`id` 由寄件端決定,重試是安全的。
-  question 會在首頁等你回答;你的回答會變成一則交給那個專案的 handoff,
+  question 會在面板裡等你回答;你的回答會變成一則交給那個專案的 handoff,
   `reply_to` 設成該問題的 id。progress 和 done 進收件匣;帶 `handoff_id` 的 `done`
   會把那則 handoff 標成完成。
+- **專案紀錄**(`src/muninn/contracts/records.v2.md`):同樣的往來,用 Principal Handoff 0.4
+  的紀錄,`POST /api/records` 進、`GET /api/records` 出。Muninn 是 principal side:
+  待辦跟問題只有你能結案。專案說某件事做完了,本身不算數:會先問你,除非你給了 Muninn
+  常設授權,讓它採信專案 session 的話(可撤回);專案狀態檔裡某一行不見了,一律問你。
+  專案不再列出某件待辦,那件待辦維持原樣。
 
 ### 代你行動
 
 分三級:做了、可以復原(在 Muninn 自己的行事曆排時段、依申請確認信設定狀態、
-準備資料包);準備好、點一下就行(填好的申請表,按一下就送出;回覆草稿存進信箱、依面試/offer/
+準備資料包);準備好、點一下就行(填好的申請表,按一下就送出,網站沒說收到也不會再送第二次;回覆草稿存進信箱、依面試/offer/
 拒絕信變更狀態);絕不做(寄信、回覆別人的邀請、付款)。帳號用
 `muninn connect google|microsoft` 或 PWA 上的「連結」按鈕連接:
 web OAuth client,redirect 是 PWA 的 `/oauth/<provider>/callback`,
@@ -176,9 +181,10 @@ examples/              config.yaml and attribution.yaml templates for data/
 所以另一種後端可以一個 port 一個 port 地寫;`Store` 是全部合在一起,
 只有 composition root 和 engine 會拿它(`tests/test_architecture.py` 會檢查這點)。
 
-其他系統依賴四個介面,每個都發佈在 `src/muninn/contracts/` 裡並帶版本
-(每個 payload 都有 `"v": 1`):`muninn handoffs --json`、
-`muninn digests --json`、`muninn tasks --json` 和 `POST /api/messages`。
+其他系統依賴的介面都發佈在 `src/muninn/contracts/` 裡,各自帶版本:
+`muninn handoffs --json`、`muninn digests --json`、`muninn tasks --json` 和
+`POST /api/messages`(v1)、專案紀錄(`records.v2.md`,Principal Handoff 0.4)、
+深談的權限請求(v2)、電腦收集器送來的東西(`activity.v1.md`)和你在哪裡(`location.v1.md`)。
 新增欄位不換版本;改名或改變意義就是新版本,跟舊版本並存,直到讀取端都搬過去。
 `tests/test_contracts.py` 拿實際輸出對照 schema 檢查。
 
@@ -190,6 +196,9 @@ examples/              config.yaml and attribution.yaml templates for data/
 ```bash
 curl -fsSL <address of install.sh> | sh
 ```
+
+或用 [uv](https://docs.astral.sh/uv/):`uv tool install muninn-ai`,再執行
+`muninn init` 和 `muninn serve`,打開它印出的設定連結(套件叫 muninn-ai,指令是 `muninn`)。
 
 在 NAS 或伺服器上用 `docker compose up -d`(見 `compose.yaml`);設定頁的連結
 在 `docker compose logs` 裡。不管哪種方式,你的手機都透過 HTTPS 連到 Muninn:
@@ -210,7 +219,8 @@ uv run muninn devices [--revoke ID]
 ```
 
 `MUNINN_DATA` 指向資料目錄(預設 `./data`);把 `examples/` 裡的檔案複製過去。
-每個 CLI 進入點都是 idempotent 的。
+每個 CLI 進入點都是 idempotent 的。這樣執行時,設定裡要有 `jobs: default` 才會跑排程
+(安裝腳本和容器會寫進去):`serve` 就會自己跑 tick、早晚報告和夜間反思。
 
 ## 測試
 

@@ -92,17 +92,25 @@ sources ──► attribution ──► store ──► drift rules ──► co
 - **Project messages**: `POST /api/messages` (same bearer token) with
   `{"messages": [{id, project, type: question|progress|done, text, handoff_id?}]}`,
   from the system that keeps the project records. `id` is the sender's and
-  makes retries safe. A question waits on the home page; the user's answer
-  leaves as a handoff to that project with `reply_to` set to the question's
-  id. Progress and done go to the inbox; `done` with a `handoff_id` marks
-  that handoff done.
+  makes retries safe. A question waits for the user in the panel; the user's
+  answer leaves as a handoff to that project with `reply_to` set to the
+  question's id. Progress and done go to the inbox; `done` with a
+  `handoff_id` marks that handoff done.
+- **Project records** (`src/muninn/contracts/records.v2.md`): the same
+  exchange as Principal Handoff 0.4 records, `POST /api/records` in and
+  `GET /api/records` out. Muninn is the principal side: only the user settles
+  a to-do or a question. A project saying something is done settles nothing by
+  itself: the user is asked, unless he gave Muninn a standing permission to
+  take a project session's word (undoably); a line gone from a project's state
+  file is always asked about. A project that stops listing a to-do leaves it as
+  it is.
 
 ### Acting on the user's behalf
 
 Three tiers: done and undoable (blocks in Muninn's own calendar, status set
 from an application confirmation email, packets prepared); ready for one tap
-(application forms filled in, sent on that tap; reply drafts saved to the mailbox, status changes from interview/offer/
-rejection emails); never (sending mail, answering other people's invites,
+(application forms filled in, sent on that tap, and never sent a second time when the site did not say it got
+the first; reply drafts saved to the mailbox, status changes from interview/offer/rejection emails); never (sending mail, answering other people's invites,
 paying). Accounts connect with `muninn connect google|microsoft` or the
 PWA's "連結" buttons: web OAuth clients whose redirect is the PWA's
 `/oauth/<provider>/callback`, checked by a single-use state. Google: Gmail
@@ -213,9 +221,11 @@ ones it uses, so another backend can be written port by port; `Store` is all
 of them together, and only the composition root and the engine take it
 (`tests/test_architecture.py` checks this).
 
-Other systems rely on four interfaces, each published in `src/muninn/contracts/` with a
-version (`"v": 1` in every payload): `muninn handoffs --json`,
-`muninn digests --json`, `muninn tasks --json` and `POST /api/messages`.
+Other systems rely on interfaces published in `src/muninn/contracts/`, each with a
+version: `muninn handoffs --json`, `muninn digests --json`, `muninn tasks --json`
+and `POST /api/messages` (v1), the project records (`records.v2.md`, Principal
+Handoff 0.4), the permission requests of a deep talk (v2), what a computer's
+collector sends (`activity.v1.md`) and where the user is (`location.v1.md`).
 Adding a field keeps the version; renaming one or changing its meaning is a
 new version, served alongside the old one until readers move.
 `tests/test_contracts.py` checks the real output against the schemas.
@@ -229,6 +239,10 @@ scan the QR code with your phone.
 ```bash
 curl -fsSL <address of install.sh> | sh
 ```
+
+Or, with [uv](https://docs.astral.sh/uv/): `uv tool install muninn-ai`, then
+`muninn init` and `muninn serve`, and open the setup link it prints (the
+package is muninn-ai; the command is `muninn`).
 
 On a NAS or a server, `docker compose up -d` (see `compose.yaml`); the setup
 link is in `docker compose logs`. Either way your phone reaches Muninn over
@@ -251,7 +265,10 @@ uv run muninn devices [--revoke ID]
 ```
 
 `MUNINN_DATA` points at the data directory (default `./data`); copy the files
-in `examples/` there. Every CLI entry point is idempotent.
+in `examples/` there. Every CLI entry point is idempotent. Run this way,
+nothing runs on a schedule unless the config says `jobs: default` (the
+installer and the container write it): `serve` then runs tick, the morning and
+evening reports and the nightly reflection itself.
 
 ## Testing
 
