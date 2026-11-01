@@ -3,6 +3,12 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.6.1 (2026-11-01)
+
+### Fixed
+
+- A malformed PDF among your documents can no longer hang Muninn or exhaust its memory
+
 ## v0.6.0 (2026-11-01)
 
 ### New
