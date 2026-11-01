@@ -1,0 +1,97 @@
+# A release, when a version tag (vX.Y.Z) is pushed: the package is built from that tag with its web app, the GitHub
+# release is made with the notes git cliff generates, and the same files are published to PyPI as muninn-ai through
+# Trusted Publishing: no token is kept anywhere, PyPI trusts this workflow (registered once on PyPI as the project's
+# publisher, environment "pypi"). A tag already pushed is released with "Run workflow" and its name.
+# Nothing runs while the repository is private: publishing to PyPI would make the code public.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag to release (vX.Y.Z), already pushed"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: package
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - name: the tag is the package's version
+        run: |
+          version="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          test "$TAG" = "v$version" || { echo "the tag is $TAG but pyproject.toml says $version" >&2; exit 1; }
+      - run: npm ci --no-audit --no-fund && npm run build
+      - run: uv build -o dist
+      - name: the package carries the web app
+        run: unzip -l dist/*.whl | grep -q 'muninn/adapters/web/static/app.js'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  github-release:
+    name: GitHub release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: orhun/git-cliff-action@v4
+        with:
+          args: --current --strip header
+        env:
+          OUTPUT: notes.md
+      - name: the release, or its files replaced when it was made by hand
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "Muninn ${TAG#v}" --notes-file notes.md --verify-tag
+          fi
+
+  pypi:
+    name: PyPI
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

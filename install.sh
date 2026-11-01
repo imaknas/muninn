@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs Muninn and starts it in the background, then opens its setup page.
 #
-#   curl -fsSL <this file's address> | sh
+#   curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh
 #
 # What it does, each step said as it goes:
 #   1. uv (Astral's Python installer), if it is not there yet;

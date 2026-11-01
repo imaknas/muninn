@@ -194,7 +194,7 @@ examples/              config.yaml and attribution.yaml templates for data/
 並打開設定頁:選一個模型、貼上它的金鑰、用手機掃 QR code。
 
 ```bash
-curl -fsSL <address of install.sh> | sh
+curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh
 ```
 
 或用 [uv](https://docs.astral.sh/uv/):`uv tool install muninn-ai`,再執行

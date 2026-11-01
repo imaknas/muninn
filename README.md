@@ -237,7 +237,7 @@ runs its own schedule), and opens its setup page: pick a model, paste its key,
 scan the QR code with your phone.
 
 ```bash
-curl -fsSL <address of install.sh> | sh
+curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh
 ```
 
 Or, with [uv](https://docs.astral.sh/uv/): `uv tool install muninn-ai`, then
