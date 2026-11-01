@@ -76,8 +76,20 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
   `BREAKING CHANGE:` paragraph saying what breaks and what to do.
 - The body says why, and what the user will notice.
 
-There is no hand-written changelog: release notes are generated from these messages (`git cliff`, configured in
-`cliff.toml`), so a `feat` or `fix` summary is written for the person reading the release notes.
+Nothing in the changelog is written by hand: `CHANGELOG.md` and each release's notes are generated from these
+messages (`git cliff`, configured in `cliff.toml`), so a `feat` or `fix` summary is written for the person reading the
+release notes.
+
+## Releasing
+
+`feat` raises the minor version, `fix` and `perf` the patch, `!` the major (`git cliff --bumped-version` says which).
+
+1. Set `version` in `pyproject.toml`, then `git cliff --tag vX.Y.Z -o CHANGELOG.md`, and commit both as
+   `chore(release): vX.Y.Z`.
+2. `git tag -a vX.Y.Z -m vX.Y.Z` on that commit, and push the commit and the tag.
+3. Build the package from that commit with its web app: `npm ci && npm run build`, then `uv build`.
+4. `gh release create vX.Y.Z dist/* --title "Muninn X.Y.Z" --notes "$(git cliff --latest --strip header)"`, and
+   publish the same files to PyPI as `muninn-ai`.
 
 ## Privacy
 
