@@ -3,6 +3,13 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.8.1 (2026-11-02)
+
+### Fixed
+
+- **setup:** Muninn started at login finds Tailscale, uv and the model CLIs, and a taken port is said at install
+- **setup:** Connecting Google says ahead that Google will warn it has not verified your own app
+
 ## v0.8.0 (2026-11-02)
 
 ### New
