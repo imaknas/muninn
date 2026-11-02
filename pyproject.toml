@@ -1,6 +1,6 @@
 [project]
 name = "muninn-ai"  # the name "muninn" on PyPI is another project's; the module and the command are muninn
-version = "0.7.0"
+version = "0.8.0"
 description = "Always-on personal assistant: observes, plans, nudges"
 readme = "README.md"
 requires-python = ">=3.13"

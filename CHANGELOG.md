@@ -3,6 +3,19 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.8.0 (2026-11-02)
+
+### New
+
+- **llm:** The Codex CLI can answer Muninn's requests, beside the Claude CLI, with every tool switched off
+- **setup:** `muninn uninstall` takes Muninn off the computer, and reinstalling or upgrading restarts what runs
+
+### Fixed
+
+- **setup:** A new user can get in from the terminal and from Docker, and setup failures say what went wrong
+- **setup:** Tailscale without Serve, unusable models, local servers and a stuck install are said or handled
+- **deploy:** Muninn uninstall mentions systemd's linger only where systemd ran Muninn
+
 ## v0.7.0 (2026-11-01)
 
 ### New
