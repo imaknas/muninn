@@ -18,6 +18,7 @@ import logging
 import os
 import re
 import secrets
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -786,6 +787,22 @@ def container_gateway(route: Path = Path("/proc/net/route")) -> list[str]:
     return []
 
 
+LOG_LIMIT = 10 * 1024 * 1024
+
+
+def trim_log(path: Path, limit: int = LOG_LIMIT) -> None:
+    """The log the installer sends the service's output to (<data>/muninn.log), kept from growing without end: past
+    `limit` at a start, what it holds moves to muninn.log.1 (replacing the one before) and it starts empty. Emptied in
+    place rather than renamed, since the service manager keeps it open and appends to it."""
+    try:
+        if path.stat().st_size <= limit:
+            return
+        shutil.copyfile(path, path.with_name(path.name + ".1"))
+        os.truncate(path, 0)
+    except OSError:
+        pass
+
+
 def form_filling_ready() -> bool:
     """Whether application forms can be filled in here: the autofill extra, and the browser it drives."""
     from muninn.adapters.apply import browser
@@ -1222,6 +1239,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "serve":
         import uvicorn
 
+        trim_log(app.config.data_dir / "muninn.log")
+
         from muninn.adapters.web.app import create_app
         from muninn.core.day_view import DayView
 
@@ -1264,7 +1283,8 @@ def main(argv: list[str] | None = None) -> int:
             scheduler.Schedule(jobs, app.config.tz, e.clock.now,
                                lambda job, a: subprocess.run([sys.executable, "-m", "muninn", "--data", data, *a]).returncode,
                                e.store.get_state, e.store.set_state).start()
-        uvicorn.run(web, host=app.config["host"], port=app.config.port, log_level="info", proxy_headers=False)
+        uvicorn.run(web, host=app.config["host"], port=app.config.port, log_level="info", proxy_headers=False,
+                    access_log=False)  # a line per request: nearly all of the log, and read by no one
         return 0
     return 2
 

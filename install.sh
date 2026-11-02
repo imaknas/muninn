@@ -50,6 +50,21 @@ if [ "${MUNINN_NO_SERVICE:-}" = "1" ]; then
   exit 0
 fi
 
+PORT="$("$MUNINN" --data "$DATA" config --effective 2>/dev/null | sed -n 's/^port: *//p' | head -1)"
+PORT="${PORT:-18795}"
+# whether the port is free once the Muninn before (if any) has stopped: anything still answering there is another
+# program, or another Muninn, and the setup link would open that one
+free() { curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$PORT/"; [ $? -eq 7 ]; }
+port_free() {
+  i=0
+  until free || [ $i -ge 10 ]; do sleep 1; i=$((i + 1)); done
+  if ! free; then
+    echo "Port $PORT is already in use by another program (or another Muninn): set port: to a free one in" >&2
+    echo "$DATA/config.yaml, then run this again." >&2
+    exit 1
+  fi
+}
+
 rm -f "$DATA/setup-url"
 if [ "$OS" = mac ]; then
   say "background service (launchd: app.muninn)"
@@ -63,7 +78,10 @@ if [ "$OS" = mac ]; then
   <key>Label</key><string>app.muninn</string>
   <key>ProgramArguments</key>
   <array><string>$MUNINN</string><string>--data</string><string>$DATA</string><string>serve</string></array>
-  <key>EnvironmentVariables</key><dict><key>MUNINN_SERVICE</key><string>1</string></dict>
+  <key>EnvironmentVariables</key><dict>
+    <key>MUNINN_SERVICE</key><string>1</string>
+    <key>PATH</key><string>$(printf '%s' "$PATH" | sed 's/&/\&amp;/g; s/</\&lt;/g')</string>
+  </dict>
   <key>KeepAlive</key><true/>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$DATA/muninn.log</string>
@@ -72,6 +90,7 @@ if [ "$OS" = mac ]; then
 </plist>
 PL
   launchctl bootout "gui/$(id -u)/app.muninn" >/dev/null 2>&1 || true
+  port_free
   launchctl bootstrap "gui/$(id -u)" "$PLIST"
   OPEN=open
   LOGS="$DATA/muninn.log"
@@ -86,6 +105,7 @@ Description=Muninn
 [Service]
 ExecStart="$MUNINN" --data "$DATA" serve
 Environment=MUNINN_SERVICE=1
+Environment="PATH=$(printf '%s' "$PATH" | sed 's/%/%%/g')"
 Restart=always
 RestartSec=2
 
@@ -94,7 +114,9 @@ WantedBy=default.target
 UN
   systemctl --user daemon-reload
   systemctl --user enable muninn.service
-  systemctl --user restart muninn.service  # started, or started again: one already running is on the version before
+  systemctl --user stop muninn.service  # one already running is on the version before
+  port_free
+  systemctl --user start muninn.service
   loginctl enable-linger "$(id -un)" >/dev/null 2>&1 || true  # keeps it running when you log out
   OPEN=xdg-open
   LOGS="journalctl --user -u muninn"
@@ -116,7 +138,8 @@ while :; do
 done
 RN
   chmod 700 "$RUN"
-  if [ -s "$DATA/run.pid" ]; then kill "$(cat "$DATA/run.pid")" 2>/dev/null || true; sleep 2; fi  # the one an earlier install started
+  if [ -s "$DATA/run.pid" ]; then kill "$(cat "$DATA/run.pid")" 2>/dev/null || true; fi  # the one an earlier install started
+  port_free
   nohup "$RUN" >/dev/null 2>&1 &
   echo "  to keep it running across reboots, start $RUN from your system's startup, or use Docker (compose.yaml)"
   echo "  to stop it: kill \$(cat \"$DATA/run.pid\")"
@@ -125,8 +148,7 @@ RN
 fi
 
 say "waiting for Muninn to start"
-PORT="$("$MUNINN" --data "$DATA" config --effective 2>/dev/null | sed -n 's/^port: *//p' | head -1)"
-up() { curl -fsS "http://127.0.0.1:${PORT:-18795}/healthz" 2>/dev/null | grep -q '"version"'; }  # Muninn, not whatever else holds the port
+up() { curl -fsS "http://127.0.0.1:$PORT/healthz" 2>/dev/null | grep -q '"version"'; }  # Muninn, not whatever else holds the port
 i=0
 until up || [ $i -ge 30 ]; do sleep 1; i=$((i + 1)); done
 if ! up; then

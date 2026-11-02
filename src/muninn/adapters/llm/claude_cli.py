@@ -19,12 +19,12 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Iterable, Protocol, Sequence
 
 from muninn.adapters.llm.content import content_blocks
+from muninn.adapters.programs import find_program
 from muninn.core.language import Language
 from muninn.core.models import Attachment
 from muninn.core.ports import Capabilities, CloudLoginLost
@@ -74,11 +74,11 @@ class OwnLogin:
 
 
 def find_cli(configured: str, nvm_dir: Path | None = None, name: str = "claude") -> str | None:
-    """A node CLI (`name`) as configured (a path, or a name on PATH); else the newest node under nvm that has it."""
+    """A node CLI (`name`) as configured (a path, or a name on PATH or where programs usually are); else the newest node under nvm that has it."""
     path = os.path.expanduser(configured)
     if os.path.isfile(path) and os.access(path, os.X_OK):
         return path
-    if found := shutil.which(path):
+    if found := find_program(path):
         return found
     if nvm_dir is None:
         return None

@@ -8,7 +8,6 @@ import importlib.util
 import os
 import re
 import signal
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +15,7 @@ from typing import Any, Callable
 
 import httpx
 
+from muninn.adapters.programs import USUAL, find_program
 from muninn.upgrade import PACKAGE, Release, UpgradeError, stable
 
 TIMEOUT_S = 15
@@ -151,7 +151,7 @@ EXTRAS = {"autofill": "playwright"}  # each optional part, by a module only it b
 
 
 def installation(prefix: Path = Path(sys.prefix), package_dir: Path = Path(__file__).resolve().parents[1],
-                 env: dict[str, str] | None = None, which: Callable[[str], str | None] = shutil.which) -> Any:
+                 env: dict[str, str] | None = None, which: Callable[[str], str | None] = lambda name: find_program(name, (*USUAL, "~/.cargo/bin"))) -> Any:
     """How the running Muninn was installed, read from where it runs."""
     env = dict(os.environ) if env is None else env
     if env.get("MUNINN_CONTAINER"):
@@ -168,7 +168,7 @@ def installation(prefix: Path = Path(sys.prefix), package_dir: Path = Path(__fil
                        f"uv run playwright install chromium there",
                        f"this Muninn runs from a source checkout ({root}): delete that folder to remove it")
     if (prefix / "uv-receipt.toml").is_file():
-        uv = which("uv") or next((str(p) for p in (Path.home() / ".local/bin/uv", Path.home() / ".cargo/bin/uv") if p.is_file()), None)
+        uv = which("uv")
         if uv is None:
             return Refused("uv tool", "uv, which installed this Muninn, is not found: install uv, then run muninn upgrade again",
                            "uv, which installed this Muninn, is not found: install uv, then try again")

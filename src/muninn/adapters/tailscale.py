@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
+
+from muninn.adapters.programs import find_program
 
 TIMEOUT_S = 20
 PORTS = range(8444, 8454)  # the HTTPS ports tried, first free one taken (8444 is what the docs name)
@@ -17,7 +18,7 @@ MAC_APP = Path("/Applications/Tailscale.app/Contents/MacOS/Tailscale")  # the ap
 
 class Tailscale:
     def __init__(self, run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
-                 which: Callable[[str], str | None] = shutil.which, mac_app: Path = MAC_APP):
+                 which: Callable[[str], str | None] = find_program, mac_app: Path = MAC_APP):
         self._run, self._which, self._mac_app = run, which, mac_app
 
     def _binary(self) -> str | None:
