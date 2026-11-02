@@ -70,14 +70,12 @@ be paired. Details in [docs/privacy.md](https://github.com/imaknas/muninn/blob/m
 
 ## Documentation
 
-| | |
-|---|---|
-| Install, upgrade, Docker, HTTPS for your phone | [docs/install.md](https://github.com/imaknas/muninn/blob/main/docs/install.md) |
-| Domains, goals, what it observes, what it does for you | [docs/how-it-works.md](https://github.com/imaknas/muninn/blob/main/docs/how-it-works.md) |
-| Where models run and what leaves the machine | [docs/privacy.md](https://github.com/imaknas/muninn/blob/main/docs/privacy.md) |
-| Interfaces for other systems | [src/muninn/contracts](https://github.com/imaknas/muninn/tree/main/src/muninn/contracts) |
-| Developing, testing, releasing | [CONTRIBUTING.md](https://github.com/imaknas/muninn/blob/main/CONTRIBUTING.md) |
-| What changed in each release | [CHANGELOG.md](https://github.com/imaknas/muninn/blob/main/CHANGELOG.md) |
+- [Installing](https://github.com/imaknas/muninn/blob/main/docs/install.md): install, upgrade, Docker, HTTPS for your phone
+- [How it works](https://github.com/imaknas/muninn/blob/main/docs/how-it-works.md): domains, goals, what it observes, what it does for you
+- [Privacy](https://github.com/imaknas/muninn/blob/main/docs/privacy.md): where models run and what leaves the machine
+- [Contracts](https://github.com/imaknas/muninn/tree/main/src/muninn/contracts): interfaces for other systems
+- [Contributing](https://github.com/imaknas/muninn/blob/main/CONTRIBUTING.md): developing, testing, releasing
+- [Changelog](https://github.com/imaknas/muninn/blob/main/CHANGELOG.md): what changed in each release
 
 ## License
 

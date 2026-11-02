@@ -60,14 +60,12 @@ Muninn 跑在你的機器上,它知道的東西都留在它的 `data/` 資料夾
 
 ## 文件
 
-| | |
-|---|---|
-| 安裝、升級、Docker、手機用的 HTTPS | [docs/zh-TW/install.md](https://github.com/imaknas/muninn/blob/main/docs/zh-TW/install.md) |
-| 領域、目標、它觀察什麼、替你做什麼 | [docs/zh-TW/how-it-works.md](https://github.com/imaknas/muninn/blob/main/docs/zh-TW/how-it-works.md) |
-| 模型在哪裡跑、什麼會離開這台機器 | [docs/zh-TW/privacy.md](https://github.com/imaknas/muninn/blob/main/docs/zh-TW/privacy.md) |
-| 給其他系統的介面 | [src/muninn/contracts](https://github.com/imaknas/muninn/tree/main/src/muninn/contracts) |
-| 開發、測試、發佈(英文) | [CONTRIBUTING.md](https://github.com/imaknas/muninn/blob/main/CONTRIBUTING.md) |
-| 每個版本改了什麼(英文) | [CHANGELOG.md](https://github.com/imaknas/muninn/blob/main/CHANGELOG.md) |
+- [安裝](https://github.com/imaknas/muninn/blob/main/docs/zh-TW/install.md): 安裝、升級、Docker、手機用的 HTTPS
+- [運作方式](https://github.com/imaknas/muninn/blob/main/docs/zh-TW/how-it-works.md): 領域、目標、它觀察什麼、替你做什麼
+- [隱私](https://github.com/imaknas/muninn/blob/main/docs/zh-TW/privacy.md): 模型在哪裡跑、什麼會離開這台機器
+- [介面](https://github.com/imaknas/muninn/tree/main/src/muninn/contracts): 給其他系統的介面
+- [參與開發(英文)](https://github.com/imaknas/muninn/blob/main/CONTRIBUTING.md): 開發、測試、發佈
+- [更新紀錄(英文)](https://github.com/imaknas/muninn/blob/main/CHANGELOG.md): 每個版本改了什麼
 
 ## 授權
 
