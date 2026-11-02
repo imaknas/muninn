@@ -3,6 +3,12 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.9.0 (2026-11-02)
+
+### New
+
+- **releases:** Muninn tells you when a newer release is out, as new features, fixes or a breaking change
+
 ## v0.8.1 (2026-11-02)
 
 ### Fixed
