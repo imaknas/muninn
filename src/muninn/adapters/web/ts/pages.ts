@@ -350,6 +350,8 @@ export async function renderSettings({ questions = true }: { questions?: boolean
         el("span", { class: `icon ${c.authorized ? "" : "warn"}` }, svg(c.authorized ? ICON.check : ICON.warn)),
         el("div", {}, el("b", {}, c.authorized ? w.pages.linked(label) : c.status === "relink" ? w.pages.expired(label) : w.pages.notLinked(label)),
           el("span", {}, purpose[name] || ""))),
+      // the client is the user's own, published without Google's review: its sign-in warns before it goes on
+      ...(name === "google" && !c.authorized ? [el("p", { class: "note" }, w.pages.googleUnverified)] : []),
       el("button", { type: "button", class: c.authorized ? "btn block" : "btn primary block", onclick: () => connectAccount(name) },
         c.authorized ? w.pages.relink : w.pages.link(label))));
   }
