@@ -44,6 +44,7 @@ from muninn.languages.zh_tw import (
     records,
     redact,
     reflect,
+    releases,
     reports,
     requests,
     review,
@@ -76,7 +77,7 @@ from muninn.languages.zh_tw import (
 
 LANGUAGE = Catalog(
     "zh-TW", "Traditional Chinese (as written in Taiwan)", texts(
-        actions, alerts, answer, apply, assembly, collectors, command_trust, commands, composer, config, conversation, day_view, drift, engine, evals, facts, handoff_records, idea_next, ideas, lease, llm, llm_router, local_projects, mail, main, models, offline_time, onboarding, open_items, owntracks, places, plan_edits, planner, plans, ports, prepare, project_messages, records, redact, reflect, reports, requests, review, schedule, setup_flow, sidecar, speak_up, task_evidence, task_models, tasks, tools, tools_alerts, tools_attribution, tools_blocks, tools_conversation, tools_ideas, tools_packets, tools_places, tools_plan, tools_records, tools_tasks, tools_topics, topic_memory, topics, uploads, waiting, web, window_classify,
+        actions, alerts, answer, apply, assembly, collectors, command_trust, commands, composer, config, conversation, day_view, drift, engine, evals, facts, handoff_records, idea_next, ideas, lease, llm, llm_router, local_projects, mail, main, models, offline_time, onboarding, open_items, owntracks, places, plan_edits, planner, plans, ports, prepare, project_messages, records, redact, reflect, releases, reports, requests, review, schedule, setup_flow, sidecar, speak_up, task_evidence, task_models, tasks, tools, tools_alerts, tools_attribution, tools_blocks, tools_conversation, tools_ideas, tools_packets, tools_places, tools_plan, tools_records, tools_tasks, tools_topics, topic_memory, topics, uploads, waiting, web, window_classify,
     ),
     separator="、", sentence=re.compile(r"[^。!?!?\n]*[。!?!?]?\n?"),
 )

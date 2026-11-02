@@ -64,3 +64,6 @@ Claude Sonnet 5.5 和 Haiku 5.5 每一題都答對。
   會讓每則推播都只寫這樣。
 - PWA 要求已配對的裝置(`muninn pair` 給的一次性代碼,之後用
   HttpOnly cookie),還可以再限制成只允許列出的 Tailscale 登入。
+- Muninn 每天問一次 PyPI 最新的 muninn-ai 是哪一版,再向 GitHub 拿比它正在跑的更新的那幾版的說明,
+  好告訴你有更新;請求裡沒有任何關於你的東西(對方看得到你的位址,任何請求都一樣)。
+  `update_check: false` 會關掉它;從 source checkout 跑的 Muninn 不會問。

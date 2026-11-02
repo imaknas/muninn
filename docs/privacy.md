@@ -82,3 +82,8 @@ answer every one of them right.
   push say only that.
 - The PWA requires a paired device (one-time code from `muninn pair`, then an
   HttpOnly cookie), optionally restricted further to listed Tailscale logins.
+- Once a day Muninn asks PyPI which release of muninn-ai is the latest, and
+  GitHub for the notes of the ones newer than it runs, to say when there is an
+  update; the requests carry nothing about you (your address is seen, as with
+  any request). `update_check: false` turns it off; a Muninn running from a
+  source checkout never asks.

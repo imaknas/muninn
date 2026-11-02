@@ -352,6 +352,7 @@ def build(config: Config, *, dry_run: bool = False) -> App:
         parties=handoff_records.parties_from(cfg["principal_id"], str(cfg["owner_label"])),
         ph_extensions=ph.extensions(CONTRACTS / "vendor" / "principal-handoff", CONTRACTS / "vendor" / "principal-handoff-0.4"),
         running=running_version(Path(__file__).resolve().parents[2], cfg.data_dir, words),
+        **release_check(cfg),
         **project_side(cfg, words),
     )
     # lending a conversation to a project's session, when a session runner is configured
@@ -801,6 +802,17 @@ def trim_log(path: Path, limit: int = LOG_LIMIT) -> None:
         os.truncate(path, 0)
     except OSError:
         pass
+
+
+def release_check(cfg: Config) -> dict[str, Any]:
+    """Where a newer release is read, unless the config says update_check: false or this Muninn runs from a source
+    checkout (its developer's, which follows the repository rather than the releases)."""
+    install = installs.installation()
+    if not cfg["update_check"] or install.kind == "checkout":
+        return {}
+    from muninn.adapters.releases import PublishedReleases
+
+    return {"release_feed": PublishedReleases(installs.PyPI()), "installed_version": version(), "install_kind": install.kind}
 
 
 def form_filling_ready() -> bool:

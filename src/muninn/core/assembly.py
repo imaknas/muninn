@@ -27,6 +27,7 @@ from .ideas import Ideas
 from .answer import Answerer
 from .dossier import Dossier
 from .offline_time import OfflineTime
+from .releases import ReleaseFeed, ReleaseNews
 from .open_items import DeadlineItems, OpenItems, ProjectTodoItems, TaskItems, TrackerItems
 from .task_evidence import CompletionDetector
 from .tasks import TaskRegistry, TaskActor
@@ -138,6 +139,9 @@ class Muninn:
         parties: ph.Parties | None = None,
         ph_extensions: dict[str, ph.Ext] | None = None,
         running: RunningVersion | None = None,
+        release_feed: ReleaseFeed | None = None,
+        installed_version: str = "",
+        install_kind: str = "other",
     ):
         self.words = words  # the language Muninn speaks to the user in
         # the core: observing, attributing, notifying, scheduling; what it needs from the actors comes through these
@@ -226,6 +230,9 @@ class Muninn:
                                  else self.channel.send([PushMessage("muninn", 1, title=title)]), words=words)
         self.offline = offline or OfflineTime(store, clock, tz, hours, self.hour_goals,
                                               calendar.busy if calendar is not None else None, words=words)
+        # a newer Muninn: said once per release (no feed: not checked)
+        self.release_news = ReleaseNews(store, clock, tz, release_feed, installed_version, install_kind, self._report,
+                                        store.add_inbox, words=words)
 
     # ── helpers ─────────────────────────────────────────────────────────────
 
@@ -517,6 +524,7 @@ class Muninn:
             Job("sorting or closing tasks", tasks),
             Job("matching to-dos", self.match_todos),
             *self.offline.jobs(),
+            *self.release_news.jobs(),
             *self.windows.jobs(),
             *self.mailroom.jobs(),
             *self.packets.jobs(self.prepare_per_tick),

@@ -15,6 +15,7 @@ curl -fsSL https://raw.githubusercontent.com/imaknas/muninn/main/install.sh | sh
 
 要升到新版本就執行 `muninn upgrade`:它會裝上最新的穩定版、用新版重啟背景服務並確認它有回應,
 沒有回應就換回原本的版本(`muninn upgrade --check` 只說裝的是哪一版、最新的是哪一版)。
+有新版時 Muninn 會自己告訴你,也會說是新功能還是只有修正。
 `muninn uninstall` 會把 Muninn 從電腦上拿掉:背景服務、手機用的 HTTPS 位址和 Muninn 本身;
 資料夾會留著,除非加上 `--delete-data`。
 

@@ -66,6 +66,7 @@ DEFAULTS: dict[str, Any] = {
     # local work check clears it; work stays local. The model is llm.understanding_model.
     "cloud_understanding": False,
     "idle_alert_days": 3,
+    "update_check": True,  # once a day, ask PyPI and GitHub which release is the latest (nothing about the user is sent)
     "workspace_roots": [],  # folders whose git repositories count as the user's work
     "transcript_roots": [],  # folders of Claude Code conversations (e.g. ~/.claude/projects)
     "git_authors": [],
