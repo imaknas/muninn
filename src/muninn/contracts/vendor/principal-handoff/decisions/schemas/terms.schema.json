@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "decisions/schemas/terms.schema.json",
-  "title": "Principal Handoff Decisions 0.5: terms",
+  "title": "Principal Handoff Decisions 0.6: terms",
   "description": "The terms of a decision (decisions section 2); referenced by raised and amended. Modules add members (Criteria: criteria).",
   "type": "object",
   "required": [

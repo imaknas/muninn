@@ -350,7 +350,7 @@ def build(config: Config, *, dry_run: bool = False) -> App:
         gate=gate,
         owner_label=str(cfg["owner_label"]),
         parties=handoff_records.parties_from(cfg["principal_id"], str(cfg["owner_label"])),
-        ph_extensions=ph.extensions(CONTRACTS / "vendor" / "principal-handoff", CONTRACTS / "vendor" / "principal-handoff-0.4"),
+        ph_extensions=ph.extensions(CONTRACTS / "vendor"),
         running=running_version(Path(__file__).resolve().parents[2], cfg.data_dir, words),
         **release_check(cfg),
         **project_side(cfg, words),
@@ -1196,7 +1196,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "handoff-version":
         if args.setting:
             if len(args.setting) != 3:
-                parser.error("handoff-version takes PROJECT EXT VERSION, e.g. agent-hub acts 0.5")
+                parser.error("handoff-version takes PROJECT EXT VERSION, e.g. brunna acts 0.6")
             try:
                 e.handoff_versions.set(*args.setting)
             except ValueError as err:

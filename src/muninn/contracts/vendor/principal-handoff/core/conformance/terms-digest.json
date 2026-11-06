@@ -1,12 +1,12 @@
 {
-  "suite": "core/0.5",
+  "suite": "core/0.6",
   "description": "Terms digest (core §4): need record -> the RFC 8785 serialisation of {ext without its version, project, key, terms_rev, terms} and its SHA-256 digest.",
   "cases": [
     {
       "id": "ascii",
       "record": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
+        "ph": "0.6",
+        "ext": "acts/0.6",
         "id": "r:task-demo-aaaaaaaaaa",
         "type": "raised",
         "origin": "requester",
@@ -26,8 +26,8 @@
     {
       "id": "member-order-does-not-matter",
       "record": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
+        "ph": "0.6",
+        "ext": "acts/0.6",
         "id": "r:task-demo-aaaaaaaaaa",
         "type": "raised",
         "origin": "requester",
@@ -47,8 +47,8 @@
     {
       "id": "non-ascii",
       "record": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
+        "ph": "0.6",
+        "ext": "acts/0.6",
         "id": "r:task-demo-aaaaaaaaaa",
         "type": "raised",
         "origin": "requester",
@@ -67,8 +67,8 @@
     {
       "id": "escapes",
       "record": {
-        "ph": "0.5",
-        "ext": "decisions/0.5",
+        "ph": "0.6",
+        "ext": "decisions/0.6",
         "id": "a:q-demo-1:2",
         "type": "amended",
         "origin": "requester",
@@ -87,8 +87,8 @@
     {
       "id": "decision-with-criteria",
       "record": {
-        "ph": "0.5",
-        "ext": "decisions/0.5",
+        "ph": "0.6",
+        "ext": "decisions/0.6",
         "id": "r:q-demo-7",
         "type": "raised",
         "origin": "requester",
@@ -141,8 +141,8 @@
     {
       "id": "unrecognised-member-with-integer",
       "record": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
+        "ph": "0.6",
+        "ext": "acts/0.6",
         "id": "r:task-demo-aaaaaaaaaa",
         "type": "raised",
         "origin": "requester",
@@ -162,8 +162,8 @@
     {
       "id": "member-names-beyond-the-bmp",
       "record": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
+        "ph": "0.6",
+        "ext": "acts/0.6",
         "id": "r:task-demo-aaaaaaaaaa",
         "type": "raised",
         "origin": "requester",

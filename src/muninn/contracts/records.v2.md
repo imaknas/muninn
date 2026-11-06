@@ -1,23 +1,29 @@
 # Muninn ↔ projects, v2: Principal Handoff records
 
-Muninn is the **principal side** of Principal Handoff Core 0.5 with the Acts 0.5 and Decisions 0.5 extensions
-(vendored unchanged in `vendor/principal-handoff/`: the schemas, and the records, lifecycle, terms-digest and convert
-conformance cases, which Muninn's implementation passes). It implements neither the Evidence nor the Criteria module:
-it emits no `evidence.proof`, verifiable entries or approvals, and leaves those it receives to their modules. v2 runs
-beside v1 (`messages.v1.schema.json`, `handoffs.v1.schema.json`) until the projects' side reads and writes only v2;
-then v1 is retired.
+Muninn is the **principal side** of Principal Handoff Core 0.6 with the Acts 0.6 and Decisions 0.6 extensions
+(vendored unchanged in `vendor/principal-handoff/`: the schemas, and the records, raw, lifecycle, relations,
+terms-digest and convert conformance cases of tag `principal-handoff-0.6.1`, which Muninn's implementation passes). It
+implements neither the Evidence nor the Criteria module: it emits no `evidence.proof`, verifiable entries or approvals,
+and leaves those it receives to their modules. v2 runs beside v1 (`messages.v1.schema.json`,
+`handoffs.v1.schema.json`) until the projects' side reads and writes only v2; then v1 is retired.
 
 ## Versions (core section 14)
 
-Muninn also implements the version before, 0.4 (its schemas in `vendor/principal-handoff-0.4/`), and reads 0.3 as 0.4
-(only `ph` and `ext` change). Which version a project is told its records in is configured per project and extension
-(`muninn handoff-version`; `*` sets every project, those already named and those to come, for when one counterpart
-speaks for them all), not taken from the labels of what it sends. A project first heard from is configured to the
-version it spoke then. A record is checked under the rules of the version it
-came in, kept as it came, and read in 0.5; one in a version other than the configured one is read all the same and
-said in Muninn's log. What Muninn tells a project that speaks 0.4 is converted as core section 14 says: `evidence.proof`
-removed, a settlement's `terms_digest` that of the held need record in 0.4, and a relation naming an item of the same
-extension names it in 0.4.
+Muninn also implements the version before, 0.5 (its schemas in `vendor/principal-handoff-0.5/`), as a converting
+party. Which version a project is told its records in is configured per project and extension (`muninn
+handoff-version PROJECT EXT 0.5|0.6`; `*` sets every project, those already named and those to come, for when one
+counterpart speaks for them all), not taken from the labels of what it sends. A project first heard from is configured
+to the version it spoke then. A record is checked under the rules of the version it came in, kept as it came, and held
+in its 0.6 form; one in a version other than the configured one is read all the same and said in Muninn's log. What
+Muninn tells a project configured for 0.5 is converted from the record alone: `ph` and `ext`, `evidence.proof`
+removed, and a relation's `target.ext` with `/0.5` after the extension's name.
+
+A 0.5 relation whose target 0.6 cannot name (a `target.ext` that is not an extension's name with a version after it, a
+`target.project` that is not 1 to 128 characters without whitespace) has no 0.6 form: it is kept but not held, and the
+reply says `unsupported`. Records projects sent in 0.4 (or 0.3, read as 0.4) before 0.6 are still read, through 0.5
+(`vendor/principal-handoff-0.4/`); no project can be configured for 0.4 any more, and one configured for it before is
+told in 0.5. A record of a version Muninn does not implement (`acts/0.7`, say) is kept, never acted on, and replies
+`unsupported`; a record held with the same id displaces it.
 
 ## Parties (core R6)
 
@@ -33,8 +39,8 @@ is checked on its own; the reply lists, per record, `{"id", "status"}` with `sta
 (its `(ext name, project, origin, type, id)` is already held, in whichever version). An id sent again with other
 content keeps the form whose RFC 8785 serialisation is greater, whichever came first (core section 10): what the user
 sees follows the record kept, and the reuse is said in Muninn's log unless only `ts` differs. A record that fails
-validation is never kept and blocks no valid one with its id, `unsupported` (an extension Muninn does not implement: consumed,
-not acted on) or `invalid` (with `errors`). Posting again is safe.
+validation is never kept and blocks no valid one with its id, `unsupported` (an extension or version Muninn does not
+implement, or a record with no 0.6 form: kept, not acted on) or `invalid` (with `errors`). Posting again is safe.
 
 | Record | What Muninn does |
 |---|---|

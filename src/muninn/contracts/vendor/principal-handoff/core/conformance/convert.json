@@ -1,12 +1,13 @@
 {
-  "suite": "core/0.5",
-  "description": "Core section 14 with the 0.4 <-> 0.5 conversion of Acts section 6, Decisions section 6 and Criteria section 10: record + target version + the records the converter holds about the item -> the converted record. A converter converts again at each fold, so a digest kept because its need record is not held yet is replaced once it is.",
+  "suite": "core/0.6",
+  "description": "Core section 14 with the 0.5 <-> 0.6 conversion of core section 14, Acts section 6, Decisions section 6 and Criteria section 10. cases: record + target version -> the converted record, or null where the record has no form in that version; conversion depends on the record alone. held (Acts only): the records one act's converting party (configured for 0.6, implementing 0.5) has received -> the ids it holds and the item's active relations (core sections 6, 7, 10).",
+  "principal": "p:owner",
   "cases": [
     {
       "id": "need-record-up",
       "record": {
-        "ph": "0.4",
-        "ext": "acts/0.4",
+        "ph": "0.5",
+        "ext": "acts/0.5",
         "id": "r:task-demo-c3d8af57d4",
         "type": "raised",
         "origin": "requester",
@@ -19,27 +20,10 @@
         },
         "terms_rev": 1
       },
-      "to": "0.5",
-      "held": [
-        {
-          "ph": "0.4",
-          "ext": "acts/0.4",
-          "id": "r:task-demo-c3d8af57d4",
-          "type": "raised",
-          "origin": "requester",
-          "by": "registrar:demo",
-          "key": "task-demo-c3d8af57d4",
-          "project": "demo",
-          "ts": "2026-10-27T02:10:00Z",
-          "terms": {
-            "text": "Renew the domain"
-          },
-          "terms_rev": 1
-        }
-      ],
+      "to": "0.6",
       "expect": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
+        "ph": "0.6",
+        "ext": "acts/0.6",
         "id": "r:task-demo-c3d8af57d4",
         "type": "raised",
         "origin": "requester",
@@ -56,8 +40,8 @@
     {
       "id": "need-record-down",
       "record": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
+        "ph": "0.6",
+        "ext": "acts/0.6",
         "id": "r:task-demo-c3d8af57d4",
         "type": "raised",
         "origin": "requester",
@@ -70,27 +54,10 @@
         },
         "terms_rev": 1
       },
-      "to": "0.4",
-      "held": [
-        {
-          "ph": "0.5",
-          "ext": "acts/0.5",
-          "id": "r:task-demo-c3d8af57d4",
-          "type": "raised",
-          "origin": "requester",
-          "by": "registrar:demo",
-          "key": "task-demo-c3d8af57d4",
-          "project": "demo",
-          "ts": "2026-10-27T02:10:00Z",
-          "terms": {
-            "text": "Renew the domain"
-          },
-          "terms_rev": 1
-        }
-      ],
+      "to": "0.5",
       "expect": {
-        "ph": "0.4",
-        "ext": "acts/0.4",
+        "ph": "0.5",
+        "ext": "acts/0.5",
         "id": "r:task-demo-c3d8af57d4",
         "type": "raised",
         "origin": "requester",
@@ -105,10 +72,10 @@
       }
     },
     {
-      "id": "settled-up-replaces-digest-and-drops-proof",
+      "id": "settled-up-keeps-digest-and-drops-proof",
       "record": {
-        "ph": "0.4",
-        "ext": "acts/0.4",
+        "ph": "0.5",
+        "ext": "acts/0.5",
         "id": "s-81f2",
         "type": "settled",
         "origin": "principal",
@@ -117,7 +84,7 @@
         "project": "demo",
         "ts": "2026-10-28T08:30:00Z",
         "terms_rev": 1,
-        "terms_digest": "sha-256:e0800bf76e20f21349abccc7cfdd5e13f29152762c8f643708a2e23e19dd40ab",
+        "terms_digest": "sha-256:a9467037327c1e0e7ce14815d5180ad390e1c754a703d4680b06ff1eafa26c0f",
         "outcome": "done",
         "authority": {
           "kind": "principal",
@@ -128,27 +95,10 @@
           "proof": "eyJhbGciOiJFZERTQSJ9..c2ln"
         }
       },
-      "to": "0.5",
-      "held": [
-        {
-          "ph": "0.4",
-          "ext": "acts/0.4",
-          "id": "r:task-demo-c3d8af57d4",
-          "type": "raised",
-          "origin": "requester",
-          "by": "registrar:demo",
-          "key": "task-demo-c3d8af57d4",
-          "project": "demo",
-          "ts": "2026-10-27T02:10:00Z",
-          "terms": {
-            "text": "Renew the domain"
-          },
-          "terms_rev": 1
-        }
-      ],
+      "to": "0.6",
       "expect": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
+        "ph": "0.6",
+        "ext": "acts/0.6",
         "id": "s-81f2",
         "type": "settled",
         "origin": "principal",
@@ -171,6 +121,28 @@
     {
       "id": "settled-down",
       "record": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "s-81f2",
+        "type": "settled",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "task-demo-c3d8af57d4",
+        "project": "demo",
+        "ts": "2026-10-28T08:30:00Z",
+        "terms_rev": 1,
+        "terms_digest": "sha-256:a9467037327c1e0e7ce14815d5180ad390e1c754a703d4680b06ff1eafa26c0f",
+        "outcome": "done",
+        "authority": {
+          "kind": "principal",
+          "decider": "p:owner"
+        },
+        "evidence": {
+          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      },
+      "to": "0.5",
+      "expect": {
         "ph": "0.5",
         "ext": "acts/0.5",
         "id": "s-81f2",
@@ -190,474 +162,47 @@
         "evidence": {
           "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
         }
-      },
-      "to": "0.4",
-      "held": [
-        {
-          "ph": "0.5",
-          "ext": "acts/0.5",
-          "id": "r:task-demo-c3d8af57d4",
-          "type": "raised",
-          "origin": "requester",
-          "by": "registrar:demo",
-          "key": "task-demo-c3d8af57d4",
-          "project": "demo",
-          "ts": "2026-10-27T02:10:00Z",
-          "terms": {
-            "text": "Renew the domain"
-          },
-          "terms_rev": 1
-        }
-      ],
-      "expect": {
-        "ph": "0.4",
-        "ext": "acts/0.4",
-        "id": "s-81f2",
-        "type": "settled",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "task-demo-c3d8af57d4",
-        "project": "demo",
-        "ts": "2026-10-28T08:30:00Z",
-        "terms_rev": 1,
-        "terms_digest": "sha-256:e0800bf76e20f21349abccc7cfdd5e13f29152762c8f643708a2e23e19dd40ab",
-        "outcome": "done",
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
       }
-    },
-    {
-      "id": "settled-up-on-other-terms-keeps-digest",
-      "record": {
-        "ph": "0.4",
-        "ext": "acts/0.4",
-        "id": "s-81f2",
-        "type": "settled",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "task-demo-c3d8af57d4",
-        "project": "demo",
-        "ts": "2026-10-28T08:30:00Z",
-        "terms_rev": 1,
-        "terms_digest": "sha-256:922d3a4dc88620f55fbc64b65cb2f652d55254db02840cd2079c314514d9b535",
-        "outcome": "done",
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222",
-          "proof": "eyJhbGciOiJFZERTQSJ9..c2ln"
-        }
-      },
-      "to": "0.5",
-      "held": [
-        {
-          "ph": "0.4",
-          "ext": "acts/0.4",
-          "id": "r:task-demo-c3d8af57d4",
-          "type": "raised",
-          "origin": "requester",
-          "by": "registrar:demo",
-          "key": "task-demo-c3d8af57d4",
-          "project": "demo",
-          "ts": "2026-10-27T02:10:00Z",
-          "terms": {
-            "text": "Renew the domain"
-          },
-          "terms_rev": 1
-        }
-      ],
-      "expect": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
-        "id": "s-81f2",
-        "type": "settled",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "task-demo-c3d8af57d4",
-        "project": "demo",
-        "ts": "2026-10-28T08:30:00Z",
-        "terms_rev": 1,
-        "terms_digest": "sha-256:922d3a4dc88620f55fbc64b65cb2f652d55254db02840cd2079c314514d9b535",
-        "outcome": "done",
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
-      }
-    },
-    {
-      "id": "settled-up-picks-the-matching-need-record",
-      "record": {
-        "ph": "0.4",
-        "ext": "acts/0.4",
-        "id": "s-81f2",
-        "type": "settled",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "task-demo-c3d8af57d4",
-        "project": "demo",
-        "ts": "2026-10-28T08:30:00Z",
-        "terms_rev": 1,
-        "terms_digest": "sha-256:922d3a4dc88620f55fbc64b65cb2f652d55254db02840cd2079c314514d9b535",
-        "outcome": "done",
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222",
-          "proof": "eyJhbGciOiJFZERTQSJ9..c2ln"
-        }
-      },
-      "to": "0.5",
-      "held": [
-        {
-          "ph": "0.4",
-          "ext": "acts/0.4",
-          "id": "r:task-demo-c3d8af57d4",
-          "type": "raised",
-          "origin": "requester",
-          "by": "registrar:demo",
-          "key": "task-demo-c3d8af57d4",
-          "project": "demo",
-          "ts": "2026-10-27T02:10:00Z",
-          "terms": {
-            "text": "Renew the domain"
-          },
-          "terms_rev": 1
-        },
-        {
-          "ph": "0.4",
-          "ext": "acts/0.4",
-          "id": "r:task-demo-c3d8af57d4-b",
-          "type": "raised",
-          "origin": "requester",
-          "by": "registrar:demo",
-          "key": "task-demo-c3d8af57d4",
-          "project": "demo",
-          "ts": "2026-10-27T02:10:00Z",
-          "terms": {
-            "text": "Renew the domain and the certificate"
-          },
-          "terms_rev": 1
-        }
-      ],
-      "expect": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
-        "id": "s-81f2",
-        "type": "settled",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "task-demo-c3d8af57d4",
-        "project": "demo",
-        "ts": "2026-10-28T08:30:00Z",
-        "terms_rev": 1,
-        "terms_digest": "sha-256:59c0efee786b1aa9a430cc5fc0b1133cae76a9268050d7fd27f0b85a98d60d86",
-        "outcome": "done",
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
-      }
-    },
-    {
-      "id": "settled-up-without-its-need-record-keeps-digest",
-      "record": {
-        "ph": "0.4",
-        "ext": "acts/0.4",
-        "id": "s-81f2",
-        "type": "settled",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "task-demo-c3d8af57d4",
-        "project": "demo",
-        "ts": "2026-10-28T08:30:00Z",
-        "terms_rev": 2,
-        "terms_digest": "sha-256:cdc1539301cc1be97863e31427efc481d90e958a423850d1f920df9138cddd6f",
-        "outcome": "done",
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222",
-          "proof": "eyJhbGciOiJFZERTQSJ9..c2ln"
-        }
-      },
-      "to": "0.5",
-      "held": [
-        {
-          "ph": "0.4",
-          "ext": "acts/0.4",
-          "id": "r:task-demo-c3d8af57d4",
-          "type": "raised",
-          "origin": "requester",
-          "by": "registrar:demo",
-          "key": "task-demo-c3d8af57d4",
-          "project": "demo",
-          "ts": "2026-10-27T02:10:00Z",
-          "terms": {
-            "text": "Renew the domain"
-          },
-          "terms_rev": 1
-        }
-      ],
-      "expect": {
-        "ph": "0.5",
-        "ext": "acts/0.5",
-        "id": "s-81f2",
-        "type": "settled",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "task-demo-c3d8af57d4",
-        "project": "demo",
-        "ts": "2026-10-28T08:30:00Z",
-        "terms_rev": 2,
-        "terms_digest": "sha-256:cdc1539301cc1be97863e31427efc481d90e958a423850d1f920df9138cddd6f",
-        "outcome": "done",
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
-      }
-    },
-    {
-      "id": "grant-up-names-no-after",
-      "record": {
-        "ph": "0.4",
-        "ext": "decisions/0.4",
-        "id": "ap1",
-        "type": "approved",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "q-demo-7",
-        "project": "demo",
-        "ts": "2026-10-27T10:00:00Z",
-        "terms_rev": 1,
-        "approval": {
-          "active": true,
-          "terms_digest": "sha-256:57ef46e4e51ce70e543d3e5961b077782fe344fc560dbe332fbc0871db29f03d"
-        },
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
-      },
-      "to": "0.5",
-      "held": [
-        {
-          "ph": "0.4",
-          "ext": "decisions/0.4",
-          "id": "r:q-demo-7",
-          "type": "raised",
-          "origin": "requester",
-          "by": "agent:demo",
-          "key": "q-demo-7",
-          "project": "demo",
-          "ts": "2026-10-27T09:00:00Z",
-          "terms": {
-            "text": "Merge the export feature?",
-            "criteria": {
-              "subject": {
-                "uri": "git:demo@refs/heads/feature-export",
-                "digest": "sha-256:3333333333333333333333333333333333333333333333333333333333333333"
-              },
-              "checks": [
-                {
-                  "id": "tests",
-                  "text": "The test suite passes",
-                  "format": "in-toto",
-                  "implementation": {
-                    "uri": "git:demo@ci/test.yml",
-                    "digest": "sha-256:4444444444444444444444444444444444444444444444444444444444444444"
-                  },
-                  "trust": [
-                    "sigstore:ci"
-                  ]
-                }
-              ],
-              "answer": {
-                "text": "Merge the export feature"
-              }
-            }
-          },
-          "terms_rev": 1
-        },
-        {
-          "ph": "0.4",
-          "ext": "decisions/0.4",
-          "id": "s:q-demo-7:1",
-          "type": "settled",
-          "origin": "principal",
-          "by": "ps:assistant",
-          "key": "q-demo-7",
-          "project": "demo",
-          "ts": "2026-10-27T09:30:00Z",
-          "outcome": "dismissed",
-          "terms_rev": 1,
-          "terms_digest": "sha-256:57ef46e4e51ce70e543d3e5961b077782fe344fc560dbe332fbc0871db29f03d",
-          "authority": {
-            "kind": "principal",
-            "decider": "p:owner"
-          }
-        },
-        {
-          "ph": "0.4",
-          "ext": "decisions/0.4",
-          "id": "o:q-demo-7:1",
-          "type": "reopened",
-          "origin": "principal",
-          "by": "ps:assistant",
-          "key": "q-demo-7",
-          "project": "demo",
-          "ts": "2026-10-27T09:40:00Z",
-          "supersedes": [
-            "s:q-demo-7:1"
-          ]
-        }
-      ],
-      "expect": {
-        "ph": "0.5",
-        "ext": "decisions/0.5",
-        "id": "ap1",
-        "type": "approved",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "q-demo-7",
-        "project": "demo",
-        "ts": "2026-10-27T10:00:00Z",
-        "terms_rev": 1,
-        "approval": {
-          "active": true,
-          "terms_digest": "sha-256:422240c17a6422d4ec29c820396a79b504b8ef71e76d4169fec2e6eee81c0c0a"
-        },
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
-      },
-      "module": "criteria"
-    },
-    {
-      "id": "grant-down-drops-after",
-      "record": {
-        "ph": "0.5",
-        "ext": "decisions/0.5",
-        "id": "ap1",
-        "type": "approved",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "q-demo-7",
-        "project": "demo",
-        "ts": "2026-10-27T10:00:00Z",
-        "terms_rev": 1,
-        "approval": {
-          "active": true,
-          "terms_digest": "sha-256:422240c17a6422d4ec29c820396a79b504b8ef71e76d4169fec2e6eee81c0c0a",
-          "after": "o:q-demo-7:1"
-        },
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
-      },
-      "to": "0.4",
-      "held": [
-        {
-          "ph": "0.5",
-          "ext": "decisions/0.5",
-          "id": "r:q-demo-7",
-          "type": "raised",
-          "origin": "requester",
-          "by": "agent:demo",
-          "key": "q-demo-7",
-          "project": "demo",
-          "ts": "2026-10-27T09:00:00Z",
-          "terms": {
-            "text": "Merge the export feature?",
-            "criteria": {
-              "subject": {
-                "uri": "git:demo@refs/heads/feature-export",
-                "digest": "sha-256:3333333333333333333333333333333333333333333333333333333333333333"
-              },
-              "checks": [
-                {
-                  "id": "tests",
-                  "text": "The test suite passes",
-                  "format": "in-toto",
-                  "implementation": {
-                    "uri": "git:demo@ci/test.yml",
-                    "digest": "sha-256:4444444444444444444444444444444444444444444444444444444444444444"
-                  },
-                  "trust": [
-                    "sigstore:ci"
-                  ]
-                }
-              ],
-              "answer": {
-                "text": "Merge the export feature"
-              }
-            }
-          },
-          "terms_rev": 1
-        }
-      ],
-      "expect": {
-        "ph": "0.4",
-        "ext": "decisions/0.4",
-        "id": "ap1",
-        "type": "approved",
-        "origin": "principal",
-        "by": "ps:assistant",
-        "key": "q-demo-7",
-        "project": "demo",
-        "ts": "2026-10-27T10:00:00Z",
-        "terms_rev": 1,
-        "approval": {
-          "active": true,
-          "terms_digest": "sha-256:57ef46e4e51ce70e543d3e5961b077782fe344fc560dbe332fbc0871db29f03d"
-        },
-        "authority": {
-          "kind": "principal",
-          "decider": "p:owner"
-        },
-        "evidence": {
-          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
-      },
-      "module": "criteria"
     },
     {
       "id": "note-up",
       "record": {
-        "ph": "0.4",
-        "ext": "decisions/0.4",
+        "ph": "0.5",
+        "ext": "decisions/0.5",
+        "id": "n1",
+        "type": "note",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T11:00:00Z",
+        "about": {
+          "key": "q-demo-7"
+        },
+        "note": "Waiting on CI."
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "decisions/0.6",
+        "id": "n1",
+        "type": "note",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T11:00:00Z",
+        "about": {
+          "key": "q-demo-7"
+        },
+        "note": "Waiting on CI."
+      }
+    },
+    {
+      "id": "note-down",
+      "record": {
+        "ph": "0.6",
+        "ext": "decisions/0.6",
         "id": "n1",
         "type": "note",
         "origin": "requester",
@@ -671,7 +216,6 @@
         "note": "Waiting on CI."
       },
       "to": "0.5",
-      "held": [],
       "expect": {
         "ph": "0.5",
         "ext": "decisions/0.5",
@@ -686,6 +230,1600 @@
           "key": "q-demo-7"
         },
         "note": "Waiting on CI."
+      }
+    },
+    {
+      "id": "grant-up-unchanged",
+      "module": "criteria",
+      "record": {
+        "ph": "0.5",
+        "ext": "decisions/0.5",
+        "id": "ap1",
+        "type": "approved",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T10:00:00Z",
+        "terms_rev": 1,
+        "approval": {
+          "active": true,
+          "terms_digest": "sha-256:5555555555555555555555555555555555555555555555555555555555555555",
+          "after": "s-1"
+        },
+        "authority": {
+          "kind": "principal",
+          "decider": "p:owner"
+        },
+        "evidence": {
+          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "decisions/0.6",
+        "id": "ap1",
+        "type": "approved",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T10:00:00Z",
+        "terms_rev": 1,
+        "approval": {
+          "active": true,
+          "terms_digest": "sha-256:5555555555555555555555555555555555555555555555555555555555555555",
+          "after": "s-1"
+        },
+        "authority": {
+          "kind": "principal",
+          "decider": "p:owner"
+        },
+        "evidence": {
+          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      }
+    },
+    {
+      "id": "grant-down-unchanged",
+      "module": "criteria",
+      "record": {
+        "ph": "0.6",
+        "ext": "decisions/0.6",
+        "id": "ap1",
+        "type": "approved",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T10:00:00Z",
+        "terms_rev": 1,
+        "approval": {
+          "active": true,
+          "terms_digest": "sha-256:5555555555555555555555555555555555555555555555555555555555555555",
+          "after": "s-1"
+        },
+        "authority": {
+          "kind": "principal",
+          "decider": "p:owner"
+        },
+        "evidence": {
+          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      },
+      "to": "0.5",
+      "expect": {
+        "ph": "0.5",
+        "ext": "decisions/0.5",
+        "id": "ap1",
+        "type": "approved",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T10:00:00Z",
+        "terms_rev": 1,
+        "approval": {
+          "active": true,
+          "terms_digest": "sha-256:5555555555555555555555555555555555555555555555555555555555555555",
+          "after": "s-1"
+        },
+        "authority": {
+          "kind": "principal",
+          "decider": "p:owner"
+        },
+        "evidence": {
+          "presented": "sha-256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      }
+    },
+    {
+      "id": "same-as-up-names-the-extension",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "same_as",
+          "target": {
+            "ext": "acts/0.5",
+            "project": "demo",
+            "key": "task-demo-bbbbbbbbbb"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l1",
+        "type": "related",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "same_as",
+          "target": {
+            "ext": "acts",
+            "project": "demo",
+            "key": "task-demo-bbbbbbbbbb"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "same-as-down-appends-the-version",
+      "record": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l1",
+        "type": "related",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "same_as",
+          "target": {
+            "ext": "acts",
+            "project": "demo",
+            "key": "task-demo-bbbbbbbbbb"
+          },
+          "active": true
+        }
+      },
+      "to": "0.5",
+      "expect": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "same_as",
+          "target": {
+            "ext": "acts/0.5",
+            "project": "demo",
+            "key": "task-demo-bbbbbbbbbb"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "derived-from-other-extension-up",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l2",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l2",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "derived-from-other-extension-down",
+      "record": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l2",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.5",
+      "expect": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l2",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "replaced-by-up",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l3",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "replaced_by",
+          "target": {
+            "ext": "acts/0.5",
+            "project": "demo",
+            "key": "task-demo-bbbbbbbbbb"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l3",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "replaced_by",
+          "target": {
+            "ext": "acts",
+            "project": "demo",
+            "key": "task-demo-bbbbbbbbbb"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "replaced-by-down",
+      "record": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l3",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "replaced_by",
+          "target": {
+            "ext": "acts",
+            "project": "demo",
+            "key": "task-demo-bbbbbbbbbb"
+          },
+          "active": true
+        }
+      },
+      "to": "0.5",
+      "expect": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l3",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "replaced_by",
+          "target": {
+            "ext": "acts/0.5",
+            "project": "demo",
+            "key": "task-demo-bbbbbbbbbb"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "uri-target-up",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l4",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "uri": "a2a:task/123"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l4",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "uri": "a2a:task/123"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "uri-target-down",
+      "record": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l4",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "uri": "a2a:task/123"
+          },
+          "active": true
+        }
+      },
+      "to": "0.5",
+      "expect": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l4",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "uri": "a2a:task/123"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "target-ext-without-slash-up-is-kept",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l5",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l5",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "settled-up-drops-evidence-left-empty",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "s-81f2",
+        "type": "settled",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "task-demo-c3d8af57d4",
+        "project": "demo",
+        "ts": "2026-10-28T08:30:00Z",
+        "terms_rev": 1,
+        "terms_digest": "sha-256:a9467037327c1e0e7ce14815d5180ad390e1c754a703d4680b06ff1eafa26c0f",
+        "outcome": "done",
+        "authority": {
+          "kind": "principal",
+          "decider": "p:owner"
+        },
+        "evidence": {
+          "proof": "eyJhbGciOiJFZERTQSJ9..c2ln"
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "s-81f2",
+        "type": "settled",
+        "origin": "principal",
+        "by": "ps:assistant",
+        "key": "task-demo-c3d8af57d4",
+        "project": "demo",
+        "ts": "2026-10-28T08:30:00Z",
+        "terms_rev": 1,
+        "terms_digest": "sha-256:a9467037327c1e0e7ce14815d5180ad390e1c754a703d4680b06ff1eafa26c0f",
+        "outcome": "done",
+        "authority": {
+          "kind": "principal",
+          "decider": "p:owner"
+        }
+      }
+    },
+    {
+      "id": "decisions-replaced-by-up",
+      "record": {
+        "ph": "0.5",
+        "ext": "decisions/0.5",
+        "id": "l8",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "replaced_by",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "demo",
+            "key": "q-demo-8"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "decisions/0.6",
+        "id": "l8",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "replaced_by",
+          "target": {
+            "ext": "decisions",
+            "project": "demo",
+            "key": "q-demo-8"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "decisions-replaced-by-down",
+      "record": {
+        "ph": "0.6",
+        "ext": "decisions/0.6",
+        "id": "l8",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "replaced_by",
+          "target": {
+            "ext": "decisions",
+            "project": "demo",
+            "key": "q-demo-8"
+          },
+          "active": true
+        }
+      },
+      "to": "0.5",
+      "expect": {
+        "ph": "0.5",
+        "ext": "decisions/0.5",
+        "id": "l8",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "q-demo-7",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "replaced_by",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "demo",
+            "key": "q-demo-8"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "target-ext-with-two-slashes-up-keeps-the-part-before-the-first",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l9",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5/beta",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l9",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "target-ext-off-pattern-has-no-0.6-form",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l6",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "Decisions/0.5",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": null
+    },
+    {
+      "id": "target-project-off-pattern-has-no-0.6-form",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l7",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "two words",
+            "key": "q-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": null
+    },
+    {
+      "id": "target-ext-starting-with-a-digit-has-no-0.6-form",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "1decisions/0.5",
+            "project": "demo",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": null
+    },
+    {
+      "id": "target-project-too-long-has-no-0.6-form",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": null
+    },
+    {
+      "id": "target-project-at-the-limit-in-code-points",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions",
+            "project": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "target-project-with-a-byte-order-mark-has-no-0.6-form",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "a﻿b",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": null
+    },
+    {
+      "id": "target-project-not-a-string-has-no-0.6-form",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": 1,
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": null
+    },
+    {
+      "id": "target-project-with-a-file-separator-converts",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions/0.5",
+            "project": "a\u001cb",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "ext": "decisions",
+            "project": "a\u001cb",
+            "key": "q-demo-1"
+          },
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "uri-target-is-not-normalised",
+      "record": {
+        "ph": "0.5",
+        "ext": "acts/0.5",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "uri": "A2A:Task/1/"
+          },
+          "active": true
+        }
+      },
+      "to": "0.6",
+      "expect": {
+        "ph": "0.6",
+        "ext": "acts/0.6",
+        "id": "l1",
+        "type": "related",
+        "origin": "requester",
+        "by": "agent:demo",
+        "key": "task-demo-aaaaaaaaaa",
+        "project": "demo",
+        "ts": "2026-10-27T09:00:00Z",
+        "relation": {
+          "kind": "derived_from",
+          "target": {
+            "uri": "A2A:Task/1/"
+          },
+          "active": true
+        }
+      }
+    }
+  ],
+  "held": [
+    {
+      "id": "targets-differing-only-in-version-are-one-relation",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h1",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.4",
+              "project": "demo",
+              "key": "q-demo-1"
+            },
+            "active": true
+          }
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h2",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T10:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-1"
+            },
+            "active": false
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h1",
+          "h2"
+        ],
+        "relations": []
+      }
+    },
+    {
+      "id": "same-id-deduplicated-on-the-0.6-form",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h3",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.4",
+              "project": "demo",
+              "key": "q-demo-2"
+            },
+            "active": true
+          }
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h3",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-2"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h3"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-2"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "no-0.6-form-is-not-held",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "l6",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "Decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-1"
+            },
+            "active": true
+          }
+        },
+        {
+          "ph": "0.6",
+          "ext": "acts/0.6",
+          "id": "h5",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-3"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h5"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-3"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "a-0.5-and-a-0.6-record-with-one-id-compare-in-0.6",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h6",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-5"
+            },
+            "active": true
+          }
+        },
+        {
+          "ph": "0.6",
+          "ext": "acts/0.6",
+          "id": "h6",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-4"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h6"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-5"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "a-0.5-record-invalid-in-0.5-is-not-held",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "s5",
+          "type": "settled",
+          "origin": "principal",
+          "by": "ps:assistant",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "outcome": "done",
+          "terms_rev": 1,
+          "terms_digest": "sha-256:0000000000000000000000000000000000000000000000000000000000000000",
+          "authority": {
+            "kind": "principal",
+            "decider": "ps:assistant"
+          }
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h9",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-9"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h9"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-9"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ph-0.5-with-a-0.6-ext-is-not-held",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.6",
+          "id": "h1",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "uri": "a2a:task/1"
+            },
+            "active": true
+          }
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h9",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-9"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h9"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-9"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ph-0.5-without-ext-is-not-held",
+      "records": [
+        {
+          "ph": "0.5",
+          "id": "h3",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "uri": "a2a:task/1"
+            },
+            "active": true
+          }
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h9",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-9"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h9"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-9"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "replaced-by-naming-the-extension-without-a-version-is-invalid-in-0.5",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h4",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "replaced_by",
+            "target": {
+              "ext": "acts",
+              "project": "demo",
+              "key": "task-demo-bbbbbbbbbb"
+            },
+            "active": true
+          }
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h9",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-9"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h9"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-9"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "replaced-by-of-another-version-is-invalid-in-0.5",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h5",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "replaced_by",
+            "target": {
+              "ext": "acts/0.4",
+              "project": "demo",
+              "key": "task-demo-bbbbbbbbbb"
+            },
+            "active": true
+          }
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h9",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-9"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h9"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-9"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "replaced-by-of-its-own-version-is-held",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h6",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "replaced_by",
+            "target": {
+              "ext": "acts/0.5",
+              "project": "demo",
+              "key": "task-demo-bbbbbbbbbb"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h6"
+        ],
+        "relations": [
+          {
+            "kind": "replaced_by",
+            "target": {
+              "ext": "acts",
+              "project": "demo",
+              "key": "task-demo-bbbbbbbbbb"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "a-0.5-related-without-a-relation-is-not-held",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h8",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z"
+        },
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h9",
+          "type": "related",
+          "origin": "requester",
+          "by": "agent:demo",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "relation": {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions/0.5",
+              "project": "demo",
+              "key": "q-demo-9"
+            },
+            "active": true
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h9"
+        ],
+        "relations": [
+          {
+            "kind": "derived_from",
+            "target": {
+              "ext": "decisions",
+              "project": "demo",
+              "key": "q-demo-9"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "a-non-relation-of-0.5-is-held",
+      "records": [
+        {
+          "ph": "0.5",
+          "ext": "acts/0.5",
+          "id": "h7",
+          "type": "settled",
+          "origin": "principal",
+          "by": "ps:assistant",
+          "key": "task-demo-aaaaaaaaaa",
+          "project": "demo",
+          "ts": "2026-10-27T09:00:00Z",
+          "outcome": "done",
+          "terms_rev": 1,
+          "terms_digest": "sha-256:0000000000000000000000000000000000000000000000000000000000000000",
+          "authority": {
+            "kind": "principal",
+            "decider": "p:owner"
+          }
+        }
+      ],
+      "expect": {
+        "held": [
+          "h7"
+        ],
+        "relations": []
       }
     }
   ]

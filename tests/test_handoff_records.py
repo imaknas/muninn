@@ -1,4 +1,4 @@
-"""Muninn as the principal side of Principal Handoff 0.5: the projects' records carried out through the tasks and
+"""Muninn as the principal side of Principal Handoff 0.6: the projects' records carried out through the tasks and
 questions, and what Muninn tells them read back as records that say who decided, valid by the specification in the
 version each project speaks."""
 
@@ -34,7 +34,7 @@ def out(h, project=P):
     """What the project reads, and has (it acknowledges what it read)."""
     records, cursor = h.engine.records_out.since(project, 0)
     h.engine.records_ack(project, cursor)
-    exts = ph.extensions(CONTRACTS / "vendor" / "principal-handoff", CONTRACTS / "vendor" / "principal-handoff-0.4")
+    exts = ph.extensions(CONTRACTS / "vendor")
     for r in records:  # everything Muninn tells is a valid record from the principal side, in the version it is told in
         assert ph.validate(ph.upgraded(r), exts[ph.upgraded(r)["ext"]], h.engine.parties)[1] == [], r
     return records
@@ -194,35 +194,58 @@ def test_the_web_takes_and_gives_records_with_the_token(tmp_path):
 
 
 
-def test_a_project_is_told_in_the_version_it_is_configured_to_speak_and_first_spoke(h, caplog):
-    old = {**raised("task-pots-1", "買陶盆"), "ph": "0.3", "ext": "acts/0.3"}
-    assert h.engine.records_in.receive([old]) == [{"id": "r:task-pots-1", "status": "accepted"}]
-    assert h.engine.records_in.receive([old])[0]["status"] == "duplicate"  # sent again: the same record
-    assert h.engine.records_in.receive([raised("task-pots-1", "買陶盆")])[0]["status"] == "duplicate"  # and in 0.5 too
+def test_a_project_is_told_in_the_version_it_is_configured_for_and_first_spoke(h, caplog):
+    assert h.engine.records_in.receive([raised("task-pots-1", "買陶盆")]) == [{"id": "r:task-pots-1", "status": "accepted"}]
+    assert h.engine.records_in.receive([{**raised("task-pots-1", "買陶盆"), "ph": "0.6", "ext": "acts/0.6"}])[0]["status"] == "duplicate"
     h.engine.tasks.close("task-pots-1", why="買好了")
     h.clock.t += timedelta(hours=1)
     [s] = [r for r in out(h) if r["type"] == "settled"]
-    assert (s["ph"], s["ext"]) == ("0.3", "acts/0.3")
-    h.engine.records_in.receive([raised("task-pots-2", "量陽台")])  # a 0.5 record is read, but what it is told is configured
-    assert "configured to speak 0.3" in caplog.text
-    h.engine.handoff_versions.set("*", "acts", "0.5")  # every project, this one too, and those to come
-    assert h.engine.handoff_versions.of("blog", "acts") == "0.5"
+    assert (s["ph"], s["ext"]) == ("0.5", "acts/0.5")  # as it first spoke
+    h.engine.records_in.receive([{**raised("task-pots-2", "量陽台"), "ph": "0.6", "ext": "acts/0.6"}])  # read, told as configured
+    assert "configured to speak 0.5" in caplog.text
+    h.engine.handoff_versions.set("*", "acts", "0.6")  # every project, this one too, and those to come
+    assert h.engine.handoff_versions.of("blog", "acts") == "0.6"
     h.engine.tasks.close("task-pots-2", why="量好了")
     h.clock.t += timedelta(hours=1)
     [s] = [r for r in out(h) if r["type"] == "settled" and r["key"] == "task-pots-2"]
-    assert (s["ph"], s["ext"], s["terms_digest"]) == ("0.5", "acts/0.5", ph.terms_digest(raised("task-pots-2", "量陽台")))
+    assert (s["ph"], s["ext"], s["terms_digest"]) == ("0.6", "acts/0.6", ph.terms_digest(raised("task-pots-2", "量陽台")))
+    with pytest.raises(ValueError):
+        h.engine.handoff_versions.set(P, "acts", "0.4")  # outside 0.6's specification (core section 14)
 
 
-def test_a_project_that_speaks_0_4_is_checked_under_0_4_and_told_in_it_bound_to_04s_digest(h):
+def test_a_record_received_in_0_4_is_checked_under_0_4_and_its_item_settled_in_the_version_configured(h, caplog):
     need = rec("raised", "task-pots-1", ext="acts/0.4", id_="r:task-pots-1", terms={"text": "買陶盆"}, terms_rev=1)
     claim = rec("claimed", "task-pots-1", ext="acts/0.4", id_="c:1", origin="agent", by="hub:garden", outcome="done",
                 evidence={"verifiable": [{"id": "x", "format": "f", "statement": "s"}]})  # no terms_rev: invalid in 0.4 only
     assert [g["status"] for g in h.engine.records_in.receive([need, claim])] == ["accepted", "invalid"]
+    h.engine.handoff_versions.set(P, "acts", "0.5")
     h.engine.tasks.close("task-pots-1", why="買好了")
     h.clock.t += timedelta(hours=1)
     [s] = [r for r in out(h) if r["type"] == "settled"]
-    assert (s["ph"], s["ext"]) == ("0.4", "acts/0.4")
-    assert s["terms_digest"] == ph._terms_digest_04(need) != ph.terms_digest(need)
+    assert (s["ph"], s["ext"], s["terms_digest"]) == ("0.5", "acts/0.5", ph.terms_digest(need))
+
+
+def test_a_project_still_configured_for_0_4_is_told_in_0_5_and_the_log_says_so(h, caplog):
+    h.store.set_state("ph:versions", {"*": {"acts": "0.4", "decisions": "0.4"}})
+    assert h.engine.handoff_versions.of(P, "acts") == "0.5"
+    assert "no longer speaks" in caplog.text
+
+
+def test_a_record_of_a_version_muninn_does_not_implement_is_kept_and_never_acted_on(h):
+    later = {**raised("task-pots-1", "買陶盆"), "ph": "0.7", "ext": "acts/0.7"}
+    assert h.engine.records_in.receive([later]) == [{"id": "r:task-pots-1", "status": "unsupported"}]
+    assert h.store.records_of("acts", P, "task-pots-1") == [later]  # kept (core section 6)
+    assert h.engine.tasks.open() == []
+    assert h.engine.records_in.receive([raised("task-pots-1", "買陶盆")])[0]["status"] == "accepted"  # held over it
+    assert [t["key"] for t in h.engine.tasks.open()] == ["task-pots-1"]
+
+
+def test_a_05_relation_that_06_cannot_name_is_kept_but_not_held(h):
+    h.engine.records_in.receive([raised("task-pots-1", "買陶盆"), raised("task-pots-2", "買陶土盆")])
+    bad = rec("related", "task-pots-1", id_="rel:1", relation={"kind": "replaced_by", "active": True,
+                                                                "target": {"ext": "acts/0.5", "project": "has space", "key": "task-pots-2"}})
+    [got] = h.engine.records_in.receive([bad])
+    assert got["status"] in ("unsupported", "invalid")
 
 
 def test_a_task_that_came_the_v1_way_and_is_raised_later_is_the_same_task_in_the_words_raised(h):
@@ -376,12 +399,12 @@ def test_records_are_kept_as_they_came_and_an_id_is_unique_per_origin_and_type(t
     store = SqliteStore(db)
     assert store.records_of("acts", P, "task-pots-1") == [old]  # as it came
     same = lambda r: ph.canonical(ph.converted(r))  # noqa: E731
-    assert store.add_record("acts", ph.converted(old), at(2026, 10, 22, 10), same) == "duplicate"  # the same record in 0.5
+    assert store.add_record("acts", ph.converted(old), at(2026, 10, 22, 10), same) == "duplicate"  # the same record in 0.6
     amended = {**ph.converted(old), "type": "amended", "terms": {"text": "買兩個陶盆"}, "terms_rev": 2}
     assert store.add_record("acts", amended, at(2026, 10, 22, 10), same) == "new"  # the same id, another type (core section 10)
     agents = {**ph.converted(old), "origin": "agent", "type": "note", "about": {"key": "task-pots-1"}}
     assert store.add_record("acts", agents, at(2026, 10, 22, 10), same) == "new"  # the same id from another origin
-    assert [r["ph"] for r in store.records_of("acts", P, "task-pots-1")] == ["0.4", "0.5", "0.5"]
+    assert [r["ph"] for r in store.records_of("acts", P, "task-pots-1")] == ["0.4", "0.6", "0.6"]
 
 
 def test_under_his_standing_permission_an_agents_claim_is_settled_as_delegated_and_a_registrars_is_still_asked(h):

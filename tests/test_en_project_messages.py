@@ -29,7 +29,7 @@ def rec(type_, key, ext="acts/0.5", id_=None, origin="requester", by="hub:regist
 def out(h):
     records, cursor = h.engine.records_out.since(P, 0)
     h.engine.records_ack(P, cursor)
-    exts = ph.extensions(CONTRACTS / "vendor" / "principal-handoff", CONTRACTS / "vendor" / "principal-handoff-0.4")
+    exts = ph.extensions(CONTRACTS / "vendor")
     for r in records:
         assert ph.validate(r, exts[r["ext"]], h.engine.parties)[1] == [], r
     return records

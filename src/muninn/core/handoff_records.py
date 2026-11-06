@@ -1,4 +1,4 @@
-"""Muninn as the principal side of Principal Handoff 0.5 (contracts/vendor/principal-handoff), beside contracts v1.
+"""Muninn as the principal side of Principal Handoff 0.6 (contracts/vendor/principal-handoff), beside contracts v1.
 
 In: the projects' records (a task or question raised, amended, withdrawn; a claim that it is done; a note) are checked,
 kept once each, and carried out through the same operations a v1 message reaches: the tasks and the projects'
@@ -6,8 +6,9 @@ questions. Only the user settles: a project's claim is not evidence independent 
 (core section 7).
 
 Versions (core section 14): which version a project's records are told in is configured, per project and extension
-(`Versions`). A record is checked under the version it came in, kept as it came, and read in 0.5; what Muninn tells a
-project that speaks a version before is converted to it.
+(`Versions`): 0.6, or 0.5 for one that has not moved yet. A record is checked under the version it came in, kept as it
+came, and held in its 0.6 form (core section 6); what Muninn tells a project configured for 0.5 is converted to it. A
+record of a version Muninn does not implement is kept, and never acted on.
 
 Out: what Muninn tells the projects is kept in one place, the handoffs; the records a project pulls are read from them,
 so a record is the same on every retransmission, and one held back for an undo (or taken back in that time) never
@@ -35,7 +36,7 @@ from .language import Language
 log = logging.getLogger(__name__)
 
 ACTS, DECISIONS = ph.ACTS, ph.DECISIONS  # by name
-SPEAKS = "ph:speaks"  # state, until 0.5: by project, the version of the records it last sent
+SPEAKS = "ph:speaks"  # state, before 0.5: by project, the version of the records it last sent
 VERSIONS = "ph:versions"  # state: by project ("*": one not named yet), by extension, the version it is told in
 URI_SCOPE = "acts/0.4"  # what the uris naming another project's item were first made from: kept, so an item keeps its uri
 SETTLES = ("done", "dropped", "already_done", "reopened")  # a task's settlement register, as the handoffs keep it
@@ -73,18 +74,26 @@ class Versions:
         got = self._store.get_state(VERSIONS)
         if got is None:  # the first time: each project as it was last answered, and a new one as before 0.5
             spoke = self._store.get_state(SPEAKS)
-            seed = {p: {ACTS: v, DECISIONS: v} for p, v in {"*": "0.4" if spoke else ph.PH, **(spoke or {})}.items()}
+            seed = {p: {ACTS: ph.OLDER, DECISIONS: ph.OLDER} if spoke else {ACTS: ph.PH, DECISIONS: ph.PH} for p in {"*", *(spoke or {})}}
             got = self._store.update_state(VERSIONS, lambda now: now if now is not None else seed)
         return got
 
     def of(self, project: str, ext: str) -> str:
-        """The version `project` is told `ext`'s records in."""
+        """The version `project` is told `ext`'s records in. One configured for a version older than 0.5, which 0.6 no
+        longer covers (core section 14), is told in 0.5, and the log says so once."""
         v = self._all()
-        return str((v.get(project) or {}).get(ext) or (v.get("*") or {}).get(ext) or ph.PH)
+        told = str((v.get(project) or {}).get(ext) or (v.get("*") or {}).get(ext) or ph.PH)
+        if told not in ph.VERSIONS:
+            if (project, ext, told) not in self._said:
+                self._said.add((project, ext, told))
+                log.warning("%s is configured to be told %s records in %s, which Muninn no longer speaks: told in %s (muninn"
+                            " handoff-version changes it)", project, ext, told, ph.OLDER)
+            return ph.OLDER
+        return told
 
     def heard(self, project: str, ext: str, version: str) -> None:
         """A record of `ext` came from `project` in `version`."""
-        if ext not in (self._all().get(project) or {}):
+        if ext not in (self._all().get(project) or {}) and version in ph.VERSIONS:
             self.set(project, ext, version)
         elif (told := self.of(project, ext)) != version and (project, ext, version) not in self._said:
             self._said.add((project, ext, version))
@@ -130,7 +139,9 @@ class Inbox:
                 continue
             spoke, r = r.get("ph"), ph.upgraded(r)  # 0.3 reads as 0.4
             e = self._exts.get(str(r.get("ext")))
-            if e is None:
+            if e is None:  # a version or extension Muninn does not implement: kept (core section 6), never acted on
+                if all(isinstance(r.get(k), str) for k in ("ext", "project", "origin", "type", "id", "key")):
+                    self._store.add_record(ph.name(r["ext"]), r, self._clock.now(), _rank)
                 out.append({"id": r.get("id"), "status": "unsupported"})
                 continue
             _, errs = ph.validate(r, e, self._parties)  # under the version it came in
@@ -140,18 +151,22 @@ class Inbox:
                 out.append({"id": r.get("id"), "status": "invalid", "errors": errs})
                 continue
             ext = ph.name(r["ext"])
-            same = [x for x in self._store.records_of(ext, r["project"], r["key"])
-                    if (x.get("origin"), x.get("type"), x.get("id")) == (r["origin"], r["type"], r["id"])]
-            got = self._store.add_record(ext, r, self._clock.now(), lambda x: ph.canonical(ph.converted(x)))
+            before = self._store.records_of(ext, r["project"], r["key"])
+            form = ph.converted(r, ph.PH, before)
+            same = [x for x in before if (x.get("origin"), x.get("type"), x.get("id")) == (r["origin"], r["type"], r["id"])]
+            got = self._store.add_record(ext, r, self._clock.now(), _rank)
+            if form is None:  # valid in its version, with no 0.6 form (a relation 0.6 cannot name): kept, not held
+                out.append({"id": r["id"], "status": "unsupported", "errors": ["no 0.6 form (core section 14)"]})
+                continue
             if got != "duplicate":
                 self._versions.heard(r["project"], ext, str(spoke))
             if got in ("replaced", "kept") and same and _differs(same[0], r):
                 log.warning("%s sent record %s (%s, %s) again with other content: the greater form is kept (core section"
                             " 10), %s", r["project"], r["id"], r["type"], r["origin"], "this one" if got == "replaced" else "the one held")
-            if got == "new":
-                self._apply(ph.converted(r))
-            elif got == "replaced" and r["type"] in ("raised", "amended") and self._current_terms(ext, r):
-                self._terms(ph.converted(r))  # what is shown follows the record kept, not the one that came first
+            if got == "new" or (got == "replaced" and same and ph.converted(same[0]) is None):  # first held
+                self._apply(form)
+            elif got == "replaced" and r["type"] in ("raised", "amended") and self._current_terms(ext, form):
+                self._terms(form)  # what is shown follows the record kept, not the one that came first
             out.append({"id": r["id"], "status": "accepted" if got in ("new", "replaced") else "duplicate"})
         return out
 
@@ -199,9 +214,13 @@ class Inbox:
                                      "text": str(answer.get("text") or answer.get("option") or said or self.words("handoff_records.answered"))}])
 
 
+    def _held(self, ext: str, project: str, key: str) -> list[dict[str, Any]]:
+        """What Muninn holds about an item: the 0.6 forms of the valid records kept for it (core section 6)."""
+        return ph.holding(self._store.records_of(ext, project, key), self._exts, self._parties)
+
     def _current_terms(self, ext: str, r: dict[str, Any]) -> bool:
         """The record's terms are the item's latest: no need record with a higher terms_rev is held."""
-        revs = [x.get("terms_rev", 0) for x in self._store.records_of(ext, r["project"], r["key"])
+        revs = [x.get("terms_rev", 0) for x in self._held(ext, r["project"], r["key"])
                 if x.get("type") in ("raised", "amended") and x.get("origin") == "requester"]
         return r.get("terms_rev", 0) >= max(revs, default=0)
 
@@ -215,24 +234,28 @@ class Inbox:
 
     def _replaced(self, r: dict[str, Any]) -> bool:
         """The act is withdrawn as replaced: its requester's current need record says so."""
-        needs = [ph.converted(x) for x in self._store.records_of(ACTS, r["project"], r["key"])
-                 if x.get("type") in ph.NEED and x.get("origin") == "requester"]
-        current = max(needs, key=lambda x: (ph.instant(x["ts"]), x["id"]), default=None)
+        needs = [x for x in self._held(ACTS, r["project"], r["key"]) if x["type"] in ph.NEED and x["origin"] == "requester"]
+        current = max(needs, key=lambda x: (ph.moment(x["ts"]), x["id"]), default=None)
         return bool(current and current["type"] == "withdrawn" and current.get("reason") == "replaced")
 
     def _replacement(self, r: dict[str, Any]) -> str | None:
-        """The key of the act a withdrawn one was replaced by: its requester's single active replaced_by (acts section 2)."""
-        rels = [ph.converted(x) for x in self._store.records_of(ACTS, r["project"], r["key"])
-                if x.get("type") == "related" and (x.get("relation") or {}).get("kind") == "replaced_by"]
-        active = [x["relation"]["target"] for x in rels if x["relation"].get("active", True)
-                  and not any(y.get("supersedes") and x["id"] in y["supersedes"] for y in rels)]
-        return str(active[0]["key"]) if len(active) == 1 and "key" in active[0] else None
+        """The key of the act a withdrawn one was replaced by: its single active replaced_by (core section 7)."""
+        target = ph.replacement(self._held(ACTS, r["project"], r["key"]))
+        return str(target["key"]) if target and "key" in target else None
+
+
+def _rank(r: dict[str, Any]) -> str:
+    """What section 10 compares when an id comes again: the 0.6 forms; a record with none (of a version Muninn does not
+    implement) ranks below every one that has, so it never displaces a record held."""
+    form = ph.converted(r)
+    return "1" + ph.canonical(form) if form is not None else "0" + ph.canonical(r)
 
 
 def _differs(held: dict[str, Any], new: dict[str, Any]) -> bool:
     """Other content, not only another time (a record made again after a crash differs only in ts)."""
     def bare(x: dict[str, Any]) -> str:
-        return ph.canonical({k: v for k, v in ph.converted(x).items() if k != "ts"})
+        form = ph.converted(x) or x
+        return ph.canonical({k: v for k, v in form.items() if k != "ts"})
     return bare(held) != bare(new)
 
 
@@ -272,14 +295,14 @@ class Outbox:
         return out, cursor
 
     def told(self, r: dict[str, Any]) -> dict[str, Any]:
-        """A record Muninn made, as its project is told it: in the version it speaks of that extension."""
+        """A record Muninn made, as its project is told it: in the version it is configured for of that extension
+        (every 0.6 record has a 0.5 form, core section 14)."""
         version = self._versions.of(r["project"], ph.name(r["ext"]))
-        return r if version == ph.PH else ph.converted(r, version, self._store.records_of(ph.name(r["ext"]), r["project"], r["key"]))
+        return r if version == ph.PH else ph.convert(r, version)  # type: ignore[return-value]
 
     def _invalid_as_told(self, told: dict[str, Any]) -> list[str]:
-        """What makes it no record in the version it is told in (0.3: in the 0.4 it reads as)."""
-        r = ph.upgraded(told)
-        return ph.validate(r, self._exts[r["ext"]], self._parties)[1]
+        """What makes it no record in the version it is told in (core section 14 item 4)."""
+        return ph.validate(told, self._exts[told["ext"]], self._parties)[1]
 
     def ack(self, project: str, through: int) -> int:
         """The project has the records up to cursor `through`: what they stand for has left (an undo after this is told
@@ -339,7 +362,7 @@ class Outbox:
         if "project" not in target:
             to: dict[str, str] = {"uri": target["uri"]}
         elif target["project"] == base["project"]:
-            to = {"ext": ph.label(ACTS), "project": target["project"], "key": target["key"]}
+            to = {"ext": ACTS, "project": target["project"], "key": target["key"]}  # by the extension's name (core section 7)
         else:
             to = {"uri": "muninn:item:" + hashlib.sha256(f"{URI_SCOPE}\n{target['project']}\n{target['key']}".encode()).hexdigest()[:24]}
         return {**base, "ext": ph.label(ACTS), "id": f"rel:{key}:h{hid}", "type": "related", "key": key,
@@ -365,9 +388,9 @@ class Outbox:
 
     def _need(self, ext: str, project: str, key: str) -> dict[str, Any] | None:
         """The need record the settlement is made against: the latest terms the project sent (None: it sent none)."""
-        held = [ph.converted(r) for r in self._store.records_of(ext, project, key)
-                if r.get("type") in ("raised", "amended") and r.get("origin") == "requester"]
-        return max(held, key=lambda r: (r.get("terms_rev", 0), ph.instant(r["ts"])), default=None)
+        held = [r for r in ph.holding(self._store.records_of(ext, project, key), self._exts, self._parties)
+                if r["type"] in ("raised", "amended") and r["origin"] == "requester"]
+        return max(held, key=lambda r: (r.get("terms_rev", 0), ph.moment(r["ts"])), default=None)
 
     def _supersedes(self, project: str, key: str, hid: int) -> dict[str, Any]:
         """The settlement this one replaces: Muninn's last earlier one for the item, if any (core section 6)."""

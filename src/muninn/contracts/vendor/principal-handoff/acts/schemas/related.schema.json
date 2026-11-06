@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "acts/schemas/related.schema.json",
-  "title": "Principal Handoff Acts 0.5: related",
+  "title": "Principal Handoff Acts 0.6: related",
   "description": "A relation: same_as from the principal side, derived_from and replaced_by from the requester.",
   "$ref": "../../core/schemas/record.schema.json",
   "required": [
@@ -9,7 +9,7 @@
   ],
   "properties": {
     "ext": {
-      "const": "acts/0.5"
+      "const": "acts/0.6"
     },
     "type": {
       "const": "related"

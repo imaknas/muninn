@@ -1,18 +1,20 @@
-"""Principal Handoff 0.5, as the principal side reads it: is a record well formed and allowed to its emitter
-(core sections 3 to 5), what state an item is in from the records held for it, in any order (sections 6 and 10), the
-terms digest a settlement is bound to (section 4), and a record in the version before, which a project may still speak
-(section 14).
+"""Principal Handoff 0.6, as the principal side reads it: is a record well formed and allowed to its emitter
+(core sections 3 to 5), what state an item is in from the records held for it, in any order (sections 6 and 10), which
+relations are active (section 7), the terms digest a settlement is bound to (section 4), and a record in the version
+before, which a project may still be configured for (section 14).
 
 An item belongs to one extension (`acts`: a to-do only the user can do; `decisions`: a question only the user can
 answer), named without its version: the name, the project and the key are the item, and a record id is unique within
 the name, the project and its origin (core section 10). Each version of an extension is described by data (`Ext`):
 where its schemas are, what happens to an item whose need was withdrawn while it is still open, the rules its schemas
-cannot state, and the module records it lists. Muninn thinks in 0.5. A project that still speaks 0.4 has its records
-checked under 0.4's own rules, kept as they were sent and converted to 0.5 whenever they are read; what Muninn tells
-it is converted to 0.4. One that speaks 0.3 is read as 0.4 with only `ph` and `ext` changed (acts 0.4 section 8).
-The schemas are the specification's own, vendored unchanged (contracts/vendor/principal-handoff, and
-principal-handoff-0.4 for the version before); the folders they are read from are given. The reading follows the
-specification's reference implementation (reference/ph_core.py).
+cannot state, and the module records it lists. Muninn thinks in 0.6 and holds the 0.6 form of every record (section
+14). A project still configured for 0.5 has its records checked under 0.5's own rules and kept as they were sent; what
+Muninn tells it is converted to 0.5, from the record alone. Records received in 0.4 (and 0.3, read as 0.4) before 0.6
+are still read, through 0.5, though no project can be told in them any more; older versions are outside 0.6's
+specification. A record of a version Muninn does not implement is kept, never acted on, and not held (section 6). The
+schemas are the specification's own, vendored unchanged (contracts/vendor/principal-handoff, and principal-handoff-0.5
+and -0.4 for the versions before). The reading follows the specification's reference implementation
+(reference/ph_core.py).
 """
 
 from __future__ import annotations
@@ -25,10 +27,12 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
-PH = "0.5"
-OLDER = "0.4"  # the version before: a project may still speak it (core section 14)
+PH = "0.6"
+OLDER = "0.5"  # the version before: a project may still be configured for it (core section 14)
+LEGACY = "0.4"  # received before 0.6, still read through 0.5; never told
 OLDEST = "0.3"  # before that: read as 0.4, only `ph` and `ext` changed
-VERSIONS = (OLDEST, OLDER, PH)
+VERSIONS = (OLDER, PH)  # what a project can be configured for
+NAME = re.compile(r"[a-z][a-z0-9-]*")  # an extension's name (core section 4)
 ACTS, DECISIONS = "acts", "decisions"  # the extensions, by name
 NEED = ("raised", "amended", "withdrawn")
 SETTLEMENT = ("settled", "reopened")
@@ -63,12 +67,13 @@ Check = Callable[[dict[str, Any], Parties], list[str]]
 
 @dataclass(frozen=True)
 class Ext:
-    name: str  # "acts/0.5"
+    name: str  # "acts/0.6"
     schemas: Path
     withdrawn: str  # "keep": still open, and the user is asked; "stop": no longer presented
     check: Check = field(default=lambda r, parties: [])  # the version's rules a schema cannot state
     types: tuple[str, ...] = TYPES  # the record types its core folds
     modules: Mapping[str, frozenset[str]] = field(default_factory=dict)  # a module's record type -> who may emit it
+    relation: Callable[[dict[str, Any]], list[str]] = field(default=lambda r: [])  # the version's rules for a relation
 
 
 def _acts(r: dict[str, Any], parties: Parties) -> list[str]:
@@ -87,15 +92,46 @@ def _decisions(r: dict[str, Any], parties: Parties) -> list[str]:
     return out
 
 
-def extensions(root: Path, older: Path) -> dict[str, Ext]:
-    """The two extensions Muninn implements, by `ext`: in 0.5 (schemas under `root`) and in 0.4 (under `older`)."""
-    acts, decisions, acts_04, decisions_04 = label(ACTS), label(DECISIONS), label(ACTS, OLDER), label(DECISIONS, OLDER)
-    return {acts: Ext(acts, root / "acts" / "schemas", "keep", _acts),
-            # Decisions section 3: `approved` is the Criteria module's, which Muninn does not implement
-            decisions: Ext(decisions, root / "decisions" / "schemas", "stop", _decisions, modules={"approved": frozenset({"principal"})}),
-            acts_04: Ext(acts_04, older / "acts" / "schemas", "keep", _older(_acts, approvals=False)),
-            decisions_04: Ext(decisions_04, older / "decisions" / "schemas", "stop", _older(_decisions, approvals=True),
-                              types=TYPES + ("approved",))}
+def _decisions_06(r: dict[str, Any], parties: Parties) -> list[str]:
+    """0.6 (Decisions section 3): option ids and the option an answer names are 1 to 64 characters, none whitespace."""
+    out = _decisions(r, parties)
+    terms = r.get("terms") if isinstance(r.get("terms"), dict) else {}
+    ids = [o.get("id") for o in terms.get("options") or [] if isinstance(o, dict) and isinstance(o.get("id"), str)]
+    option = (r.get("answer") or {}).get("option") if isinstance(r.get("answer"), dict) else None
+    if any(not OPTION.fullmatch(x) for x in [*ids, *([option] if isinstance(option, str) else [])]):
+        out.append("an option id is 1 to 64 characters without whitespace")
+    return out
+
+
+def _06(check: Check) -> Check:
+    """What 0.6 adds for every record (core section 4): every string member this family defines, but `note` and
+    `context`, has a character that is not whitespace."""
+    return lambda r, parties: check(r, parties) + (["a string member is only whitespace"] if _blank(r) else [])
+
+
+def _blank(v: Any, member: str = "") -> bool:
+    if isinstance(v, str):
+        return member not in ("note", "context") and not SOLID.search(v)
+    if isinstance(v, dict):
+        return any(_blank(x, str(k)) for k, x in v.items() if k != TWICE)
+    if isinstance(v, list):
+        return any(_blank(x, member) for x in v)
+    return False
+
+
+def extensions(vendor: Path) -> dict[str, Ext]:
+    """The two extensions Muninn implements, by `ext`: in 0.6 (schemas under `vendor`/principal-handoff), in 0.5
+    (principal-handoff-0.5), and in 0.4 (principal-handoff-0.4), only to read what was received in it."""
+    six, five, four = vendor / "principal-handoff", vendor / "principal-handoff-0.5", vendor / "principal-handoff-0.4"
+    approved = {"approved": frozenset({"principal"})}  # Decisions section 3: the Criteria module's, which Muninn does not implement
+    exts = [Ext(label(ACTS), six / "acts" / "schemas", "keep", _06(_acts), relation=_relation),
+            Ext(label(DECISIONS), six / "decisions" / "schemas", "stop", _06(_decisions_06), modules=approved, relation=_relation),
+            Ext(label(ACTS, OLDER), five / "acts" / "schemas", "keep", _acts, relation=_relation_05),
+            Ext(label(DECISIONS, OLDER), five / "decisions" / "schemas", "stop", _decisions, modules=approved, relation=_relation_05),
+            Ext(label(ACTS, LEGACY), four / "acts" / "schemas", "keep", _older(_acts, approvals=False), relation=_relation_05),
+            Ext(label(DECISIONS, LEGACY), four / "decisions" / "schemas", "stop", _older(_decisions, approvals=True),
+                types=TYPES + ("approved",), relation=_relation_05)]
+    return {e.name: e for e in exts}
 
 
 # ── 0.4's own rules ────────────────────────────────────────────────────────
@@ -107,7 +143,7 @@ def _older(check: Check, *, approvals: bool) -> Check:
     def rules(r: dict[str, Any], parties: Parties) -> list[str]:
         out, t = check(r, parties) + _evidence(r), r.get("type")
         times = [v.get("at") for v in ((r.get("evidence") or {}).get("verified") or []) if isinstance(v, dict)]
-        if any(isinstance(x, str) and instant(x) is None for x in times):
+        if any(isinstance(x, str) and moment(x) is None for x in times):
             out.append("a time that is not an RFC 3339 date-time")
         under = str((r.get("authority") or {}).get("under", ""))
         if t == "settled" and under.startswith(APPROVAL_PREFIX):
@@ -193,6 +229,9 @@ _TYPES = {"object": lambda v: isinstance(v, dict), "array": lambda v: isinstance
           "boolean": lambda v: isinstance(v, bool), "integer": lambda v: isinstance(v, int) and not isinstance(v, bool),
           "number": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool), "null": lambda v: v is None}
 _WS = "\t\n\v\f\r    -     　﻿"  # ECMAScript's \s
+SOLID = re.compile(f"[^{_WS}]")  # a character that is not whitespace (core section 1)
+OPTION = re.compile(f"[^{_WS}]{{1,64}}")  # a decision's option id (Decisions section 3)
+PROJECT = re.compile(f"[^{_WS}]{{1,128}}")  # a project, as a relation's target names it (core section 7)
 
 
 def _ecma(pattern: str) -> str:
@@ -233,6 +272,8 @@ def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, l
     """The schema the record validates against (its type), and every way it is not a valid record from its emitter.
     A module's record gets the core's checks only: the rest is the module's (core section 11)."""
     t = r.get("type")
+    if not isinstance(t, str):
+        return None, ["type is not a string"]
     if t in e.modules:
         core = e.schemas.parent.parent / "core" / "schemas" / "record.schema.json"
         errs = _schema_errors(r, json.loads(core.read_text(encoding="utf-8")), core.parent) + _common(r, parties)
@@ -240,11 +281,14 @@ def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, l
             errs.append(f"ext is not {e.name}")
         if r.get("origin") not in e.modules[t]:
             errs.append(f"origin {r.get('origin')!r} may not emit {t}")
-        return t, errs
+        return None, errs  # a module's pair has no schema of its own in the extension
     path = e.schemas / f"{t}.schema.json"
     if t not in e.types or not path.exists():
         return None, ["no schema for this type"]
-    errs = _schema_errors(r, json.loads(path.read_text(encoding="utf-8")), e.schemas) + _common(r, parties)
+    errs = _schema_errors(r, json.loads(path.read_text(encoding="utf-8")), e.schemas)
+    if errs:  # not the shape the rules below read
+        return t, errs
+    errs += _common(r, parties)
     due = (r.get("terms") or {}).get("due") if isinstance(r.get("terms"), dict) else None
     if isinstance(due, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", due):
         try:
@@ -261,7 +305,7 @@ def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, l
     if t == "claimed" and r.get("origin") == "principal":  # R3: the owner records, it does not claim
         errs.append("the principal side settles; it does not claim")
     if t == "related":
-        errs += _relation(r)
+        errs += e.relation(r)
     if t == "settled":
         errs += _authority(r, parties)
     if "adopts" in r and (t != "settled" or (r.get("authority") or {}).get("kind") not in ("confirmed", "attested")):
@@ -279,9 +323,11 @@ def _common(r: dict[str, Any], parties: Parties) -> list[str]:
     errs = []
     if _twice(r):
         errs.append("a member name appears twice (not I-JSON)")
+    if _surrogate(r):
+        errs.append("a string has an unpaired surrogate (not I-JSON)")
     if not _bounded(r):
         errs.append("numbers are integers within 2^53 - 1")
-    if isinstance(r.get("ts"), str) and instant(r["ts"]) is None:
+    if isinstance(r.get("ts"), str) and moment(r["ts"]) is None:
         errs.append("ts is not an RFC 3339 date-time")
     if r.get("by") == parties.principal:  # R6: the principal's decisions are recorded by the principal side
         errs.append("the principal identifier cannot emit records")
@@ -303,7 +349,8 @@ def _bounded(v: Any) -> bool:
     return False
 
 
-def _relation(r: dict[str, Any]) -> list[str]:
+def _relation(r: dict[str, Any], same_ext: Callable[[str, str], bool] = lambda target, ext: target == name(ext)) -> list[str]:
+    """core section 7: who may relate items how, and to what. In 0.6 a target names an item's extension by its name."""
     out, rel = [], r.get("relation") or {}
     want = RELATION_ORIGIN.get(rel.get("kind"))
     if want and r.get("origin") != want:
@@ -315,9 +362,14 @@ def _relation(r: dict[str, Any]) -> list[str]:
     if r.get("origin") == "principal" and item and target["project"] != r.get("project"):
         out.append("the principal side names another project's item only by uri")
     if rel.get("kind") == "replaced_by" and not (
-            item and target["ext"] == r.get("ext") and target["project"] == r.get("project") and target["key"] != r.get("key")):
+            item and same_ext(target["ext"], str(r.get("ext"))) and target["project"] == r.get("project") and target["key"] != r.get("key")):
         out.append("replaced_by targets another item of the same extension and project")
     return out
+
+
+def _relation_05(r: dict[str, Any]) -> list[str]:
+    """0.5 and before: a replaced_by names its target's extension as the record's whole `ext`."""
+    return _relation(r, lambda target, ext: target == ext)
 
 
 def _authority(r: dict[str, Any], parties: Parties) -> list[str]:
@@ -350,10 +402,30 @@ _TS = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt]([0-9]{2}):([0-9]{2}):([0
                  r"(?:([Zz])|([+-])([0-9]{2}):([0-9]{2}))")
 
 
+def moment(ts: Any) -> int | None:
+    """core section 4: an instant, as microseconds from the start of year 0 (UTC, proleptic Gregorian), offsets applied
+    and every fractional digit kept; a leap second (:60) compares as the last microsecond of its minute. None if ts is
+    not an RFC 3339 date-time with at most six fractional digits (an offset's hour at most 23 and minute at most 59)."""
+    m = _TS.fullmatch(ts) if isinstance(ts, str) else None
+    if not m:
+        return None
+    y, mo, d, h, mi, sec = (int(x) for x in m.groups()[:6])
+    frac = int((m.group(7) or "0").ljust(6, "0"))
+    leap = y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)
+    days_in = [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    off_h, off_m = (int(m.group(10)), int(m.group(11))) if not m.group(8) else (0, 0)
+    if not (1 <= mo <= 12 and 1 <= d <= days_in[mo - 1] and h <= 23 and mi <= 59 and sec <= 60 and off_h <= 23 and off_m <= 59):
+        return None
+    if sec == 60:
+        sec, frac = 59, 999999
+    days = 365 * y + (y + 3) // 4 - (y + 99) // 100 + (y + 399) // 400 + sum(days_in[:mo - 1]) + d - 1  # leap days before year y
+    offset = (1 if m.group(9) == "+" else -1) * (off_h * 60 + off_m) if not m.group(8) else 0
+    return ((days * 24 + h) * 60 + mi - offset) * 60_000_000 + sec * 1_000_000 + frac
+
+
 def instant(ts: str) -> datetime | None:
-    """core section 4: an instant, offsets applied, every fractional digit kept; a leap second (:60) compares as the
-    last microsecond of its minute. None if ts is not an RFC 3339 date-time with at most six fractional digits."""
-    m = _TS.fullmatch(ts)
+    """`ts` as a datetime, for Muninn's own times (None when it is not a valid ts, or before year 1)."""
+    m = _TS.fullmatch(ts) if moment(ts) is not None else None
     if not m:
         return None
     y, mo, d, h, mi, sec = (int(x) for x in m.groups()[:6])
@@ -408,6 +480,15 @@ def loads(text: str | bytes) -> Any:
     return json.loads(text, object_pairs_hook=pairs)
 
 
+def _surrogate(v: Any) -> bool:
+    """A string, or a member name, with half a surrogate pair: JSON's escapes allow it, I-JSON (core section 4) not."""
+    if isinstance(v, str):
+        return any("\ud800" <= c <= "\udfff" for c in v)
+    if isinstance(v, dict):
+        return any(_surrogate(k) or _surrogate(x) for k, x in v.items())
+    return isinstance(v, list) and any(_surrogate(x) for x in v)
+
+
 def _twice(v: Any) -> bool:
     if isinstance(v, dict):
         return TWICE in v or any(_twice(x) for x in v.values())
@@ -417,53 +498,82 @@ def _twice(v: Any) -> bool:
 # ── versions (core section 14) ─────────────────────────────────────────────
 
 
+def version(r: dict[str, Any]) -> str:
+    """The version a record's `ext` names ("" when it names none)."""
+    return str(r.get("ext") or "").partition("/")[2]
+
+
 def upgraded(r: dict[str, Any]) -> dict[str, Any]:
     """A 0.3 record as 0.4 reads it (only `ph` and `ext` change); any other as it came."""
     if r.get("ph") == OLDEST and r.get("ext") in (label(ACTS, OLDEST), label(DECISIONS, OLDEST)):
-        return {**r, "ph": OLDER, "ext": label(name(r["ext"]), OLDER)}
+        return {**r, "ph": LEGACY, "ext": label(name(r["ext"]), LEGACY)}
     return r
 
 
-def convert(r: dict[str, Any], version: str, held: Iterable[dict[str, Any]]) -> dict[str, Any]:
-    """`r` (0.4 or 0.5) in `version` (0.4 or 0.5) of its extension, given the records held about its item, in either
-    version: the id kept, `evidence.proof` removed, and a settlement's terms digest that of the held need record at its
-    terms_rev whose digest matches it in the version it came in (kept when none does: made on other terms, or its need
-    record is not held yet, and the next conversion after it comes replaces it). A relation naming an item of the same
-    extension names it in the same version."""
-    ext = name(r["ext"])
-    out = {**r, "ph": version, "ext": label(ext, version)}
+def _without_proof(r: dict[str, Any], out: dict[str, Any]) -> dict[str, Any]:
+    """`evidence.proof` removed, and `evidence` with it when nothing else is left (core section 14)."""
     if "evidence" in r:
         ev = {k: v for k, v in (r.get("evidence") or {}).items() if k != "proof"}
         if ev:
             out["evidence"] = ev
         else:
             del out["evidence"]
+    return out
+
+
+def convert(r: dict[str, Any], to: str) -> dict[str, Any] | None:
+    """A 0.5 record in 0.6, or a 0.6 one in 0.5, from the record alone (core section 14): `ph` and `ext` changed,
+    `evidence.proof` removed, and a relation's target named by its extension's name in 0.6 (with "/0.5" in 0.5). None
+    when it has no form in `to`: a 0.5 relation whose target 0.6 cannot name."""
+    out = _without_proof(r, {**r, "ph": to, "ext": label(name(str(r.get("ext"))), to)})
+    target = (r.get("relation") or {}).get("target") if r.get("type") == "related" and isinstance(r.get("relation"), dict) else None
+    if isinstance(target, dict) and isinstance(target.get("ext"), str):
+        if to == PH:
+            ext = target["ext"].split("/")[0]
+            if not NAME.fullmatch(ext) or not (isinstance(target.get("project"), str) and PROJECT.fullmatch(target["project"])):
+                return None
+        else:
+            ext = label(target["ext"], OLDER)
+        out["relation"] = {**r["relation"], "target": {**target, "ext": ext}}
+    return out
+
+
+def _from_04(r: dict[str, Any], held: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """A 0.4 record as 0.5 reads it: `evidence.proof` removed, a settlement's terms digest that of the held need record
+    at its terms_rev whose 0.4 digest matches it (kept when none does), and a relation naming an item of its own
+    extension naming it in 0.5."""
+    ext = name(r["ext"])
+    out = _without_proof(r, {**r, "ph": OLDER, "ext": label(ext, OLDER)})
     if r.get("type") == "settled" and "terms_digest" in r:
-        before, after = (_terms_digest_04, terms_digest) if version == PH else (terms_digest, _terms_digest_04)
         needs = [upgraded(n) for n in held if n.get("type") in ("raised", "amended") and n.get("terms_rev") == r.get("terms_rev")]
-        match = [n for n in needs if before({**n, "ext": r["ext"]}) == r["terms_digest"]]
+        match = [n for n in needs if _terms_digest_04({**n, "ext": r["ext"]}) == r["terms_digest"]]
         if match:
-            out["terms_digest"] = after({**match[0], "ext": out["ext"]})
+            out["terms_digest"] = terms_digest(match[0])
     target = (r.get("relation") or {}).get("target") or {}
     if "ext" in target and name(target["ext"]) == ext:
         out["relation"] = {**r["relation"], "target": {**target, "ext": out["ext"]}}
     return out
 
 
-def converted(r: dict[str, Any], version: str = PH, held: Iterable[dict[str, Any]] = ()) -> dict[str, Any]:
-    """`r`, in any version Muninn reads, in `version` (0.3, 0.4 or 0.5), given the records held about its item."""
-    r, held = upgraded(r), list(held)
-    if version == OLDEST:
-        down = converted(r, OLDER, held)
-        return {**down, "ph": OLDEST, "ext": label(name(down["ext"]), OLDEST)}
-    return r if r.get("ph") == version and "proof" not in (r.get("evidence") or {}) else convert(r, version, held)
+def converted(r: dict[str, Any], to: str = PH, held: Iterable[dict[str, Any]] = ()) -> dict[str, Any] | None:
+    """`r`, in any version Muninn reads, in `to` (0.6 or 0.5), given the records held about its item (a 0.4
+    settlement's digest is that of its need record); None when it has no form there, or is of a version Muninn does
+    not read (kept, not held: core section 6)."""
+    r = upgraded(r)
+    if version(r) == LEGACY and r.get("ph") == LEGACY:
+        r = _from_04(r, list(held))
+    if version(r) not in VERSIONS or r.get("ph") != version(r):
+        return None
+    if version(r) == to:
+        return r if "proof" not in (r.get("evidence") or {}) else _without_proof(r, dict(r))
+    return convert(r, to)
 
 
 # ── state ──────────────────────────────────────────────────────────────────
 
 
-def _when(r: dict[str, Any]) -> datetime:
-    return instant(r["ts"])  # type: ignore[return-value]  (valid records only)
+def _when(r: dict[str, Any]) -> int:
+    return moment(r["ts"])  # type: ignore[return-value]  (valid records only)
 
 
 def _latest(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -536,3 +646,50 @@ def fold(records: list[dict[str, Any]], e: Ext, parties: Parties) -> dict[str, A
             "withdrawn": bool(need and need["type"] == "withdrawn"), "terms_rev": terms_rev,
             "conflict": need_conflict or settle_conflict,
             "claims": sorted(r["id"] for r in valid if r["type"] == "claimed"), "ignored": sorted(ignored)}
+
+
+def holding(records: Iterable[dict[str, Any]], exts: Mapping[str, Ext], parties: Parties) -> list[dict[str, Any]]:
+    """What Muninn holds about one item from the records kept for it, in whichever version each came (core sections 6
+    and 14): each valid under its own version and with a 0.6 form, that form, one per (origin, type, id), section 10
+    comparing the 0.6 forms. A record of a version Muninn does not implement is kept but not held."""
+    records = list(records)
+    seen: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for r in records:
+        e = exts.get(str(upgraded(r).get("ext")))
+        if e is None or r.get("type") not in e.types or validate(upgraded(r), e, parties)[1]:
+            continue
+        form = converted(r, PH, records)
+        if form is None:
+            continue
+        k = (form["origin"], form["type"], form["id"])
+        if k not in seen or canonical(form) > canonical(seen[k]):
+            seen[k] = form
+    return list(seen.values())
+
+
+def relations(held: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """core section 7: an item's active relations, from the `related` records held for it. A relation is its kind and
+    its target's extension name, project and key, or its kind and uri (an exact string); the latest record of it
+    (equal ts: the greater id) says whether it is active. A same_as or derived_from naming the item itself has no
+    effect. As {kind, target}, sorted."""
+    latest: dict[tuple[str, ...], dict[str, Any]] = {}
+    for r in held:
+        if r.get("type") != "related":
+            continue
+        rel, target = r["relation"], r["relation"]["target"]
+        k = (rel["kind"], "uri", target["uri"]) if "uri" in target else (rel["kind"], name(target["ext"]), target["project"], target["key"])
+        if k not in latest or (_when(r), r["id"]) > (_when(latest[k]), latest[k]["id"]):
+            latest[k] = r
+    out = []
+    for k in sorted(latest):
+        r = latest[k]
+        target = {m: v for m, v in r["relation"]["target"].items() if m in ("uri", "ext", "project", "key")}
+        if r["relation"]["active"] and target != {"ext": name(r["ext"]), "project": r["project"], "key": r["key"]}:
+            out.append({"kind": k[0], "target": target})
+    return out
+
+
+def replacement(held: Iterable[dict[str, Any]]) -> dict[str, Any] | None:
+    """core section 7: the target of the item's single active replaced_by; with more than one, it has none."""
+    active = [x["target"] for x in relations(held) if x["kind"] == "replaced_by"]
+    return active[0] if len(active) == 1 else None

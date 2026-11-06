@@ -179,7 +179,7 @@ class Muninn:
         # Principal Handoff: who the user and Muninn are in its records, and the extensions Muninn implements
         self.parties = parties or handoff_records.parties_from(None, owner_label)
         vendor = Path(__file__).resolve().parents[1] / "contracts" / "vendor"
-        exts = ph_extensions or ph.extensions(vendor / "principal-handoff", vendor / "principal-handoff-0.4")
+        exts = ph_extensions or ph.extensions(vendor)
         self.handoff_versions = handoff_records.Versions(store)
         self.records_in = handoff_records.Inbox(store, clock, self.parties, exts, self.messages, self.tasks, self.handoff_versions, words=words)
         self.records_out = handoff_records.Outbox(store, clock, self.parties, exts, self.handoff_versions, words=words)

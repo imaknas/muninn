@@ -92,7 +92,7 @@ sources ──► attribution ──► store ──► drift rules ──► co
   question's id. Progress and done go to the inbox; `done` with a
   `handoff_id` marks that handoff done.
 - **Project records** (`src/muninn/contracts/records.v2.md`): the same
-  exchange as Principal Handoff 0.5 records (0.4 still read and spoken to a
+  exchange as Principal Handoff 0.6 records (0.5 still read and spoken to a
   project configured for it), `POST /api/records` in and
   `GET /api/records` out. Muninn is the principal side: only the user settles
   a to-do or a question. A project saying something is done settles nothing by
@@ -120,7 +120,7 @@ only with `cloud_mail: true`; work mail is local-only (under privacy routing; se
 Other systems rely on interfaces published in `src/muninn/contracts/`, each with a
 version: `muninn handoffs --json`, `muninn digests --json`, `muninn tasks --json`
 and `POST /api/messages` (v1), the project records (`records.v2.md`, Principal
-Handoff 0.5), the permission requests of a deep talk (v2), what a computer's
+Handoff 0.6), the permission requests of a deep talk (v2), what a computer's
 collector sends (`activity.v1.md`) and where the user is (`location.v1.md`).
 Adding a field keeps the version; renaming one or changing its meaning is a
 new version, served alongside the old one until readers move.
