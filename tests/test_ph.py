@@ -141,3 +141,12 @@ FROM_04 = [c for c in json.loads((FIVE / "core" / "conformance" / "convert.json"
 @pytest.mark.parametrize("c", FROM_04, ids=lambda c: c["id"])
 def test_a_record_received_in_04_reads_in_05_as_05s_cases_say(c):
     assert ph.converted(c["record"], ph.OLDER, c["held"]) == c["expect"]
+
+
+def test_a_member_the_specification_does_not_define_may_be_only_whitespace():
+    base = {"ph": "0.6", "ext": "acts/0.6", "id": "w1", "type": "withdrawn", "origin": "requester", "by": "agent:demo",
+            "key": "task-demo-aaaaaaaaaa", "project": "demo", "ts": "2026-10-27T09:00:00Z", "reason": "not_needed"}
+    p = ph.Parties("p:owner", "muninn")
+    assert ph.validate({**base, "x_tag": "  "}, EXTS["acts/0.6"], p)[1] == []  # ignored (core section 4)
+    assert ph.validate({**base, "terms": {"text": "Renew", "x_tag": " "}, "type": "raised", "terms_rev": 1}, EXTS["acts/0.6"], p)[1] == []
+    assert ph.validate({**base, "reason": " "}, EXTS["acts/0.6"], p)[1]  # one it defines

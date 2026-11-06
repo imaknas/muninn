@@ -74,6 +74,7 @@ class Ext:
     types: tuple[str, ...] = TYPES  # the record types its core folds
     modules: Mapping[str, frozenset[str]] = field(default_factory=dict)  # a module's record type -> who may emit it
     relation: Callable[[dict[str, Any]], list[str]] = field(default=lambda r: [])  # the version's rules for a relation
+    blank: bool = False  # 0.6 (core section 4): a string member it defines, but `note` and `context`, is never only whitespace
 
 
 def _acts(r: dict[str, Any], parties: Parties) -> list[str]:
@@ -103,29 +104,13 @@ def _decisions_06(r: dict[str, Any], parties: Parties) -> list[str]:
     return out
 
 
-def _06(check: Check) -> Check:
-    """What 0.6 adds for every record (core section 4): every string member this family defines, but `note` and
-    `context`, has a character that is not whitespace."""
-    return lambda r, parties: check(r, parties) + (["a string member is only whitespace"] if _blank(r) else [])
-
-
-def _blank(v: Any, member: str = "") -> bool:
-    if isinstance(v, str):
-        return member not in ("note", "context") and not SOLID.search(v)
-    if isinstance(v, dict):
-        return any(_blank(x, str(k)) for k, x in v.items() if k != TWICE)
-    if isinstance(v, list):
-        return any(_blank(x, member) for x in v)
-    return False
-
-
 def extensions(vendor: Path) -> dict[str, Ext]:
     """The two extensions Muninn implements, by `ext`: in 0.6 (schemas under `vendor`/principal-handoff), in 0.5
     (principal-handoff-0.5), and in 0.4 (principal-handoff-0.4), only to read what was received in it."""
     six, five, four = vendor / "principal-handoff", vendor / "principal-handoff-0.5", vendor / "principal-handoff-0.4"
     approved = {"approved": frozenset({"principal"})}  # Decisions section 3: the Criteria module's, which Muninn does not implement
-    exts = [Ext(label(ACTS), six / "acts" / "schemas", "keep", _06(_acts), relation=_relation),
-            Ext(label(DECISIONS), six / "decisions" / "schemas", "stop", _06(_decisions_06), modules=approved, relation=_relation),
+    exts = [Ext(label(ACTS), six / "acts" / "schemas", "keep", _acts, relation=_relation, blank=True),
+            Ext(label(DECISIONS), six / "decisions" / "schemas", "stop", _decisions_06, modules=approved, relation=_relation, blank=True),
             Ext(label(ACTS, OLDER), five / "acts" / "schemas", "keep", _acts, relation=_relation_05),
             Ext(label(DECISIONS, OLDER), five / "decisions" / "schemas", "stop", _decisions, modules=approved, relation=_relation_05),
             Ext(label(ACTS, LEGACY), four / "acts" / "schemas", "keep", _older(_acts, approvals=False), relation=_relation_05),
@@ -276,7 +261,8 @@ def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, l
         return None, ["type is not a string"]
     if t in e.modules:
         core = e.schemas.parent.parent / "core" / "schemas" / "record.schema.json"
-        errs = _schema_errors(r, json.loads(core.read_text(encoding="utf-8")), core.parent) + _common(r, parties)
+        schema = json.loads(core.read_text(encoding="utf-8"))
+        errs = _schema_errors(r, schema, core.parent) + _common(r, parties) + _blanks(r, e, schema, core.parent)
         if r.get("ext") != e.name:
             errs.append(f"ext is not {e.name}")
         if r.get("origin") not in e.modules[t]:
@@ -285,10 +271,11 @@ def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, l
     path = e.schemas / f"{t}.schema.json"
     if t not in e.types or not path.exists():
         return None, ["no schema for this type"]
-    errs = _schema_errors(r, json.loads(path.read_text(encoding="utf-8")), e.schemas)
+    schema = json.loads(path.read_text(encoding="utf-8"))
+    errs = _schema_errors(r, schema, e.schemas)
     if errs:  # not the shape the rules below read
         return t, errs
-    errs += _common(r, parties)
+    errs += _common(r, parties) + _blanks(r, e, schema, e.schemas)
     due = (r.get("terms") or {}).get("due") if isinstance(r.get("terms"), dict) else None
     if isinstance(due, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", due):
         try:
@@ -316,6 +303,26 @@ def validate(r: dict[str, Any], e: Ext, parties: Parties) -> tuple[str | None, l
     if t == "note" and "key" in (r.get("about") or {}) and r["about"]["key"] != r.get("key"):
         errs.append("a note about a key carries that key")
     return t, errs
+
+
+def _blanks(r: dict[str, Any], e: Ext, schema: dict[str, Any], base: Path) -> list[str]:
+    return ["a string member is only whitespace"] if e.blank and _blank(r, schema, base) else []
+
+
+def _blank(v: Any, schema: dict[str, Any], base: Path, member: str = "") -> bool:
+    """A string member the schemas define (a member they do not name is ignored, core section 4), other than `note` and
+    `context`, with no character that is not whitespace."""
+    if "$ref" in schema:
+        target = base / schema["$ref"]
+        if _blank(v, json.loads(target.read_text(encoding="utf-8")), target.parent, member):
+            return True
+    if isinstance(v, str):
+        return member not in ("note", "context") and not SOLID.search(v)
+    if isinstance(v, dict):
+        return any(_blank(v[k], sub, base, k) for k, sub in schema.get("properties", {}).items() if k in v)
+    if isinstance(v, list) and "items" in schema:
+        return any(_blank(x, schema["items"], base, member) for x in v)
+    return False
 
 
 def _common(r: dict[str, Any], parties: Parties) -> list[str]:
