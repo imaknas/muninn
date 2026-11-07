@@ -22,19 +22,20 @@ def test_coming_back_many_times_while_a_read_is_on_its_way_asks_once_more_not_ea
     go(page, muninn)
     held, asked = [], []
 
-    def hold(route):
+    def hold_the_first(route):
         asked.append(1)
-        held.append(route)
+        if len(asked) == 1:
+            held.append(route)
+        else:
+            route.continue_()
 
-    page.route("**/api/home", hold)
+    page.route("**/api/home", hold_the_first)
     page.evaluate("window.dispatchEvent(new Event('focus'))")
     until(page, lambda: len(asked) >= 1)
     for _ in range(5):
         page.evaluate("window.dispatchEvent(new Event('focus'))")
     page.wait_for_timeout(300)
     assert len(asked) == 1, asked  # the first round is still on its way
-    page.unroute("**/api/home")
-    page.route("**/api/home", lambda route: (asked.append(1), route.continue_()))
     held[0].continue_()
     until(page, lambda: len(asked) >= 2)  # one more, for all that was asked meanwhile
     page.wait_for_timeout(300)
