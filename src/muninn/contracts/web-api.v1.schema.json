@@ -2349,11 +2349,19 @@
        "type": "null"
       }
      ]
+    },
+    "push_subscribed": {
+     "type": "boolean"
+    },
+    "push_reaching": {
+     "type": "boolean"
     }
    },
    "required": [
     "device",
-    "last_push_received"
+    "last_push_received",
+    "push_subscribed",
+    "push_reaching"
    ]
   },
   "Next": {

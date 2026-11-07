@@ -91,6 +91,7 @@ from muninn.core.command_trust import CommandTrust
 from muninn.core.lease import ChannelLease, PermissionDesk
 from muninn.core.ports import LLMBackend, RunningVersion, SessionRunner, UnknownVersion
 from muninn.core.project_messages import ProjectMessages
+from muninn.core.push_health import PushHealth
 from muninn.core.actions import ActionGate
 from muninn.core.tasks import TaskRegistry
 from muninn.core.todo_match import ModelTaskMatch
@@ -275,7 +276,8 @@ def build(config: Config, *, dry_run: bool = False) -> App:
         push_titles=cfg.raw.get("push_detail", "titles") != "counts",
         **({"tier_quota": {str(k): int(v) for k, v in cfg.raw["tier_quota"].items()}} if cfg.raw.get("tier_quota") else {}),
     )
-    channel = ConsoleChannel() if dry_run else WebPushChannel(store, keys, cfg.vapid_subject)
+    push_health = PushHealth(store, SystemClock(cfg.tz), cfg.tz, words=language(cfg.language))
+    channel = ConsoleChannel() if dry_run else WebPushChannel(store, keys, cfg.vapid_subject, taken=push_health.taken)
     documents = FileDocuments(cfg.paths("documents"))
     def callback(provider: str) -> str | None:
         return f"{cfg.public_url.rstrip('/')}/oauth/{provider}/callback" if cfg.public_url else None
@@ -326,6 +328,7 @@ def build(config: Config, *, dry_run: bool = False) -> App:
             IdleDomainRule(default_days=cfg["idle_alert_days"]),
         ],
         composer=Composer(store, composer_cfg, words=words),
+        push_health=push_health,
         attribution=AttributionConfig(rules=attr, sensitive_domains=sensitive, extra_domains=extra),
         hours=ActiveHours(active_start, active_end),
         tz=cfg.tz,
@@ -1243,7 +1246,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "devices":
         if args.revoke is not None:
-            print("revoked" if app.devices.revoke(args.revoke) else "no such device")
+            revoked = app.devices.revoke(args.revoke)
+            if revoked:
+                app.engine.store.remove_device_subscriptions(args.revoke)  # nothing pushed to a device no longer paired
+            print("revoked" if revoked else "no such device")
             return 0
         for d in app.devices.devices():
             print(f"{d['id']:>3}  {d['name']:<20} created {d['created'][:16]}  last seen {(d['last_seen'] or '-')[:16]}  {'REVOKED' if d['revoked'] else ''}")

@@ -42,6 +42,14 @@ export async function answered(node: Element, act: () => Promise<unknown>, said:
 // put words in the input and focus it, for the user to finish
 export const prompt = (text: string): void => current().prompt(text);
 
+// what went wrong on the screen, kept in the server's log so a tap that seemed to do nothing can be traced
+export function reportError(e: unknown, where: string): void {
+  try {
+    const message = e instanceof Error ? e.message : String(e);
+    navigator.sendBeacon("/api/client-error", new Blob([JSON.stringify({ message, where })], { type: "application/json" }));
+  } catch { /* the report is only for tracing */ }
+}
+
 export function handleError(e: unknown): void {
   if (e instanceof Unpaired) return current().unpaired();
   toast(e instanceof Error ? e.message : String(e));

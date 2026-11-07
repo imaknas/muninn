@@ -4,7 +4,7 @@ import { api, backUp } from "./api.js";
 import { $, el, ICON, kids, must, section, sectionHead, svg, toast, valueOf, type Child } from "./dom.js";
 import { fmtMD, fmtTime, MAIL_LABEL, PROVIDER, sender } from "./format.js";
 import { afterTalk, confirmationCard, connectAccount, copy } from "./cards.js";
-import { cloudFirst, cloudName, handleError, loadToday, reader, render, state } from "./shell.js";
+import { cloudFirst, cloudName, handleError, loadToday, reader, render, reportError, state } from "./shell.js";
 import { setTopic } from "./talk.js";
 import { LANGUAGE_NAMES, LANGUAGES, w, type Lang } from "./words.js";
 import type { ActivitySetup, Confirmation, Connection, FormFillingState, GoogleSetup, HealthSetup, List, LocationSetup, Mail, Me, Prepared, Reflection, Requests, Settings, SetupPair, SetupSaved, SourceKey, Sources, TrackerRow, Undoable, HttpsState, HttpsMade } from "./types.js";
@@ -308,11 +308,13 @@ function formFillingSection(): HTMLElement {
 
 // `questions`: the open questions on top (the desktop asks them in its inbox instead)
 export async function renderSettings({ questions = true }: { questions?: boolean } = {}): Promise<Child[]> {
-  const [t, conf, decided, me, settings, sub] = await Promise.all([
+  const [t, conf, decided, me, settings, browserSub] = await Promise.all([
     state.today ? Promise.resolve(state.today) : loadToday(),
     api<List<Confirmation>>("/api/confirmations"), api<List<{ repo: string; domain: string | null }>>("/api/attribution"), api<Me>("/api/me"),
-    api<Settings>("/api/settings"), pushSubscribed(),
+    api<Settings>("/api/settings"), pushSubscription(),
   ]);
+  // on only when this phone has a subscription and Muninn pushes to it; one Muninn lost is given back
+  const sub = !!browserSub && (me.push_subscribed || await keepSubscription(browserSub));
   const titleOf = (id: string) => (t.domain_choices.find((x) => x.id === id) || { title: id }).title;
   const out: Child[] = [];
 
@@ -411,11 +413,11 @@ export async function renderSettings({ questions = true }: { questions?: boolean
 
   out.push(el("section", { class: "card", "aria-label": w.pages.push },
     el("div", { class: "status" },
-      el("span", { class: `icon ${sub ? "" : "warn"}` }, svg(sub ? ICON.check : ICON.warn)),
-      el("div", {}, el("b", {}, sub ? w.pages.pushOn : pushHint()),
+      el("span", { class: `icon ${sub && me.push_reaching ? "" : "warn"}` }, svg(sub && me.push_reaching ? ICON.check : ICON.warn)),
+      el("div", {}, el("b", {}, sub ? (me.push_reaching ? w.pages.pushOn : w.pages.pushNotReaching) : pushHint()),
         el("span", {}, me.last_push_received ? w.pages.lastDelivered(`${fmtMD(me.last_push_received)} ${fmtTime(me.last_push_received)}`) : w.pages.neverPushed))),
     sub ? el("button", { type: "button", class: "btn block", onclick: testPush }, w.pages.testPush)
-        : el("button", { type: "button", class: "btn primary block", onclick: () => enablePush().catch(handleError) }, w.pages.enablePush)));
+        : el("button", { type: "button", class: "btn primary block", onclick: () => enablePush().catch((e) => { reportError(e, "enable push"); handleError(e); }) }, w.pages.enablePush)));
 
   if (decided.items.length) {
     out.push(section(w.pages.attribution, sectionHead(w.pages.attribution, w.pages.attributionAside),
@@ -587,10 +589,28 @@ function pushHint(): string {
   return w.pages.pushOff;
 }
 
-async function pushSubscribed(): Promise<boolean> {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+async function pushSubscription(): Promise<PushSubscription | null> {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
   const reg = await navigator.serviceWorker.ready;
-  return !!(await reg.pushManager.getSubscription());
+  return reg.pushManager.getSubscription();
+}
+
+// Muninn keeps this phone's subscription (again): one Muninn does not have pushes nothing here
+async function keepSubscription(sub: PushSubscription): Promise<boolean> {
+  try {
+    await api("/api/push/subscribe", { subscription: sub.toJSON() });
+    return true;
+  } catch (e) {
+    reportError(e, "keep push subscription");
+    return false;
+  }
+}
+
+// each time the app starts with notifications allowed: the phone's subscription, so Muninn has the one it pushes to
+export async function keepPushing(): Promise<void> {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const sub = await pushSubscription();
+  if (sub) await keepSubscription(sub);
 }
 
 function b64ToBytes(b64: string): Uint8Array<ArrayBuffer> {

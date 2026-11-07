@@ -53,6 +53,7 @@ from muninn.core.lease import PermissionDesk, talk_lines
 from muninn.core.ports import CloudLoginLost, LocationApp, PushMessage, RunnerError, SessionRunner, Uploads
 from muninn.form_filling import FormFilling
 from muninn.setup_flow import Setup, qr_svg
+from muninn.core.push_health import last_shown_key
 from muninn.core.project_messages import VERSION as MESSAGES_VERSION, ProjectMessages
 from muninn.core.sidecar import Sidecar, aside
 from muninn.core.timewin import local_date
@@ -704,7 +705,8 @@ def create_app(
         sub = data["subscription"]
         if not (isinstance(sub, dict) and sub.get("endpoint", "").startswith("https://") and "keys" in sub):
             raise ValueError("invalid subscription")
-        await call(engine.store.add_subscription, {"endpoint": sub["endpoint"], "keys": sub["keys"]}, engine.clock.now())
+        await call(engine.store.add_subscription, {"endpoint": sub["endpoint"], "keys": sub["keys"]}, engine.clock.now(),
+                   request.state.device["id"])
         return JSONResponse({"ok": True})
 
     @authed
@@ -722,7 +724,7 @@ def create_app(
     async def push_ack(request: Request) -> Response:
         data = await body(request)
         log.info("push received by device %s (%s)", request.state.device["name"], str(data.get("stage"))[:20])
-        await call(engine.store.set_state, f"push:last_ack:{request.state.device['id']}", engine.clock.now().isoformat())
+        await call(engine.push_health.shown, request.state.device["id"])
         return JSONResponse({"ok": True})
 
     @authed
@@ -861,8 +863,10 @@ def create_app(
     @authed
     async def me(request: Request) -> Response:
         device = request.state.device
-        last_ack = await call(engine.store.get_state, f"push:last_ack:{device['id']}")
-        return JSONResponse({"device": device, "last_push_received": last_ack})
+        last_ack = await call(engine.store.get_state, last_shown_key(device["id"]))
+        return JSONResponse({"device": device, "last_push_received": last_ack,
+                             "push_subscribed": await call(engine.store.subscribed, device["id"]),
+                             "push_reaching": (await call(engine.push_health.status))["reaching"]})
 
     @authed
     async def settings(request: Request) -> Response:
@@ -1061,6 +1065,14 @@ def create_app(
         if refused:
             log.warning("ingest: %d observation(s) refused: %s", len(refused), refused[0]["why"])
         return JSONResponse({"ok": True, "new": len(new), "refused": refused})
+
+    async def push_health(request: Request) -> Response:
+        """Whether pushes reach a phone, for the platform watching Muninn (Bearer = ingest token): a push about pushes
+        not arriving would not arrive either."""
+        if not hmac.compare_digest(request.headers.get("authorization", ""), f"Bearer {ingest_token}"):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+        status = await call(engine.push_health.status)
+        return JSONResponse({**status, "subscriptions": len(await call(engine.store.subscriptions))})
 
     @guarded
     async def platform_alert(request: Request) -> Response:
@@ -1483,6 +1495,7 @@ def create_app(
         Route("/api/client-error", client_error, methods=["POST"]),
         Route("/api/ingest", ingest, methods=["POST"]),
         Route("/api/alerts", platform_alert, methods=["POST"]),
+        Route("/api/push/health", push_health),
         Route("/api/setup/activity", activity_setup),
         Route("/collectors/{name}/{file}", collector_file),
         Route("/api/ingest/owntracks", ingest_location, methods=["POST"]),  # phones set up before apps were named in the address

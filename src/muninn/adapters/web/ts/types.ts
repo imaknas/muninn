@@ -232,7 +232,7 @@ export interface Reflection {
   title: string; body: string;
   data?: { aggregate?: { sessions?: number; themes?: [string, number][]; repeated_commitments?: string[]; observed_hours_by_domain?: Record<string, number> } };
 }
-export interface Me { device: { name: string; created: string | null }; last_push_received: string | null }
+export interface Me { device: { name: string; created: string | null }; last_push_received: string | null; push_subscribed: boolean; push_reaching: boolean }
 export interface Connection { configured: boolean; authorized: boolean; status: string }
 // how to set up each tracking app the phone may send its location from, and when a point last came
 export interface ActivitySetup {

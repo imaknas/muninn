@@ -159,6 +159,7 @@ export const pages: Words["pages"] = {
   // settings: push notifications
   push: "Notifications",
   pushOn: "Notifications are on",
+  pushNotReaching: "Notifications are on, but none has reached a phone for hours",
   lastDelivered: (when: string) => `Last delivered ${when}`,
   neverPushed: "No push notification received yet",
   testPush: "Send a test notification",

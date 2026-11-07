@@ -53,7 +53,7 @@ def test_the_front_publishes_the_jobs_the_engine_used_to_run():
     h = make_harness(at(2026, 10, 22, 10))
     assert [(j.name, j.phase) for j in h.engine.jobs()] == [
         ("reading the projects' messages", "early"), ("sorting or closing tasks", "early"), ("matching to-dos", "early"), ("asking about offline time", "early"),
-        ("pushing the platform's alerts held through quiet hours", "early"),
+        ("pushing the platform's alerts held through quiet hours", "early"), ("telling when pushes no longer reach a phone", "after"),
         ("window classification", "early"), ("mail triage", "late"), ("preparing packets", "after"),
         ("delivering handoffs", "after"), ("setting aside quiet topics", "after"), ("keeping each topic's state", "after"),
         ("speaking up when the user pauses", "after")]

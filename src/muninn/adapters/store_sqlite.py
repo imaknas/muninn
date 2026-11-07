@@ -21,7 +21,7 @@ from typing import Any, Callable, Iterable, Iterator, Sequence
 
 from muninn.core.models import ActionRecord, Confirmation, InboxItem, Observation, Prepared, Sensitivity, Turn
 
-SCHEMA_VERSION = 2  # raised with every change to the schema or to what the migrations do
+SCHEMA_VERSION = 3  # raised with every change to the schema or to what the migrations do
 MIN_READABLE = 1  # raised only for a change an older version cannot read past
 KEEP_BACKUPS = 3  # copies made before a migration, newest first
 
@@ -223,6 +223,7 @@ class SqliteStore:
         self._add_column("permission_requests", "kind", "TEXT")
         self._add_column("permission_requests", "summary", "TEXT")
         self._add_column("permission_requests", "v", "INTEGER NOT NULL DEFAULT 1")
+        self._add_column("subscriptions", "device", "INTEGER")  # the paired device it came from (None: before devices had one)
         self._kinds_for_old_requests()
         self._usage_from_cases()
         self._records_by_type()
@@ -497,14 +498,22 @@ class SqliteStore:
     def subscriptions(self) -> list[dict[str, Any]]:
         return [json.loads(r["sub"]) for r in self._q("SELECT sub FROM subscriptions")]
 
-    def add_subscription(self, sub: dict[str, Any], at: datetime) -> None:
-        self._x(
-            "INSERT INTO subscriptions VALUES (?,?,?) ON CONFLICT(endpoint) DO UPDATE SET sub=excluded.sub, at=excluded.at",
-            (sub["endpoint"], json.dumps(sub), _ts(at)),
-        )
+    def add_subscription(self, sub: dict[str, Any], at: datetime, device: int | None = None) -> None:
+        with self._write() as db:
+            if device is not None:
+                db.execute("DELETE FROM subscriptions WHERE device=? AND endpoint!=?", (device, sub["endpoint"]))
+            db.execute("INSERT INTO subscriptions (endpoint, sub, at, device) VALUES (?,?,?,?) ON CONFLICT(endpoint) DO UPDATE "
+                       "SET sub=excluded.sub, at=excluded.at, device=coalesce(excluded.device, device)",
+                       (sub["endpoint"], json.dumps(sub), _ts(at), device))
+
+    def subscribed(self, device: int) -> bool:
+        return bool(self._q("SELECT 1 FROM subscriptions WHERE device=?", (device,)))
 
     def remove_subscription(self, endpoint: str) -> None:
         self._x("DELETE FROM subscriptions WHERE endpoint=?", (endpoint,))
+
+    def remove_device_subscriptions(self, device: int) -> None:
+        self._x("DELETE FROM subscriptions WHERE device=?", (device,))
 
     # status changes
 

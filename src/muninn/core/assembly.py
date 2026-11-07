@@ -28,6 +28,7 @@ from .answer import Answerer
 from .dossier import Dossier
 from .offline_time import OfflineTime
 from .platform_alerts import PlatformAlerts
+from .push_health import PushHealth
 from .releases import ReleaseFeed, ReleaseNews
 from .open_items import DeadlineItems, OpenItems, ProjectTodoItems, TaskItems, TrackerItems
 from .task_evidence import CompletionDetector
@@ -143,6 +144,7 @@ class Muninn:
         release_feed: ReleaseFeed | None = None,
         installed_version: str = "",
         install_kind: str = "other",
+        push_health: PushHealth | None = None,
     ):
         self.words = words  # the language Muninn speaks to the user in
         # the core: observing, attributing, notifying, scheduling; what it needs from the actors comes through these
@@ -234,6 +236,8 @@ class Muninn:
         # a newer Muninn: said once per release (no feed: not checked)
         self.release_news = ReleaseNews(store, clock, tz, release_feed, installed_version, install_kind, self._report,
                                         store.add_inbox, words=words)
+        # whether pushes reach a phone (the channel says when the push service took one; the phone, when it showed it)
+        self.push_health = push_health or PushHealth(store, clock, tz, words=words)
         # the platform's alerts: pushed outside the daily limit, held through quiet hours
         self.platform_alerts = PlatformAlerts(store, clock, self.composer.quiet,
                                               lambda title: self.channel.send([PushMessage("platform", 1, title=title)]))
@@ -530,6 +534,7 @@ class Muninn:
             *self.offline.jobs(),
             *self.release_news.jobs(),
             *self.platform_alerts.jobs(),
+            *self.push_health.jobs(),
             *self.windows.jobs(),
             *self.mailroom.jobs(),
             *self.packets.jobs(self.prepare_per_tick),

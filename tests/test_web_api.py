@@ -28,6 +28,7 @@ MACHINES = {
     "GET /api/smoke": "bin/deploy.sh (bin/smoke.py)",
     "POST /api/ingest": "the collectors' observations",
     "POST /api/alerts": "src/muninn/contracts/platform-alerts.v1.md",
+    "GET /api/push/health": "the platform watching whether pushes reach a phone",
     "POST /api/ingest/owntracks": "OwnTracks on a phone set up before apps were named in the address",
     "POST /api/ingest/location/{app}": "a tracking app on the phone (core/location.py, one implementation per app)",
     "POST /api/ingest/health": "an iOS Shortcut (steps, sleep)",

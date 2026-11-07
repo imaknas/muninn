@@ -155,6 +155,7 @@ export const pages = {
   // settings: push notifications
   push: "通知",
   pushOn: "通知已開啟",
+  pushNotReaching: "通知開著，但已經好幾小時沒有送到手機",
   lastDelivered: (when: string) => `最近一次送達 ${when}`,
   neverPushed: "還沒收到過推播",
   testPush: "送一則測試通知",

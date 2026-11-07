@@ -6,9 +6,9 @@ import { api, busy } from "./api.js";
 import { el, kids, must } from "./dom.js";
 import { startCard } from "./cards.js";
 import { renderPanel, route } from "./panel.js";
-import { standalone } from "./pages.js";
+import { keepPushing, standalone } from "./pages.js";
 import { renderSetup } from "./setup.js";
-import { connect, handleError, loadSettings } from "./shell.js";
+import { connect, handleError, loadSettings, reportError } from "./shell.js";
 import { closeTalk, fit, loadStream, markStale, mountTalk, refreshStream, setTopic, talking, watchOpen } from "./talk.js";
 import { loadData, summary, things, type Data, type Thing } from "./things.js";
 import { mountViewer } from "./viewer.js";
@@ -174,17 +174,12 @@ connect({
 // (an installed app keeps the one it was added with) do not open the panel over it
 if (NARROW.matches && ["#today", "#things"].includes(location.hash)) history.replaceState(null, "", location.pathname + location.search);
 // nothing fails without a word: an error no part of the screen handled is said, and kept in the server's log
-function report(message: string, where: string): void {
-  try {
-    navigator.sendBeacon("/api/client-error", new Blob([JSON.stringify({ message, where })], { type: "application/json" }));
-  } catch { /* the report is only for tracing */ }
-}
 window.addEventListener("unhandledrejection", (ev) => {
   const e = ev.reason;
-  report(e instanceof Error ? e.message : String(e), location.hash || "/");
+  reportError(e, location.hash || "/");
   handleError(e);
 });
-window.addEventListener("error", (ev) => report(ev.message, `${ev.filename}:${ev.lineno}`));
+window.addEventListener("error", (ev) => reportError(ev.message, `${ev.filename}:${ev.lineno}`));
 
 mountTalk();
 mountViewer();
@@ -225,4 +220,7 @@ document.addEventListener("visibilitychange", listen);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register(`/sw.js?lang=${lang}`, { scope: "/" }).catch(() => {});
 const setupToken = location.hash.startsWith("#setup=") ? location.hash.slice("#setup=".length) : "";
 if (setupToken) void renderSetup(setupToken);  // the first-run link: setting up, not the app yet
-else render();
+else {
+  render();
+  void keepPushing().catch(() => {});
+}

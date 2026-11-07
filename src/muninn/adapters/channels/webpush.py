@@ -10,7 +10,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 from cryptography.hazmat.primitives import serialization
 from py_vapid import Vapid02
@@ -52,11 +52,14 @@ class VapidKeys:
 
 
 class WebPushChannel:
-    def __init__(self, store: SubscriptionStore, keys: VapidKeys, subject: str, ttl: int = 6 * 3600):
+    def __init__(self, store: SubscriptionStore, keys: VapidKeys, subject: str, ttl: int = 6 * 3600,
+                 taken: Callable[[], None] = lambda: None):
+        """`taken()`: the push service took a notification (which says nothing yet of a phone showing it)."""
         self._store = store
         self._keys = keys
         self._subject = subject
         self._ttl = ttl
+        self._taken = taken
 
     def send(self, messages: Sequence[PushMessage]) -> int:
         subs = self._store.subscriptions()
@@ -92,6 +95,8 @@ class WebPushChannel:
                 except Exception as e:
                     log.warning("push failed: %s", e)
             delivered += ok
+        if delivered:
+            self._taken()
         return delivered
 
 
