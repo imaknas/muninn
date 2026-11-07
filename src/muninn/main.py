@@ -46,7 +46,8 @@ from muninn.adapters.llm.openai_compat import OpenAICompatProvider
 from muninn.adapters.llm.reply_check import ReplyCheck, schemas
 from muninn.adapters.google.calendar import GoogleCalendar
 from muninn.adapters.google.gmail import GmailMailbox
-from muninn.adapters.calendar_merge import CalendarWithExtraBusy, RecentCalendar
+from muninn.adapters.calendar_merge import CalendarWithExtraBusy
+from muninn.adapters.known_calendar import KnownCalendar
 from muninn.adapters.google.oauth import GoogleOAuth
 from muninn.adapters.microsoft.graph import GraphBusy, GraphMailbox, MicrosoftOAuth
 from muninn.adapters.plans_yaml import YamlPlanRepo
@@ -293,11 +294,12 @@ def build(config: Config, *, dry_run: bool = False) -> App:
             mailboxes.append(GmailMailbox(google, name=name, kind=kind))
         elif provider == "outlook" and microsoft.configured:
             mailboxes.append(GraphMailbox(microsoft, name=name, kind=kind))
-    calendar = None
+    calendar = known_calendar = None
     if google.configured:
         work_busy = [GraphBusy(microsoft)] if microsoft.configured else []
-        calendar = RecentCalendar(CalendarWithExtraBusy(GoogleCalendar(google, str(cfg["calendar_name"])), work_busy),
-                                  SystemClock(cfg.tz).now)
+        google_calendar = GoogleCalendar(google, str(cfg["calendar_name"]))
+        known_calendar = KnownCalendar(google_calendar, store, SystemClock(cfg.tz).now)
+        calendar = CalendarWithExtraBusy(google_calendar, work_busy, changed=known_calendar.forget)
     preparer = PacketPreparer(router, default_fetcher(), documents, decider=LLMDecider(router, store.set_case_verdict),
                               cloud_drafts=bool(cfg["cloud_drafts"]))
     sites, uploads = application_sites(), FileUploads(cfg.data_dir / "uploads", words=language(cfg.language))
@@ -342,6 +344,7 @@ def build(config: Config, *, dry_run: bool = False) -> App:
         transcripts=TranscriptTextSource(cfg.paths("transcript_roots"), ws) if cfg["reflect"] else None,
         reflector=Reflector(store, reflect_router, SystemClock(cfg.tz)) if cfg["reflect"] else None,
         calendar=calendar,
+        shown_calendar=known_calendar,
         mailboxes=mailboxes,
         triager=MailTriager(router, cloud_mail=bool(cfg["cloud_mail"])),
         connections=[google, microsoft],
@@ -1282,7 +1285,7 @@ def main(argv: list[str] | None = None) -> int:
             lease_runner=app.lease_runner,
             permissions=app.permissions,
             smoke_checks=app.smoke,
-            day_view=DayView(e.store, e.clock, e.tz, e.plans.load, e.metrics, e.stays_between, e.calendar, words=e.words),
+            day_view=DayView(e.store, e.clock, e.tz, e.plans.load, e.metrics, e.stays_between, e.shown_calendar, words=e.words),
             uploads=FileUploads(app.config.data_dir / "uploads", words=e.words),
             location_apps=LOCATION_APPS,
             setup=Setup(app.config, IMPLS, restart_self, first_run_token(app.config, app.devices), home=Path.home()),

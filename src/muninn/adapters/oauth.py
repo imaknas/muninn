@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -63,6 +64,7 @@ class OAuth2Client:
         self._state_file = Path(state_file)
         self._redirect = redirect_uri
         self._http = http or httpx.Client(timeout=20)
+        self._refreshing = threading.Lock()  # one refresh at a time: asked from background reads too, and a token may rotate
         self._expired_file = self._token_file.with_name(self._token_file.stem + ".expired")
         # once linked, a token that is gone (deleted, lost in a move) is a connection to make again, not one never made
         self._linked_file = self._token_file.with_name(self._token_file.stem + ".linked")
@@ -130,6 +132,10 @@ class OAuth2Client:
         self._linked_file.write_text(str(int(time.time())))
 
     def access_token(self) -> str:
+        with self._refreshing:
+            return self._current_token()
+
+    def _current_token(self) -> str:
         if not self.authorized:
             raise OAuthError(f"{self.name}: not authorized yet")
         tok = json.loads(self._token_file.read_text())

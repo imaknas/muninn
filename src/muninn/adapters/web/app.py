@@ -39,6 +39,7 @@ from starlette.staticfiles import StaticFiles
 from muninn.adapters.channels.webpush import VapidKeys
 from muninn.package import version
 from muninn.adapters.sources.health import parse_health
+from muninn.adapters.known_calendar import EVENTS as KNOWN_EVENTS
 from muninn.adapters.web.devices import DeviceRegistry
 from muninn.adapters.web.lease_feed import LeaseFeed
 from muninn.adapters.web.screen_watch import ScreenWatch
@@ -497,7 +498,8 @@ def create_app(
                                  for x in engine.store.leases()],  # what the screens show of each lease (its name too)
                                 [c.id for c in engine.pending_confirmations()],
                                 [str(x.get("id")) for x in engine.review_queue()],
-                                [(a.id, a.undone) for a in engine.store.actions(today)]]
+                                [(a.id, a.undone) for a in engine.store.actions(today)],
+                                engine.store.get_state(KNOWN_EVENTS)]
             if messages is not None:
                 parts.append([str(q.get("id")) for q in messages.open_questions()])
             if permissions is not None:

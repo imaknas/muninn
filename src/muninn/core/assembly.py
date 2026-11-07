@@ -110,6 +110,7 @@ class Muninn:
         reflector: Reflector | None = None,
         records: ProjectRecords | None = None,
         calendar: Calendar | None = None,
+        shown_calendar: Calendar | None = None,
         mailboxes: Sequence[Mailbox] = (),
         triager: MailTriager | None = None,
         connections: Sequence[Connection] = (),
@@ -147,6 +148,7 @@ class Muninn:
         push_health: PushHealth | None = None,
     ):
         self.words = words  # the language Muninn speaks to the user in
+        self._shown_calendar = shown_calendar  # what the screens read; what Muninn decides from reads `calendar` itself
         # the core: observing, attributing, notifying, scheduling; what it needs from the actors comes through these
         self.engine = Engine(
             store=store, plans=plans, sources=sources, channel=channel, router=router, classifier=classifier, clock=clock,
@@ -601,9 +603,17 @@ class Muninn:
         """What Muninn did in the last two days that can still be taken back, newest first."""
         return [a for a in self.store.actions(self.clock.now() - timedelta(days=2)) if not a.undone and reversal(a.undo) is not None]
 
+    @property
+    def shown_calendar(self) -> Calendar | None:
+        return self._shown_calendar or self.calendar
+
+    @shown_calendar.setter
+    def shown_calendar(self, calendar: Calendar | None) -> None:
+        self._shown_calendar = calendar
+
     def views(self) -> Views:
         """What the app shows, read with what Muninn holds now."""
-        return Views(self.store, self.clock, self.tz, self.hours, self.metrics, self.planbase, calendar=lambda: self.calendar,
+        return Views(self.store, self.clock, self.tz, self.hours, self.metrics, self.planbase, calendar=lambda: self.shown_calendar,
                      decisions=self.review_decisions, pending=self.pending_confirmations, todos=self.external_todos,
                      relink=self.needs_relink, day_stays=self.day_stays, open_tasks=lambda: self.tasks.open(), ideas=self.ideas.listed,
                      talk=lambda kind, ref: self.conversation().suggestions_for(kind, ref), label=self.router.label_of,
