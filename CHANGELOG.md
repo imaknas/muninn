@@ -3,6 +3,12 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.10.1 (2026-11-07)
+
+### Fixed
+
+- **talk:** What a pressed button answers stays on the screen when a read comes back meanwhile
+
 ## v0.10.0 (2026-11-07)
 
 ### New
