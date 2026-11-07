@@ -27,6 +27,7 @@ from .ideas import Ideas
 from .answer import Answerer
 from .dossier import Dossier
 from .offline_time import OfflineTime
+from .platform_alerts import PlatformAlerts
 from .releases import ReleaseFeed, ReleaseNews
 from .open_items import DeadlineItems, OpenItems, ProjectTodoItems, TaskItems, TrackerItems
 from .task_evidence import CompletionDetector
@@ -233,6 +234,9 @@ class Muninn:
         # a newer Muninn: said once per release (no feed: not checked)
         self.release_news = ReleaseNews(store, clock, tz, release_feed, installed_version, install_kind, self._report,
                                         store.add_inbox, words=words)
+        # the platform's alerts: pushed outside the daily limit, held through quiet hours
+        self.platform_alerts = PlatformAlerts(store, clock, self.composer.quiet,
+                                              lambda title: self.channel.send([PushMessage("platform", 1, title=title)]))
 
     # ── helpers ─────────────────────────────────────────────────────────────
 
@@ -525,6 +529,7 @@ class Muninn:
             Job("matching to-dos", self.match_todos),
             *self.offline.jobs(),
             *self.release_news.jobs(),
+            *self.platform_alerts.jobs(),
             *self.windows.jobs(),
             *self.mailroom.jobs(),
             *self.packets.jobs(self.prepare_per_tick),

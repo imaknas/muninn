@@ -98,6 +98,7 @@ Mail.Read 和 Calendars.Read;工作的忙碌時段會併入排程。個人郵件
 其他系統依賴的介面都發佈在 `src/muninn/contracts/` 裡,各自帶版本:
 `muninn handoffs --json`、`muninn digests --json`、`muninn tasks --json` 和
 `POST /api/messages`(v1)、專案紀錄(`records.v2.md`,Principal Handoff 0.6)、
-深談的權限請求(v2)、電腦收集器送來的東西(`activity.v1.md`)和你在哪裡(`location.v1.md`)。
+深談的權限請求(v2)、電腦收集器送來的東西(`activity.v1.md`)、你在哪裡(`location.v1.md`)
+和執行 Muninn 的平台送來的警報(`platform-alerts.v1.md`)。
 新增欄位不換版本;改名或改變意義就是新版本,跟舊版本並存,直到讀取端都搬過去。
 `tests/test_contracts.py` 拿實際輸出對照 schema 檢查。

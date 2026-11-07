@@ -46,7 +46,7 @@ from muninn.core.location import observation as location_observation
 from muninn.core.actions import DecidedBy
 from muninn.core.assembly import Muninn
 from muninn.collectors import COLLECTORS
-from muninn.core import activity, ph
+from muninn.core import activity, ph, platform_alerts
 from muninn.core.models import Attachment, InboxItem
 from muninn.core.conversation import FEED
 from muninn.core.lease import PermissionDesk, talk_lines
@@ -1063,6 +1063,17 @@ def create_app(
         return JSONResponse({"ok": True, "new": len(new), "refused": refused})
 
     @guarded
+    async def platform_alert(request: Request) -> Response:
+        """The platform says a problem is open or resolved (contracts/platform-alerts.v1.md). Only a 200 says it was had."""
+        if not hmac.compare_digest(request.headers.get("authorization", ""), f"Bearer {ingest_token}"):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+        try:
+            n = platform_alerts.notice(await body(request))
+        except platform_alerts.Refused as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+        return JSONResponse({"ok": True, "outcome": await call(engine.platform_alerts.receive, n)})
+
+    @guarded
     async def project_message_post(request: Request) -> Response:
         """Projects post here (same bearer token as ingest): questions for the
         user, progress, done. Retrying a post is safe: ids already seen are
@@ -1471,6 +1482,7 @@ def create_app(
         Route("/api/opened", opened, methods=["POST"]),
         Route("/api/client-error", client_error, methods=["POST"]),
         Route("/api/ingest", ingest, methods=["POST"]),
+        Route("/api/alerts", platform_alert, methods=["POST"]),
         Route("/api/setup/activity", activity_setup),
         Route("/collectors/{name}/{file}", collector_file),
         Route("/api/ingest/owntracks", ingest_location, methods=["POST"]),  # phones set up before apps were named in the address
