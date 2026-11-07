@@ -46,7 +46,7 @@ from muninn.adapters.llm.openai_compat import OpenAICompatProvider
 from muninn.adapters.llm.reply_check import ReplyCheck, schemas
 from muninn.adapters.google.calendar import GoogleCalendar
 from muninn.adapters.google.gmail import GmailMailbox
-from muninn.adapters.calendar_merge import CalendarWithExtraBusy
+from muninn.adapters.calendar_merge import CalendarWithExtraBusy, RecentCalendar
 from muninn.adapters.google.oauth import GoogleOAuth
 from muninn.adapters.microsoft.graph import GraphBusy, GraphMailbox, MicrosoftOAuth
 from muninn.adapters.plans_yaml import YamlPlanRepo
@@ -296,7 +296,8 @@ def build(config: Config, *, dry_run: bool = False) -> App:
     calendar = None
     if google.configured:
         work_busy = [GraphBusy(microsoft)] if microsoft.configured else []
-        calendar = CalendarWithExtraBusy(GoogleCalendar(google, str(cfg["calendar_name"])), work_busy)
+        calendar = RecentCalendar(CalendarWithExtraBusy(GoogleCalendar(google, str(cfg["calendar_name"])), work_busy),
+                                  SystemClock(cfg.tz).now)
     preparer = PacketPreparer(router, default_fetcher(), documents, decider=LLMDecider(router, store.set_case_verdict),
                               cloud_drafts=bool(cfg["cloud_drafts"]))
     sites, uploads = application_sites(), FileUploads(cfg.data_dir / "uploads", words=language(cfg.language))

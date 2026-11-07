@@ -167,6 +167,7 @@ class SqliteStore:
         self._db = sqlite3.connect(self._path, check_same_thread=False, timeout=30, isolation_level=None)
         self._db.row_factory = sqlite3.Row
         self._writes = 0  # this process's writes, for `version`
+        self._unplaced_repos: tuple[Any, int, dict[str, int]] | None = None  # as last counted, and at which version
         if self._path != ":memory:":
             self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA busy_timeout=30000")
@@ -281,6 +282,7 @@ class SqliteStore:
     def add_observations(self, observations: Iterable[Observation]) -> list[Observation]:
         new = []
         with self._lock:
+            self._writes += 1
             self._db.execute("BEGIN")
             try:
                 for o in observations:
@@ -318,6 +320,18 @@ class SqliteStore:
 
     def unattributed(self, limit: int) -> list[Observation]:
         return [self._obs(r) for r in self._q("SELECT * FROM observations WHERE domain IS NULL ORDER BY ts DESC LIMIT ?", (limit,))]
+
+    def unattributed_repos(self, limit: int) -> dict[str, int]:
+        """How many of the latest `limit` unplaced observations came from each repo. Asked many times for one read of
+        a screen, so counted again only once the store was written to."""
+        version = self.version()
+        if self._unplaced_repos is not None and self._unplaced_repos[:2] == (version, limit):
+            return self._unplaced_repos[2]
+        rows = self._q("SELECT repo, COUNT(*) AS n FROM (SELECT json_extract(payload, '$.repo') AS repo FROM observations "
+                       "WHERE domain IS NULL ORDER BY ts DESC LIMIT ?) WHERE repo IS NOT NULL AND repo != '' GROUP BY repo", (limit,))
+        counts = {str(r["repo"]): r["n"] for r in rows}
+        self._unplaced_repos = (version, limit, counts)
+        return counts
 
     def observations_for_repo(self, repo: str) -> list[Observation]:
         """Observations from the repo, and windows whose title names it."""

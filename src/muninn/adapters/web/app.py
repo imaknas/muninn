@@ -30,6 +30,7 @@ from typing import Any, Callable, Sequence
 from starlette.applications import Starlette
 from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from starlette.routing import Mount, Route
@@ -41,6 +42,7 @@ from muninn.adapters.sources.health import parse_health
 from muninn.adapters.web.devices import DeviceRegistry
 from muninn.adapters.web.lease_feed import LeaseFeed
 from muninn.adapters.web.screen_watch import ScreenWatch
+from muninn.adapters.web.slow_requests import SlowRequests
 from muninn.core.day_view import DayView
 from muninn.core.location import observation as location_observation
 from muninn.core.actions import DecidedBy
@@ -1552,7 +1554,7 @@ def create_app(
             if feed is not None:
                 feed.stop()
 
-    app = Starlette(routes=routes, lifespan=lifespan)
+    app = Starlette(routes=routes, lifespan=lifespan, middleware=[Middleware(SlowRequests, log=log.warning)])
     app.state.lease_feed = feed  # the conversation views' event fan-out, reachable for tests
     app.state.screens = screens  # what tells open screens a change, likewise
     app.state.screens = screens  # telling the open screens what changed, reachable for tests

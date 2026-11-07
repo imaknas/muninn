@@ -284,11 +284,7 @@ class Engine:
         exist now (plans may have been added since the question was asked).
         Attribution questions a rule has since answered are left out."""
         domains = self.domains()
-        unresolved: dict[str, int] = {}
-        for o in self.store.unattributed(20_000):
-            repo = o.payload.get("repo")
-            if repo:
-                unresolved[repo] = unresolved.get(repo, 0) + 1
+        unresolved = self.store.unattributed_repos(20_000)
         ruled = {str(r) for r in (self.attr_cfg.rules.get("repos") or {})} | {
             k.split(":", 1)[1] for k in self.store.learned_rules() if k.startswith("repo:")}
         out = []

@@ -24,6 +24,28 @@ must("#say button[type=submit]").setAttribute("aria-label", w.app.send);
 must("#panel").setAttribute("aria-label", w.app.panel);
 
 let seq = 0;  // a slower, older read must not overwrite a newer one
+const GIVE_UP_MS = 20_000;  // a phone coming back can leave a request hanging: it does not hold up the next round
+
+// One round at a time, and once more after it when asked meanwhile, however many times: a screen comes into view, gets
+// focus and is told of a change all at once, and every read asked for is worked out one after the other on the server
+// (the answer dropped or not) with what the user does next waiting behind them.
+function oneAtATime(round: () => Promise<unknown>): () => Promise<void> {
+  let going: Promise<void> | null = null;
+  let again = false;
+  return () => {
+    if (going) {
+      again = true;
+      return going;
+    }
+    going = (async () => {
+      do {
+        again = false;
+        await Promise.race([round(), new Promise((done) => setTimeout(done, GIVE_UP_MS))]);
+      } while (again);
+    })().finally(() => { going = null; });
+    return going;
+  };
+}
 let started = false;
 let first = false;
 let away = false;  // the app was out of view: the stream is checked against the server when it comes back
@@ -49,7 +71,8 @@ function show(fresh = false): void {
 }
 
 // Reads again what the screen shows (the conversation as it goes on, what waits) and draws it without a sound.
-async function render(): Promise<void> {
+const render = oneAtATime(readEverything);
+async function readEverything(): Promise<void> {
   const mine = ++seq;
   try {
     if (!started) {
@@ -88,6 +111,8 @@ async function opened(): Promise<void> {
   await fetch("/api/opened", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: "{}" })
     .catch(() => undefined);
 }
+
+const readWaitingAgain = oneAtATime(() => readWaiting().catch(handleError));
 
 // Reads again what waits, and draws the button and the panel from it (never the conversation): what changed
 // elsewhere shows there even while the user is in the middle of something in the conversation. False when a newer
@@ -158,7 +183,7 @@ connect({
     const r = route();
     if (r.view === "item" && r.param === thing) location.hash = "#things";  // its page has nothing left to show
     else show(true);
-    readWaiting().catch(handleError);  // then as the server has it (the conversation is not read again for this)
+    void readWaitingAgain();  // then as the server has it (the conversation is not read again for this)
   },
   prompt(text) {
     const input = must<HTMLTextAreaElement>("#say-input");
@@ -207,7 +232,7 @@ function listen(): void {
   const changed = (): void => {
     if (busy() || talking()) {  // the conversation later (nothing redrawn under them); what waits, now
       markStale();
-      readWaiting().catch(handleError);
+      void readWaitingAgain();
       return;
     }
     away = true;
