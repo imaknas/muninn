@@ -32,13 +32,24 @@ def parties(s: dict, c: dict) -> ph.Parties:
     return ph.Parties(s["principal"], "muninn", c.get("principal_type", s.get("principal_type")) == "legal")
 
 
-@pytest.mark.parametrize("ext,s,c", [*cases(ROOT, ph.PH, "records.json"), *cases(FIVE, ph.OLDER, "records.json"),
-                                     *cases(FOUR, ph.LEGACY, "records.json")])
-def test_records_are_valid_or_not_as_the_specification_says(ext, s, c):
-    e = EXTS.get(str(c["record"].get("ext")))
-    if c["valid"] is None:  # a version or extension Muninn does not implement: kept, not acted on
-        assert e is None
+@pytest.mark.parametrize("ext,s,c", list(cases(ROOT, ph.PH, "records.json")))
+def test_records_are_valid_invalid_or_kept_as_the_specification_says(ext, s, c):
+    """Three ways: valid, invalid, or kept without being acted on (valid: null). The suite's receiver implements only
+    its own extension in 0.6; a record without an `ext` is invalid, not of a version it does not implement."""
+    r = c["record"]
+    if c["valid"] is None:
+        assert isinstance(r.get("ext"), str) and r["ext"] != ext
         return
+    assert not isinstance(r.get("ext"), str) or r["ext"] == ext or not c["valid"]
+    name, errs = ph.validate(r, EXTS[ext], parties(s, c))
+    if c["valid"]:
+        assert (name, errs) == (c["schema"], [])
+    else:
+        assert errs
+
+
+@pytest.mark.parametrize("ext,s,c", [*cases(FIVE, ph.OLDER, "records.json"), *cases(FOUR, ph.LEGACY, "records.json")])
+def test_records_of_the_versions_before_are_valid_or_not_as_their_specification_says(ext, s, c):
     name, errs = ph.validate(c["record"], EXTS[ext], parties(s, c))
     if c["valid"]:
         assert (name, errs) == (c["schema"], [])
@@ -150,3 +161,18 @@ def test_a_member_the_specification_does_not_define_may_be_only_whitespace():
     assert ph.validate({**base, "x_tag": "  "}, EXTS["acts/0.6"], p)[1] == []  # ignored (core section 4)
     assert ph.validate({**base, "terms": {"text": "Renew", "x_tag": " "}, "type": "raised", "terms_rev": 1}, EXTS["acts/0.6"], p)[1] == []
     assert ph.validate({**base, "reason": " "}, EXTS["acts/0.6"], p)[1]  # one it defines
+
+
+def test_a_record_listing_itself_is_a_cycle_whichever_record_with_its_id_came_last():
+    b = {"ph": "0.6", "ext": "acts/0.6", "key": "task-demo-aaaaaaaaaa", "project": "demo", "origin": "principal", "by": "ps:a"}
+    need = {**b, "id": "r1", "type": "raised", "origin": "requester", "by": "agent:demo", "ts": "2026-10-27T09:00:00Z",
+            "terms_rev": 1, "terms": {"text": "Which one?"}}
+    settled = {**b, "type": "settled", "outcome": "done", "terms_rev": 1, "terms_digest": ph.terms_digest(need),
+               "authority": {"kind": "principal", "decider": "p:owner"}}
+    reopened = {**b, "id": "s1", "type": "reopened", "ts": "2026-10-28T01:00:00Z", "supersedes": ["s1"], "restore_text": "x"}
+    records = [need, reopened, {**settled, "id": "s1", "ts": "2026-10-28T02:00:00Z"},
+               {**settled, "id": "s2", "ts": "2026-10-28T03:00:00Z", "supersedes": ["s1"]}]
+    p = ph.Parties("p:owner", "muninn")
+    for order in (records, records[::-1], [records[0], records[2], records[1], records[3]]):
+        f = ph.fold(order, EXTS["acts/0.6"], p)
+        assert (f["settlement"], f["conflict"]) == ("s2", True)

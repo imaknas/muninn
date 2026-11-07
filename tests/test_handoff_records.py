@@ -435,3 +435,8 @@ def test_an_id_sent_twice_with_other_content_keeps_the_greater_form_whatever_cam
     assert kept["terms"]["text"] == "Buy two pots"
     assert h.engine.tasks.get("task-pots-1")["title"] == "Buy two pots"  # what is shown follows the record kept
     assert "again with other content" in caplog.text
+
+
+def test_a_record_without_an_ext_is_invalid_not_of_another_version(h):
+    no_ext = {k: v for k, v in raised("task-pots-1", "買陶盆").items() if k != "ext"}
+    assert h.engine.records_in.receive([no_ext]) == [{"id": "r:task-pots-1", "status": "invalid", "errors": ["no ext"]}]

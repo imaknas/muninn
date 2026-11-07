@@ -138,7 +138,10 @@ class Inbox:
                 out.append({"id": None, "status": "invalid", "errors": ["not an object"]})
                 continue
             spoke, r = r.get("ph"), ph.upgraded(r)  # 0.3 reads as 0.4
-            e = self._exts.get(str(r.get("ext")))
+            if not isinstance(r.get("ext"), str):  # a record names its extension (core section 4)
+                out.append({"id": r.get("id"), "status": "invalid", "errors": ["no ext"]})
+                continue
+            e = self._exts.get(r["ext"])
             if e is None:  # a version or extension Muninn does not implement: kept (core section 6), never acted on
                 if all(isinstance(r.get(k), str) for k in ("ext", "project", "origin", "type", "id", "key")):
                     self._store.add_record(ph.name(r["ext"]), r, self._clock.now(), _rank)

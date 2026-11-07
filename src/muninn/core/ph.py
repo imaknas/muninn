@@ -587,20 +587,22 @@ def _latest(records: list[dict[str, Any]]) -> dict[str, Any]:
     return max(records, key=lambda r: (_when(r), r["id"]))
 
 
-def _cycle(by_id: dict[str, dict[str, Any]]) -> bool:
-    for start in by_id.values():
+def _cycle(names: dict[str, set[str]]) -> bool:
+    """Whether the ids of one register name each other round to where they started, by every record with an id (two
+    of other types may share one, core section 10): a record listing itself is a cycle whichever arrived last."""
+    for start in names:
         seen: set[str] = set()
         stack = [start]
         while stack:
-            r = stack.pop()
-            if r["id"] in seen:
+            i = stack.pop()
+            if i in seen:
                 continue
-            seen.add(r["id"])
-            for s in r.get("supersedes", []):
-                if s == start["id"]:
+            seen.add(i)
+            for s in names.get(i, ()):
+                if s == start:
                     return True
-                if s in by_id:
-                    stack.append(by_id[s])
+                if s in names:
+                    stack.append(s)
     return False
 
 
@@ -609,10 +611,12 @@ def _register(records: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, boo
     record that lists itself is still a head, and a cycle."""
     if not records:
         return None, False
-    by_id = {r["id"]: r for r in records}
-    replaced = {s for r in records for s in r.get("supersedes", []) if s in by_id and s != r["id"]}
+    names: dict[str, set[str]] = {}
+    for r in records:
+        names.setdefault(r["id"], set()).update(r.get("supersedes", []))
+    replaced = {s for r in records for s in r.get("supersedes", []) if s in names and s != r["id"]}
     heads = [r for r in records if r["id"] not in replaced] or records
-    return _latest(heads), len(heads) > 1 or _cycle(by_id)
+    return _latest(heads), len(heads) > 1 or _cycle(names)
 
 
 def held(records: Iterable[dict[str, Any]], e: Ext, parties: Parties) -> list[dict[str, Any]]:
