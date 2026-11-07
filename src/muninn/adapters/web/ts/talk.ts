@@ -2,7 +2,7 @@
 // about anything), with a divider where the topic changes. What is said goes to the conversation on now; a
 // conversation can be lent to a project's session (a deep talk), whose turns show in the same stream.
 
-import { api } from "./api.js";
+import { api, busy } from "./api.js";
 import { called } from "./format.js";
 import { at, days, foldEarlier } from "./stamps.js";
 import { hasFiles, mountFiles, sentNode, takeFiles } from "./files.js";
@@ -111,10 +111,14 @@ export async function loadStream(): Promise<void> {
 async function draw(feed: List<Thread>): Promise<void> {
   const t = talk;
   if (!t) return;
+  const talks = await talkLines(feed);
+  if (busy()) {  // something the user did began while this was read: its answer goes under what is on the screen now
+    stale = true;
+    return;
+  }
   synced = shape(feed);
   stale = false;
   known.clear();
-  const talks = await talkLines(feed);
   const nodes: Child[] = [];
   for (const th of feed.items) {
     known.set(th.thread, th.about);

@@ -10,7 +10,7 @@ const NEW_REMINDERS: Record<string, string> = { "zh-TW": "有新的提醒", en: 
 // every screen's words module (ts/words/<lang>/<area>.ts; tests/test_languages.py keeps this list whole)
 const WORD_AREAS = ["app", "cards", "files", "format", "language", "pages", "panel", "setup", "shell", "stamps", "talk", "things", "viewer"];
 
-const SHELL = "muninn-shell-v43";
+const SHELL = "muninn-shell-v44";
 const SHELL_FILES = ["/", "/static/style.css", "/static/icon-192.png", "/manifest.webmanifest",
   ...["app", "api", "cards", "dom", "files", "format", "pages", "panel", "setup", "shell", "stamps", "talk", "things", "viewer",
     "words", "words/zh-TW", "words/en", ...WORD_AREAS.map((a) => `words/${LANG}/${a}`)].map((m) => `/static/${m}.js`)];

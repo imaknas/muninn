@@ -19,6 +19,15 @@ def expect():
     return pytest.importorskip("playwright.sync_api").expect
 
 
+def eventually_on(page, holds, seconds=15):
+    """Waits until `holds()` holds where it depends on what the page does (a route's handler runs while the page waits)."""
+    for _ in range(seconds * 20):
+        if holds():
+            return
+        page.wait_for_timeout(50)
+    raise AssertionError("never happened")
+
+
 # ── what waits, and nothing broken anywhere ────────────────────────────────
 
 @pytest.mark.parametrize("screen", SCREENS)
@@ -547,6 +556,28 @@ def test_nothing_is_redrawn_under_a_button_pressed_and_what_changed_meanwhile_st
             break
         phone.wait_for_timeout(1000)
     expect()(talk(phone).get_by_text("明晚七點,在河濱公園。")).to_have_count(1)
+
+
+def test_a_read_already_on_its_way_when_a_button_is_pressed_does_not_redraw_under_it(page, muninn):
+    go(page, muninn)
+    muninn.replies({"actions": [], "reply": "要我提醒你嗎?", "suggest": [{"label": "好,提醒我", "tool": "capture_idea", "args": {"idea": "週五繳電費"}}]})
+    say(page, "週五要繳電費")
+    button(talk(page), "好,提醒我").wait_for()
+    held = []
+    page.route("**/api/conversation", lambda r: r.continue_() if held else held.append(r))
+    page.evaluate("window.dispatchEvent(new Event('focus'))")  # back to the app: the conversation is read again
+    eventually_on(page, lambda: held)
+    muninn.h.engine.conversation().speak(None, "明晚七點,在河濱公園。", [])  # so what comes back differs from what is shown
+    page.route("**/api/command/act", lambda r: (held.append(r), None))
+    button(talk(page), "好,提醒我").click()
+    eventually_on(page, lambda: len(held) == 2)  # the press is on its way
+    held[0].continue_()  # and the read comes back meanwhile
+    page.wait_for_timeout(500)
+    expect()(talk(page).get_by_text("明晚七點,在河濱公園。")).to_have_count(0)  # not redrawn under the press
+    held[1].continue_()
+    talk(page).get_by_text("按了「好,提醒我」").wait_for(timeout=15_000)
+    page.evaluate("window.dispatchEvent(new Event('focus'))")
+    expect()(talk(page).get_by_text("明晚七點,在河濱公園。")).to_have_count(1)  # drawn when it can be
 
 
 def test_a_talk_that_comes_back_shows_what_is_yours_first_and_reads_the_same_after_a_reload(request, muninn):
