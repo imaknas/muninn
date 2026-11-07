@@ -516,7 +516,7 @@ def test_an_open_screen_shows_what_was_said_on_another_device_by_itself(request,
     muninn.replies({"actions": [], "reply": "後天下午兩點,在牙醫診所。"})
     say(desk, "後天幾點看牙醫?")
     talk(desk).get_by_text("後天下午兩點,在牙醫診所。").wait_for()
-    expect()(talk(phone).get_by_text("後天下午兩點,在牙醫診所。")).to_have_count(1, timeout=5_000)  # nobody touched the phone
+    expect()(talk(phone).get_by_text("後天下午兩點,在牙醫診所。")).to_have_count(1)  # nobody touched the phone
     expect()(talk(desk).get_by_text("後天下午兩點,在牙醫診所。")).to_have_count(1)  # the desk's own change: not drawn twice
 
 
@@ -600,7 +600,7 @@ def test_the_panel_opens_at_once_from_what_is_held_and_a_view_with_its_own_data_
     pg.unroute("**/api/**")
     for r in held:
         r.continue_()
-    expect()(panel(pg).get_by_label("讀取中")).to_have_count(0, timeout=5000)  # filled in once it came
+    expect()(panel(pg).get_by_label("讀取中")).to_have_count(0)  # filled in once it came
 
 
 def test_a_question_that_takes_several_answers_is_answered_with_all_of_them(desktop, muninn):
