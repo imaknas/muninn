@@ -3,6 +3,22 @@
 What changed in each version, generated from the commit messages (git cliff) when it is tagged; only new features,
 fixes, speed-ups and reverts are listed.
 
+## v0.10.0 (2026-11-07)
+
+### New
+
+- **records:** Muninn speaks Principal Handoff 0.6, and still 0.5 to a project configured for it
+- **alerts:** The platform Muninn runs on can tell the user through Muninn when one of its parts breaks
+
+### Fixed
+
+- **records:** A member Principal Handoff does not define may be only whitespace, as 0.6's text says
+- **records:** A record without an ext is invalid, and a record listing itself is a conflict whatever arrived last
+- **push:** A phone's notifications stay on after the app is added again, and it shows when pushes stop arriving
+- **web:** The app answers at once while it is in use, instead of keeping every action waiting
+- **web:** A screen shows the calendar at once and asks Google behind it
+- **push:** A phone off at night is not taken for pushes no longer reaching it
+
 ## v0.9.0 (2026-11-02)
 
 ### New
