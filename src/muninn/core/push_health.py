@@ -6,7 +6,7 @@ day among the reminders, where the user sees it next time they open the app (a p
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from .language import Language
 from .models import InboxItem
@@ -14,7 +14,8 @@ from .ports import Clock, InboxStore, StateStore
 from .timewin import local_date
 
 UNSHOWN = "push:unshown_since"  # when the first push the service took, of those no phone has shown yet, was sent
-GRACE = timedelta(hours=6)  # a phone off or out of reach shows what was pushed when it is back
+GRACE = timedelta(hours=6)  # a phone off or out of reach shows what was pushed when it is back; quiet hours don't count
+STEP = timedelta(minutes=5)  # how finely the time gone by is told apart from quiet hours
 
 
 def last_shown_key(device: int) -> str:
@@ -26,9 +27,11 @@ class PushHealthStorage(StateStore, InboxStore, Protocol):
 
 
 class PushHealth:
-    def __init__(self, store: PushHealthStorage, clock: Clock, tz: str, *, words: Language):
+    def __init__(self, store: PushHealthStorage, clock: Clock, tz: str, *, words: Language, quiet: Callable[[datetime], bool]):
+        """`quiet(at)`: whether `at` is in the user's quiet hours, when a phone may well be off with nothing wrong."""
         self._store, self._clock, self._tz = store, clock, tz
         self.words = words
+        self._quiet = quiet
 
     def taken(self) -> None:
         """The push service took a notification for at least one subscription."""
@@ -44,8 +47,20 @@ class PushHealth:
     def status(self) -> dict[str, Any]:
         """`reaching`: False once a push has gone unshown longer than a phone can be away; `unshown_since`."""
         since = self._store.get_state(UNSHOWN)
-        reaching = since is None or self._clock.now() - datetime.fromisoformat(since) <= GRACE
-        return {"reaching": reaching, "unshown_since": since}
+        return {"reaching": since is None or not self._overdue(datetime.fromisoformat(since)), "unshown_since": since}
+
+    def _overdue(self, since: datetime) -> bool:
+        """Whether more than GRACE went by since then, the quiet hours left out."""
+        now = self._clock.now()
+        gone = timedelta()
+        at = since
+        while at < now:
+            if not self._quiet(at):
+                gone += min(STEP, now - at)
+                if gone > GRACE:
+                    return True
+            at += STEP
+        return False
 
     def jobs(self) -> list[Any]:
         from .actors import Job

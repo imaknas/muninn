@@ -277,7 +277,8 @@ def build(config: Config, *, dry_run: bool = False) -> App:
         push_titles=cfg.raw.get("push_detail", "titles") != "counts",
         **({"tier_quota": {str(k): int(v) for k, v in cfg.raw["tier_quota"].items()}} if cfg.raw.get("tier_quota") else {}),
     )
-    push_health = PushHealth(store, SystemClock(cfg.tz), cfg.tz, words=language(cfg.language))
+    composer = Composer(store, composer_cfg, words=language(cfg.language))
+    push_health = PushHealth(store, SystemClock(cfg.tz), cfg.tz, words=language(cfg.language), quiet=composer.quiet)
     channel = ConsoleChannel() if dry_run else WebPushChannel(store, keys, cfg.vapid_subject, taken=push_health.taken)
     documents = FileDocuments(cfg.paths("documents"))
     def callback(provider: str) -> str | None:
@@ -330,7 +331,7 @@ def build(config: Config, *, dry_run: bool = False) -> App:
             LateNightRule(start=night_start, end=night_end, tz=cfg.tz),
             IdleDomainRule(default_days=cfg["idle_alert_days"]),
         ],
-        composer=Composer(store, composer_cfg, words=words),
+        composer=composer,
         push_health=push_health,
         attribution=AttributionConfig(rules=attr, sensitive_domains=sensitive, extra_domains=extra),
         hours=ActiveHours(active_start, active_end),

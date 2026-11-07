@@ -239,7 +239,7 @@ class Muninn:
         self.release_news = ReleaseNews(store, clock, tz, release_feed, installed_version, install_kind, self._report,
                                         store.add_inbox, words=words)
         # whether pushes reach a phone (the channel says when the push service took one; the phone, when it showed it)
-        self.push_health = push_health or PushHealth(store, clock, tz, words=words)
+        self.push_health = push_health or PushHealth(store, clock, tz, words=words, quiet=composer.quiet)
         # the platform's alerts: pushed outside the daily limit, held through quiet hours
         self.platform_alerts = PlatformAlerts(store, clock, self.composer.quiet,
                                               lambda title: self.channel.send([PushMessage("platform", 1, title=title)]))

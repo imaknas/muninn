@@ -11,6 +11,7 @@ from conftest import at, make_harness
 from muninn.adapters.channels.webpush import VapidKeys
 from muninn.adapters.web.app import create_app
 from muninn.adapters.web.devices import DeviceRegistry
+from muninn.core.platform_alerts import notice
 
 SUB = {"endpoint": "https://web.push.example.com/a", "keys": {"p256dh": "x", "auth": "y"}}
 
@@ -45,8 +46,32 @@ def test_pushes_taken_but_never_shown_for_hours_are_said_once_a_day():
     assert ph.status() == {"reaching": True, "unshown_since": None}
 
 
+def test_a_phone_off_at_night_is_not_taken_for_pushes_not_arriving():
+    h = make_harness(at(2026, 11, 7, 22, 50))
+    ph = h.engine.push_health
+    ph.taken()  # the last push before quiet hours (23:00 to 08:00), never shown
+    h.clock.t = at(2026, 11, 8, 5)
+    assert ph.status()["reaching"] and ph.check() is None
+    h.clock.t = at(2026, 11, 8, 13)
+    assert ph.status()["reaching"]  # 10 minutes, and five hours of the morning
+    h.clock.t = at(2026, 11, 8, 14)
+    assert not ph.status()["reaching"]
+
+
+def test_nothing_to_push_says_nothing_is_wrong_however_long_it_has_been():
+    h = make_harness(at(2026, 11, 7, 10))
+    h.clock.t += timedelta(days=9)
+    assert h.engine.push_health.status() == {"reaching": True, "unshown_since": None}
+
+
+def test_a_push_held_through_quiet_hours_is_not_counted_until_it_is_sent():
+    h = make_harness(at(2026, 11, 7, 23, 30))
+    h.engine.platform_alerts.receive(notice({"v": 1, "source": "brunna", "key": "k", "state": "open", "at": "2026-11-07T15:30:00Z", "text": "t"}))
+    assert h.engine.push_health.status()["unshown_since"] is None
+
+
 def test_the_settings_say_on_only_when_muninn_pushes_to_this_device(tmp_path):
-    h = make_harness(at(2026, 11, 7, 17))
+    h = make_harness(at(2026, 11, 7, 10))
     keys = VapidKeys(tmp_path / "v.pem")
     keys.ensure()
     devices = DeviceRegistry(tmp_path / "d.db")
@@ -65,7 +90,7 @@ def test_the_settings_say_on_only_when_muninn_pushes_to_this_device(tmp_path):
 
 
 def test_the_platform_reads_whether_pushes_reach_a_phone_with_the_ingest_token(tmp_path):
-    h = make_harness(at(2026, 11, 7, 17))
+    h = make_harness(at(2026, 11, 7, 10))
     keys = VapidKeys(tmp_path / "v.pem")
     keys.ensure()
     client = TestClient(create_app(h.engine, keys, "tok", DeviceRegistry(tmp_path / "d.db")))
