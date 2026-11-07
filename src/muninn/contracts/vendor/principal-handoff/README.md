@@ -3,7 +3,7 @@
 The record schemas of Principal Handoff Core 0.6 and its Acts 0.6 and Decisions 0.6 extensions, and the conformance
 suites a principal side runs (`records.json`, `lifecycle.json` and `relations.json` of each extension, and core's
 `raw.json`, `terms-digest.json` and `convert.json`), copied unchanged from the specification at tag
-`principal-handoff-0.6.1` (commit a8950e4; 0.6.1 adds fixtures to 0.6, whose text and schemas are the same). Licensed
+`principal-handoff-0.6.2` (commit 8f70f0a; 0.6.1 and 0.6.2 add fixtures to 0.6, whose rules and schemas are the same). Licensed
 under the Apache License 2.0 (`LICENSE`, `NOTICE`). The Evidence and Criteria modules and the Acts Markdown binding
 are not vendored: Muninn implements none of them.
 

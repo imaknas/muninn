@@ -13,7 +13,9 @@ configured principal identifier (core R6).
   against; `schema` is `null` for the others, and for a module pair, which has no schema of its own (SPEC §3). Invalid
   ones fail the schema or a validity rule: ownership (core R1–R3, R6), authority (core §5.1), the
   record rules of core §4 and §7, and that `decided` carries an `answer`. `valid` is `null` for a record of an extension
-  or version the receiver does not implement, which it keeps without acting on it (core §4, §6). Records with module
+  or version the receiver does not implement, which it keeps without acting on it (core §4, §6); the suite runs as a
+  receiver of its own version alone, and a runner compares three values, valid, invalid and kept, since judging `ph`
+  before `ext` gives invalid where `null` is expected. Records with module
   content are in the [Evidence](../../evidence/conformance/) and [Criteria](../../criteria/conformance/) suites; the
   `approved` cases here check only the pair and the core checks (core §11).
 - `lifecycle.json` (core §6, SPEC §2 and §4): `{id, spec, records, expect}`; `records` are all the records one
@@ -22,9 +24,10 @@ configured principal identifier (core R6).
   conflict, claims, ignored}`. A withdrawn decision has state `withdrawn` unless a settlement is current. `terms_rev`
   is the highest `terms_rev` among the held `raised` and `amended` (0 when none is held); `claims` lists the ids of
   the valid claims held, sorted; `ignored` lists the ids of the invalid records, module records included, sorted (valid
-  module records are left to their module and not listed; a record with no string `id` has none to list). A record of
-  a version or extension the receiver does not implement is both kept (core §4, §6) and listed in `ignored` (core
-  §10). `expect` does not depend on arrival order: the reference runner also folds each case reversed.
+  module records are left to their module and not listed; a record with no string `id` has none to list). A case is
+  for a receiver that implements the suite's version alone: a record of another version or extension in it is kept and
+  not acted on (core §4, §6), and listed in `ignored` (core §10). `expect` does not depend on arrival order: the
+  reference runner also folds each case reversed.
 - `relations.json` (core §7): `{id, records, expect}`; `records` are the `related` records one receiver holds
   for one decision. `expect` is `{relations, replacement}`: the active relations as `{kind, target}` (target
   members other than `ext`, `project`, `key` and `uri` left out), sorted by kind and target, and the target of

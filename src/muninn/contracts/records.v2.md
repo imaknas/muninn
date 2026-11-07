@@ -2,7 +2,7 @@
 
 Muninn is the **principal side** of Principal Handoff Core 0.6 with the Acts 0.6 and Decisions 0.6 extensions
 (vendored unchanged in `vendor/principal-handoff/`: the schemas, and the records, raw, lifecycle, relations,
-terms-digest and convert conformance cases of tag `principal-handoff-0.6.1`, which Muninn's implementation passes). It
+terms-digest and convert conformance cases of tag `principal-handoff-0.6.2`, which Muninn's implementation passes). It
 implements neither the Evidence nor the Criteria module: it emits no `evidence.proof`, verifiable entries or approvals,
 and leaves those it receives to their modules. v2 runs beside v1 (`messages.v1.schema.json`,
 `handoffs.v1.schema.json`) until the projects' side reads and writes only v2; then v1 is retired.

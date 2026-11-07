@@ -1,5 +1,5 @@
 """Principal Handoff 0.6 as the principal side reads it, checked against the specification's own conformance cases (tag
-principal-handoff-0.6.1): records, raw text, lifecycle, relations, the terms digest and conversion. 0.5, which a
+principal-handoff-0.6.2): records, raw text, lifecycle, relations, the terms digest and conversion. 0.5, which a
 project may still be configured for, against 0.5's record and lifecycle cases; 0.4, still read, against its record
 cases."""
 
