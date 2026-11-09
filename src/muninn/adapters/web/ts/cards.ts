@@ -166,6 +166,7 @@ export function projectQuestionCard(q: ProjectQuestion): HTMLElement {
   return el("section", { class: "card review", "aria-label": w.cards.projectAsks(q.project) },
     el("div", { class: "card-top" }, el("span", {}, w.cards.projectAsks(q.project))),
     el("p", { class: "hero-text" }, q.text),
+    q.note ? el("p", { class: "sub" }, q.note) : null,
     afterTalk(q.talk, about, title),
     box,
     el("button", { type: "button", class: "btn primary block", onclick: () => answerQuestion(q, box) }, w.cards.reply),

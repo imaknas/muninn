@@ -142,7 +142,97 @@ def test_a_question_let_go_is_dismissed_and_one_answered_in_the_project_leaves_h
     assert s["outcome"] == "dismissed" and "answer" not in s
     h.engine.records_in.receive([{**rec("claimed", "dec-b", id_="c:dec-b", origin="agent", by="hub:garden", outcome="decided",
                                         answer={"text": "B 選二"}, evidence={"basis": "他在 session 裡說的"}), **q}])
+    [b] = h.engine.messages.open_questions()  # a claim never takes it off his list
+    assert b["id"] == "dec-b" and b["note"] == "garden 說你在 session 裡決定了:B 選二"
+
+
+Q = {"ext": "decisions/0.5"}
+
+
+def decision(key, text, **terms):
+    return {**rec("raised", key, id_=f"r:{key}", terms={"text": text, **terms}, terms_rev=1), **Q}
+
+
+def claim(key, text, **answer):
+    return {**rec("claimed", key, id_=f"c:{key}", origin="agent", by="hub:garden", outcome="decided",
+                  answer={"text": text, **answer}, evidence={"basis": "他在 session 裡說的"}), **Q}
+
+
+def withdrawn(key, reason="settled"):
+    return {**rec("withdrawn", key, id_=f"w:{key}", reason=reason, supersedes=[f"r:{key}"]), **Q}
+
+
+def asked(h):
+    return [c for c in h.engine.pending_confirmations() if c.kind == "decision_claim"]
+
+
+def status(h, key):
+    [m] = [m for m in h.store.project_messages(type="question") if m["id"] == key]
+    return m["status"], m["answer"]
+
+
+def test_a_question_the_project_says_he_decided_leaves_his_list_unanswered_and_he_is_asked_once(h):
+    h.engine.records_in.receive([decision("dec-b", "B 選哪個?", options=[{"id": "one", "label": "一"}, {"id": "two", "label": "二"}])])
+    h.engine.records_in.receive([claim("dec-b", "B 選二", option="two")])
+    w = [x for x in h.engine.waiting() if x.id == "pq:dec-b"]
+    assert w and w[0].says == "garden 問你:B 選哪個?(garden 說你在 session 裡決定了:B 選二)"
+    for _ in range(2):  # the same records again ask nothing more
+        h.engine.records_in.receive([claim("dec-b", "B 選二", option="two"), withdrawn("dec-b")])
+    assert h.engine.messages.open_questions() == [] and status(h, "dec-b") == ("withdrawn", None)  # never his answer
+    [c] = asked(h)
+    assert c.question == "garden 說你對「B 選哪個?」決定了:B 選二。對嗎?" and c.options == ("對", "不對")
+    assert [r for r in out(h) if r["type"] == "settled"] == []  # nothing is recorded as his until he says
+    h.engine.answer(c.id, "對")
+    [s] = out(h)
+    assert (s["type"], s["outcome"], s["answer"]) == ("settled", "decided", {"text": "B 選二", "option": "two"})
+    assert s["authority"] == {"kind": "confirmed", "decider": h.engine.parties.principal} and s["adopts"] == ["c:dec-b"]
+    assert s["evidence"] == {"proposal": f"muninn:question:{c.id}"}
+    assert asked(h) == []
+
+
+def test_his_no_brings_the_question_back_and_his_own_answer_tells_the_project_to_look_again(h):
+    h.engine.records_in.receive([decision("dec-b", "B 選哪個?"), claim("dec-b", "B 選二"), withdrawn("dec-b")])
+    [c] = asked(h)
+    h.engine.answer(c.id, "不對")
+    [b] = h.engine.messages.open_questions()
+    assert b["note"] == "garden 記成你決定了:B 選二;你說不對,等你的答案"
+    assert out(h) == []  # nothing is told until he answers
+    h.engine.messages.answer("dec-b", "選一")
+    s, n = out(h)
+    assert (s["type"], s["answer"], s["authority"]["kind"]) == ("settled", {"text": "選一"}, "principal") and "adopts" not in s
+    assert (n["type"], n["about"], n["key"]) == ("note", {"key": "dec-b"}, "dec-b") and "B 選二" in n["note"] and n["ts"] > s["ts"]
+
+
+def test_a_withdrawal_saying_it_was_decided_with_no_claim_is_asked_too_and_one_no_longer_needed_is_not(h):
+    h.engine.records_in.receive([decision("dec-a", "A?"), decision("dec-c", "C?"), withdrawn("dec-a"), withdrawn("dec-c", "not_needed")])
+    assert h.engine.messages.open_questions() == [] and status(h, "dec-c") == ("withdrawn", None)
+    [c] = asked(h)
+    assert c.question == "garden 說你在 session 裡決定了「A?」,但沒說答案。對嗎?"
+    h.engine.answer(c.id, "對")
+    assert out(h) == []  # no answer to adopt
+
+
+def test_a_claim_that_comes_after_the_withdrawal_is_what_he_is_asked(h):
+    h.engine.records_in.receive([decision("dec-b", "B?"), withdrawn("dec-b")])
+    h.engine.records_in.receive([claim("dec-b", "B 選二")])
+    [c] = asked(h)
+    assert "B 選二" in c.question
+    h.engine.answer(c.id, "對")
+    h.engine.records_in.receive([{**claim("dec-b", "B 選三"), "id": "c:dec-b:2"}])
+    assert asked(h) == []  # he has answered: once is enough
+
+
+def test_a_v1_question_the_project_says_he_answered_is_asked_about_and_his_no_goes_back_as_his_answer(h):
+    h.engine.messages.receive([{"id": "q1", "project": P, "type": "question", "text": "紅的還白的?"},
+                               {"id": "d1", "project": P, "type": "done", "question": "q1", "text": "他選紅的"},
+                               {"id": "q2", "project": P, "type": "question", "text": "要澆水嗎?"},
+                               {"id": "d2", "project": P, "type": "drop", "question": "q2", "text": "不用了"}])
     assert h.engine.messages.open_questions() == []
+    [c] = asked(h)
+    assert "他選紅的" in c.question
+    h.engine.answer(c.id, "不對")
+    hand = h.engine.messages.answer("q1", "白的")
+    assert hand["effect"] == "answers" and hand["fact"] == "白的" and "他選紅的" in hand["why"]
 
 
 def test_a_merge_and_a_date_he_moved_are_told_as_a_relation_and_a_note(h):

@@ -2877,6 +2877,9 @@
     },
     "label": {
      "type": "string"
+    },
+    "note": {
+     "type": "string"
     }
    },
    "required": [

@@ -212,6 +212,7 @@ class SqliteStore:
         for statement in _statements(SCHEMA):
             self._db.execute(statement)
         self._add_column("project_messages", "context", "TEXT")
+        self._add_column("project_messages", "claim", "TEXT")
         self._add_column("eval_cases", "ms", "INTEGER")
         self._add_column("eval_cases", "verdict", "TEXT")
         self._add_column("eval_cases", "input_tokens", "INTEGER")  # what the provider said the request took
@@ -814,7 +815,8 @@ class SqliteStore:
 
     @staticmethod
     def _project_message(r: sqlite3.Row) -> dict[str, Any]:
-        return {k: r[k] for k in ("id", "ts", "project", "type", "text", "handoff_id", "status", "answer", "context")}
+        return {**{k: r[k] for k in ("id", "ts", "project", "type", "text", "handoff_id", "status", "answer", "context")},
+                "claim": json.loads(r["claim"]) if r["claim"] else None}
 
     def add_project_message(self, m: dict[str, Any], at: datetime) -> bool:
         status = "open" if m["type"] == "question" else "received"
@@ -846,6 +848,20 @@ class SqliteStore:
     def amend_project_message(self, mid: str, text: str, at: datetime) -> bool:
         return bool(self._x("UPDATE project_messages SET text = ?, changed = ? WHERE id = ? AND type = 'question' AND status = 'open'",
                             (text, _ts(at), mid)).rowcount)
+
+    def claim_project_message(self, mid: str, claim: dict[str, Any], at: datetime) -> dict[str, Any] | None:
+        with self._write() as db:
+            if not db.execute("UPDATE project_messages SET claim = ?, changed = ? WHERE id = ? AND type = 'question'",
+                              (json.dumps(claim, ensure_ascii=False), _ts(at), mid)).rowcount:
+                return None
+            return self._project_message(db.execute("SELECT * FROM project_messages WHERE id = ?", (mid,)).fetchone())
+
+    def move_project_message(self, mid: str, status: str, at: datetime, *, was: str) -> dict[str, Any] | None:
+        with self._write() as db:
+            if not db.execute("UPDATE project_messages SET status = ?, changed = ? WHERE id = ? AND type = 'question' AND status = ?",
+                              (status, _ts(at), mid, was)).rowcount:
+                return None
+            return self._project_message(db.execute("SELECT * FROM project_messages WHERE id = ?", (mid,)).fetchone())
 
     def dismiss_project_message(self, mid: str, at: datetime) -> dict[str, Any] | None:
         with self._write() as db:

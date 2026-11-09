@@ -5,6 +5,7 @@ TEXTS = {
     "permission": "{who} wants to do something and needs your OK: {what}",
     "topic_now": "{title}: {now}",
     "project_asks": "{project} asks you: {text}",
+    "project_asks_noted": "{project} asks you: {text} ({note})",
     "talk_left": lambda called, n: f"{called}'s deep talk left 1 question" if n == 1 else f"{called}'s deep talk left {n} questions",
     "review": "Add “{title}: {detail}” to the plan?",
     "yes": "Yes",

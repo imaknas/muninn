@@ -99,7 +99,8 @@ def topics(today: Callable[[], Sequence[dict[str, Any]]], *, words: Language) ->
 
 def project_questions(open_questions: Callable[[], Sequence[dict[str, Any]]], *, words: Language) -> Source:
     """A project's question, waiting for the user's answer (a deep talk's own are that talk's: `talk_questions`)."""
-    return lambda: [Wait(f"pq:{q['id']}", "project", words("waiting.project_asks", project=q["project"], text=q["text"]), about={"kind": "project_question", "id": q["id"]},
+    return lambda: [Wait(f"pq:{q['id']}", "project", words("waiting.project_asks_noted", project=q["project"], text=q["text"], note=q["note"])
+                         if q.get("note") else words("waiting.project_asks", project=q["project"], text=q["text"]), about={"kind": "project_question", "id": q["id"]},
                          speak=True, via=(f"project:{q['project']}",), by=q["project"])
                     for q in open_questions() if not str(q.get("context") or "").startswith("lease:")]
 

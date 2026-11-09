@@ -707,9 +707,10 @@ class HandoffStore(Protocol):
 
 
 class ProjectMessageStore(Protocol):
-    """Project messages: {id, ts, project, type, text, handoff_id, status, answer, context};
-    type question | progress | done; status open | answered | dismissed | settled (questions) or received;
-    context: what the message came out of (e.g. "lease:<id>", a lent conversation)."""
+    """Project messages: {id, ts, project, type, text, handoff_id, status, answer, context, claim};
+    type question | progress | done; status open | answered | dismissed | settled | withdrawn (questions) or received;
+    context: what the message came out of (e.g. "lease:<id>", a lent conversation); claim: what the project says the
+    user decided, never his answer ({id, text, option, wrong}: wrong once he said it was not)."""
 
     def add_project_message(self, message: dict[str, Any], at: datetime) -> bool:
         """False if a message with that id was already stored."""
@@ -734,6 +735,14 @@ class ProjectMessageStore(Protocol):
 
     def dismiss_project_message(self, mid: str, at: datetime) -> dict[str, Any] | None:
         """Closes an open question unanswered; None if there is no open question with that id."""
+        ...
+
+    def claim_project_message(self, mid: str, claim: dict[str, Any], at: datetime) -> dict[str, Any] | None:
+        """Keeps on a question, whatever its status, what the project says he decided; None if there is no such question."""
+        ...
+
+    def move_project_message(self, mid: str, status: str, at: datetime, *, was: str) -> dict[str, Any] | None:
+        """A question in status `was` moved to `status` (its answer left as it is); None if there is none in `was`."""
         ...
 
 

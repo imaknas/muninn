@@ -91,6 +91,7 @@ export interface ReviewItem {
 
 export interface ProjectQuestion {
   id: string; project: string; text: string; ts?: string; lease_thread: string | null; lease_id: string | null; talk: Talk | null; label?: string;
+  note?: string;  // what the project says he decided, or that he said it was not so
 }
 
 export type StepKind = "ask_user" | "read" | "search" | "write_file" | "run_command" | "open_web" | "other";

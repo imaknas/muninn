@@ -79,16 +79,18 @@ def test_a_deep_talks_own_questions_and_handover_posted_here_wait_nowhere(pm):
     assert h.store.inbox(limit=10) == []  # the summary is already in that conversation, kept local there
 
 
-def test_a_question_settled_where_it_was_asked_leaves_the_list_without_an_answer_going_back(pm):
+def test_a_question_the_project_says_was_decided_where_it_was_asked_leaves_the_list_and_he_is_asked_whether_it_was(pm):
     h, m = pm
     m.receive([ask("m1"), ask("m2", "要不要跑 pilot?", "lab-notes")])
     m.receive([{"id": "m3", "project": "lab-notes", "type": "done", "question": "m2", "text": "他在 lab-notes 那邊決定先不跑"}])
     assert [q["id"] for q in m.open_questions()] == ["m1"]
-    [settled] = h.store.project_messages(type="question", status="settled")
-    assert settled["id"] == "m2" and "先不跑" in settled["answer"]
-    assert h.engine.handoffs() == [] and not h.store.inbox(limit=10)  # nothing goes back, nothing to read
+    [left] = h.store.project_messages(type="question", status="withdrawn")
+    assert left["id"] == "m2" and left["answer"] is None  # the project's word is not his answer
+    [c] = [c for c in h.engine.pending_confirmations() if c.kind == "decision_claim"]
+    h.engine.answer(c.id, c.options[0])
+    assert h.engine.handoffs() == [] and not h.store.inbox(limit=10)  # his yes: nothing goes back, nothing to read
     m.receive([{"id": "m4", "project": "home-budget", "type": "drop", "question": "m1", "text": "不用問了"}])
-    assert m.open_questions() == []
+    assert m.open_questions() == [] and [c for c in h.engine.pending_confirmations() if c.kind == "decision_claim"] == []
 
 
 @pytest.mark.parametrize("bad", [

@@ -5,8 +5,13 @@ which posts here: a question for the user, progress on something handed
 off, or that it is done. A question waits on the home page until the user
 answers it, and the answer leaves as a handoff to the project that asked
 (`reply_to` names the question). 'done' with a handoff id closes that
-handoff; 'done' (or 'drop') with a question id closes that question, settled
-where it was asked (the user answered it there). A lent conversation's
+handoff. A project saying he decided a question in its own session is its
+word, not his answer: the question still waits, with what the project says
+beside it; once the project no longer asks it, it leaves his list and he is
+asked once whether that is what he decided ('done' with a question id is
+both; 'drop' only no longer asking). His yes adopts the project's claim; his
+no puts the question back for his own answer, and the project is told to look
+again at what it did on the wrong one. A lent conversation's
 undecided questions are its handover's, kept with that conversation and asked
 when the user goes into the talk again: the copies posted here wait nowhere.
 A question the user has Muninn ask a project leaves as an 'asks'
@@ -21,13 +26,14 @@ from typing import Any, Callable, Iterable, Mapping, Protocol
 
 from .handoffs import Handoffs
 from .tasks import TaskRegistry
-from .models import InboxItem
-from .ports import Clock, InboxStore, ProjectMessageStore
+from .models import Confirmation, InboxItem
+from .ports import Clock, ConfirmationStore, InboxStore, ProjectMessageStore
 from .language import Language
 
 VERSION = 1  # of the message format; a post may leave it out
 TYPES = ("question", "progress", "done", "task", "drop")
 MAX_TEXT = 4000
+DECISION_CLAIM = "decision_claim"  # the question whether a project's word that he decided is right
 
 
 def parse(raw: Mapping[str, Any]) -> dict[str, Any]:
@@ -64,8 +70,8 @@ def parse(raw: Mapping[str, Any]) -> dict[str, Any]:
             "task": task.strip() if task else None, "question": question.strip() if question else None, "inferred": inferred, **extra}
 
 
-class MessageStorage(ProjectMessageStore, InboxStore, Protocol):
-    """The messages, and the inbox where progress and done land."""
+class MessageStorage(ProjectMessageStore, InboxStore, ConfirmationStore, Protocol):
+    """The messages, the inbox where progress and done land, and the question whether a project's claim is right."""
 
 
 class ProjectMessages:
@@ -115,7 +121,9 @@ class ProjectMessages:
                     self._store.settle_project_message(m["id"], self.words("project_messages.in_lease_handover"), now)
                 continue  # waits on the home page for an answer
             if m["type"] in ("done", "drop") and m["question"]:
-                self._store.settle_project_message(m["question"], m["text"], now)  # settled where it was asked
+                if m["type"] == "done":  # the project's word that he answered it there
+                    self.claimed(m["question"], m["project"], {"id": None, "text": m["text"]})
+                self.withdrawn(m["question"], m["project"], "settled" if m["type"] == "done" else "not_needed")
                 continue
             if self._tasks is not None and (m["type"] in ("task", "drop") or (m["type"] == "done" and m["task"])):
                 self._tasks.receive(m)  # tasks show in their own list; no inbox line each
@@ -133,7 +141,79 @@ class ProjectMessages:
         return self._store.amend_project_message(qid, text.strip()[:MAX_TEXT], self._clock.now())
 
     def open_questions(self) -> list[dict[str, Any]]:
-        return self._store.project_messages(type="question", status="open")
+        """Each with `note` when a project said he decided it: what it says, or that he said it was not so."""
+        return [{**q, "note": self._claim_note(q)} if q.get("claim") else q
+                for q in self._store.project_messages(type="question", status="open")]
+
+    def _claim_note(self, q: dict[str, Any]) -> str:
+        c, w = q["claim"], self.words
+        if c.get("wrong"):
+            return w("project_messages.claim_wrong", project=q["project"], answer=c.get("text") or "")
+        return w("project_messages.claim_said", project=q["project"], answer=c.get("text") or "")
+
+    def claimed(self, qid: str, project: str, claim: dict[str, Any]) -> None:
+        """The project says he decided its question (`claim`: {id: the claim's own record id, None for a v1 message;
+        text; option}): kept beside the question, which still waits for him; asked about once the project no longer
+        asks it."""
+        if self._question(qid, project) is None:
+            return
+        q = self._store.claim_project_message(qid, {**claim, "text": str(claim.get("text") or "")[:MAX_TEXT]}, self._clock.now())
+        if q is not None and q["status"] == "withdrawn":  # the project stopped asking before its claim came
+            self._ask_about_claim(q)
+
+    def withdrawn(self, qid: str, project: str, reason: str | None) -> None:
+        """The project no longer asks it: it leaves his list, never as his answer. When the project says it was decided
+        in its own session (`reason` settled, or a claim came), he is asked once whether it was."""
+        if self._question(qid, project) is None:
+            return
+        q = self._store.move_project_message(qid, "withdrawn", self._clock.now(), was="open")
+        if q is not None and (q.get("claim") or reason == "settled"):
+            self._ask_about_claim(q)
+
+    def _question(self, qid: str, project: str) -> dict[str, Any] | None:
+        return next((q for q in self._store.project_messages(type="question") if q["id"] == qid and q["project"] == project), None)
+
+    def _ask_about_claim(self, q: dict[str, Any]) -> None:
+        """Once per question: a claim that comes later takes the place of the question still waiting, never of one he
+        answered."""
+        key, w, claim = f"{DECISION_CLAIM}:{q['id']}", self.words, q.get("claim") or {}
+        asked = [c for c in self._store.confirmations(pending_only=False) if c.key == key]
+        if any(c.answer for c in asked):
+            return
+        for c in asked:  # asked without the claim that has come since
+            self._store.answer_confirmation(c.id, "", self._clock.now())
+        question = w("project_messages.claim_check", project=q["project"], text=q["text"], answer=claim["text"]) if claim.get("text") \
+            else w("project_messages.claim_check_no_answer", project=q["project"], text=q["text"])
+        self._store.add_confirmation(Confirmation(None, self._clock.now(), DECISION_CLAIM, question,
+                                                  (w("project_messages.claim_right"), w("project_messages.claim_not_right")),
+                                                  {"question": q["id"], "project": q["project"], "claim": claim.get("id")}, key=key))
+
+    def claim_answered(self, c: Confirmation, answer: str) -> None:
+        """His yes adopts the project's claim (a v1 message's, or a withdrawal with no answer, leaves nothing to tell);
+        his no puts the question back on his list for his own answer."""
+        q = self._question(str(c.data["question"]), str(c.data["project"]))
+        if q is None:
+            return
+        claim = q.get("claim") or {}
+        if answer == c.options[0]:
+            if claim.get("id") and claim.get("text"):
+                self._handoffs.add(project=q["project"], item=q["text"], fact=claim["text"], effect="answers", reply_to=q["id"],
+                                   option=claim.get("option"), why=self.words("project_messages.confirmed_why"),
+                                   decided={"by": "user", "confirmed": c.id, "claim": claim["id"]})
+            return
+        now = self._clock.now()
+        self._store.claim_project_message(q["id"], {**claim, "text": claim.get("text") or "", "wrong": True}, now)
+        self._store.move_project_message(q["id"], "open", now, was="withdrawn")
+
+    def _said(self, q: dict[str, Any], why: str) -> dict[str, Any]:
+        """Why his answer goes to the project; to a question it got wrong, also that it is to look again at what it did
+        (`recheck`: told as a note of its own where the project keeps records)."""
+        claim = q.get("claim") or {}
+        if not claim.get("wrong"):
+            return {"why": why}
+        recheck = self.words("project_messages.recheck", answer=claim["text"]) if claim.get("text") \
+            else self.words("project_messages.recheck_no_answer")
+        return {"why": f"{why} {recheck}", "recheck": recheck}
 
     def dismiss(self, mid: str) -> dict[str, Any] | None:
         """The user lets a question go (it was settled in the conversation, or no
@@ -144,7 +224,8 @@ class ProjectMessages:
         if q is None:
             return None
         return self._handoffs.add(project=q["project"], item=q["text"], fact=self.words("project_messages.no_answer_needed"),
-                                  effect="answers", reply_to=q["id"], dismissed=True, why=self.words("project_messages.dismissed_why"))
+                                  effect="answers", reply_to=q["id"], dismissed=True,
+                                  **self._said(q, self.words("project_messages.dismissed_why")))
 
     def answer(self, mid: str, answer: str) -> dict[str, Any] | None:
         """The handoff carrying the answer back, or None if there is no open
@@ -157,4 +238,4 @@ class ProjectMessages:
             return None
         return self._handoffs.add(project=q["project"], item=q["text"], fact=answer[:MAX_TEXT],
                                   quote=answer[:MAX_TEXT], effect="answers", reply_to=q["id"],
-                                  why=self.words("project_messages.answered_why"))
+                                  **self._said(q, self.words("project_messages.answered_why")))

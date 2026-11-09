@@ -49,6 +49,10 @@ class Messages(Protocol):
 
     def amend_question(self, qid: str, text: str) -> bool: ...
 
+    def claimed(self, qid: str, project: str, claim: dict[str, Any]) -> None: ...
+
+    def withdrawn(self, qid: str, project: str, reason: str | None) -> None: ...
+
 
 class Tasks(Protocol):
     def claimed(self, key: str, project: str, outcome: str, why: str, *, inferred: bool = False, claim: str | None = None) -> str: ...
@@ -208,13 +212,12 @@ class Inbox:
                                      **({"context": r["context"]} if r.get("context") else {})}])
         elif r["type"] == "amended":
             self._messages.amend_question(key, terms["text"])
-        elif r["type"] == "withdrawn":  # no longer asked: settled where it was asked, or not needed
-            self._messages.receive([{"id": r["id"][:200], "project": project, "type": "drop", "question": key,
-                                     "text": said or self.words("handoff_records.withdrawn", reason=r.get("reason"))}])
-        elif r["type"] == "claimed":  # he answered it in the project's own session
+        elif r["type"] == "withdrawn":  # no longer asked: it leaves his list, never as his answer (decisions section 2)
+            self._messages.withdrawn(key, project, r.get("reason"))
+        elif r["type"] == "claimed":  # the project's word that he decided it: beside the question, his to confirm
             answer = r.get("answer") or {}
-            self._messages.receive([{"id": r["id"][:200], "project": project, "type": "done", "question": key,
-                                     "text": str(answer.get("text") or answer.get("option") or said or self.words("handoff_records.answered"))}])
+            self._messages.claimed(key, project, {"id": r["id"], "text": str(answer.get("text") or answer.get("option") or ""),
+                                                  **({"option": answer["option"]} if answer.get("option") else {})})
 
 
     def _held(self, ext: str, project: str, key: str) -> list[dict[str, Any]]:
@@ -344,11 +347,20 @@ class Outbox:
             if need is None:
                 return []
             dismissed = bool(h.get("dismissed")) or str(h.get("fact") or "").startswith(NO_ANSWER_NEEDED_PREFIX)
-            return [{**base, "ext": ph.label(DECISIONS), "id": f"s:{key}:h{hid}", "type": "settled", "key": key,
-                     "outcome": "dismissed" if dismissed else "decided",
-                     **({"note": str(h.get("why") or self.words("handoff_records.dismissed_note"))} if dismissed else {"answer": {"text": str(h.get("fact") or "")}}),
-                     "authority": {"kind": "principal", "decider": self._parties.principal},
-                     "terms_rev": need["terms_rev"], "terms_digest": ph.terms_digest(need), **self._supersedes(project, key, hid)}]
+            # his own answer, or his yes to the answer a project said he gave (which adopts its claim, core section 7)
+            authority, evidence, adopts = self._authority(h) if h.get("decided") else \
+                ({"kind": "principal", "decider": self._parties.principal}, {}, [])
+            options = {o.get("id") for o in (need.get("terms") or {}).get("options") or []}
+            answer = {"text": str(h.get("fact") or ""), **({"option": h["option"]} if h.get("option") in options else {})}
+            out = [{**base, "ext": ph.label(DECISIONS), "id": f"s:{key}:h{hid}", "type": "settled", "key": key,
+                    "outcome": "dismissed" if dismissed else "decided",
+                    **({"note": str(h.get("why") or self.words("handoff_records.dismissed_note"))} if dismissed else {"answer": answer}),
+                    "authority": authority, **({"evidence": evidence} if evidence else {}), **({"adopts": adopts} if adopts else {}),
+                    "terms_rev": need["terms_rev"], "terms_digest": ph.terms_digest(need), **self._supersedes(project, key, hid)}]
+            if h.get("recheck"):  # the project withdrew it on an answer he did not give: it may ignore a settlement now
+                out.append({**base, "ts": ph.stamp(when + timedelta(microseconds=1)), "ext": ph.label(DECISIONS), "id": f"n:{key}:h{hid}",
+                            "type": "note", "key": key, "about": {"key": key}, "note": str(h["recheck"])})
+            return out
         if effect == "same_as" and key:
             return [self._related(base, key, hid, h["target"])]
         if effect == "premise" and key:

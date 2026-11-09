@@ -58,8 +58,6 @@ def test_a_projects_claim_names_whose_it_was_in_english():
                                      outcome="done", evidence={"basis": "the receipt is in the repo"})])
     [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
     assert english(c.question) and c.data["action"]["why"] == "the receipt is in the repo"  # asked, with the project's reason
-    assert EN("handoff_records.withdrawn", reason="settled") == "Decided on the project's side"
-    assert EN("handoff_records.withdrawn", reason=None) == "No longer needed"
 
 
 def test_a_new_users_first_conversation_is_named_in_english():

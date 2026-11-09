@@ -5,6 +5,7 @@ TEXTS = {
     "permission": "{who} 想做一件事,要你同意:{what}",
     "topic_now": "{title}:{now}",
     "project_asks": "{project} 問你:{text}",
+    "project_asks_noted": "{project} 問你:{text}({note})",
     "talk_left": "{called} 的深談留下 {n} 個問題",
     "review": "「{title}:{detail}」要放進計畫嗎?",
     "yes": "要",

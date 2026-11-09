@@ -64,7 +64,7 @@ class Questions:
             if q is None:
                 return None
             return {"kind": "project_question", "ref": q["id"], "domain": self._question_domain(q["project"], q["text"]),
-                    "project": q["project"], "question": q["text"]}
+                    "project": q["project"], "question": q["text"], **({"project_says": q["note"]} if q.get("note") else {})}
         c = next((x for x in self._pending() if str(x.id) == str(ref)), None)
         if c is None:
             return None

@@ -34,7 +34,7 @@ from .open_items import DeadlineItems, OpenItems, ProjectTodoItems, TaskItems, T
 from .task_evidence import CompletionDetector
 from .tasks import TaskRegistry, TaskActor
 from .todo_match import ModelTaskMatch, TodoMatcher
-from .project_messages import ProjectMessages
+from .project_messages import DECISION_CLAIM, ProjectMessages
 from .understanding import Understanding
 from .cases import CaseFeedback
 from .actors import Job, TopicRouter
@@ -892,6 +892,7 @@ class Muninn:
             "status_from_mail": self.records_actor.status_answered,
             "attribution": self._attribution_answered,
             "replaced": self.tasks.replaced_answered,
+            DECISION_CLAIM: self.messages.claim_answered,
         }
         return Questions(self.store, self.pending_confirmations, self.messages, lambda project: self._project_domain()(project),
                          self.understanding.clear, self.windows.question_topic, handlers, self.case_feedback,
