@@ -197,7 +197,7 @@ def test_a_close_the_sender_only_inferred_is_asked_first():
                          "text": "推斷已完成:今天的紀錄提到感測器已上線"}])
     assert e.tasks.get("task-garden-1")["status"] == "open"  # not closed on a guess
     [ask] = [c for c in e.pending_confirmations() if c.kind == e.gate.ASK]
-    assert ask.question == "T-1「Deploy the greenhouse sensor」做完了嗎?" and ask.data["why"] == "推斷已完成:今天的紀錄提到感測器已上線"
+    assert ask.question == "notes 說 T-1「Deploy the greenhouse sensor」已經做完了,結案嗎?" and ask.data["why"] == "推斷已完成:今天的紀錄提到感測器已上線"
     e.answer(ask.id, "做完了,結案")  # the user says it is done
     assert e.tasks.get("task-garden-1")["status"] == "done"
     # a project that saw it done (no `inferred`) is asked about too: its own word settles nothing by itself
@@ -253,5 +253,28 @@ def test_a_project_dropping_the_only_ask_leaves_the_task_open_and_asks_him():
     post(h, {"id": "x", "project": "garden", "type": "drop", "text": "not needed", "task": "m1"})
     assert h.engine.tasks.get("m1")["status"] == "open"  # it may be something he promised someone
     [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
+    assert c.question == "garden 說 T-1「Order soil」不用做了,結案嗎?"  # whose word it is, not Muninn wondering
     h.engine.answer(c.id, c.options[0])
     assert h.engine.tasks.get("m1")["status"] == "dropped"
+
+
+def test_a_long_title_in_a_question_is_cut_where_a_clause_ends_and_marked_as_cut():
+    h = make_harness(at(2026, 10, 21, 21))
+    title = "決定溫室感測器的上線範圍:只放測試用的那一排、不放正式種植區是否可以;要不要加一個讓訪客看即時溫度的頁面(第 9 項的合併已附此問題)"
+    post(h, task("m1", "garden", title))
+    post(h, {"id": "x", "project": "garden", "type": "done", "task": "m1", "inferred": True, "text": "清單裡已經沒有這件"})
+    [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
+    assert "要不要加一個讓訪客看即時溫度的頁面…」" in c.question and "(第" not in c.question
+
+
+def test_a_question_already_waiting_is_asked_again_in_the_current_words_and_still_answers():
+    h = make_harness(at(2026, 10, 21, 21))
+    post(h, task("m1", "garden", "Order soil"))
+    post(h, {"id": "x", "project": "garden", "type": "done", "task": "m1", "inferred": True, "text": "清單裡已經沒有這件"})
+    [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
+    h.store._x("UPDATE confirmations SET question=? WHERE id=?", ("T-1「Order soil」做完了嗎?", c.id))  # as an older Muninn asked it
+    assert h.engine.gate.reword() == 1 and h.engine.gate.reword() == 0
+    [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
+    assert c.question == "garden 說 T-1「Order soil」已經做完了,結案嗎?"
+    h.engine.answer(c.id, c.options[0])
+    assert h.engine.tasks.get("m1")["status"] == "done"

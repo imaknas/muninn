@@ -96,7 +96,8 @@ export function questionCard(c: Confirmation): HTMLElement {
   return el("section", { class: "card review", "aria-label": w.cards.askYou },
     el("div", { class: "card-top" }, el("span", {}, w.cards.asks[c.kind] || w.cards.askYou)),
     el("p", { class: "hero-text" }, c.question),
-    data.why ? el("p", { class: "sub" }, data.why) : null,
+    // a long why (a project's own account) folds to a few lines; a tap shows all of it
+    data.why ? el("p", { class: "sub clamp why", onclick: (ev: Event) => (ev.currentTarget as Element).classList.toggle("clamp") }, data.why) : null,
     afterTalk(c.talk, about, c.question),
     el("div", { class: "options" },
       ...c.options.map((o, i) => el("button", { type: "button", class: i === 0 && !data.neutral ? "suggested" : "",

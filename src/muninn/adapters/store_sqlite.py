@@ -462,6 +462,10 @@ class SqliteStore:
             self._x("UPDATE confirmations SET answer=?, answered_at=? WHERE id=?", (answer, _ts(at), cid))
             return Confirmation(c.id, c.ts, c.kind, c.question, c.options, c.data, answer, c.key)
 
+    def reword_confirmation(self, cid: int, question: str) -> bool:
+        with self._lock:
+            return self._x("UPDATE confirmations SET question=? WHERE id=? AND answer IS NULL", (question, cid)).rowcount > 0
+
     # learned rules
 
     def learned_rules(self) -> dict[str, dict[str, Any]]:

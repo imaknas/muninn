@@ -536,6 +536,10 @@ class ConfirmationStore(Protocol):
         """Records the answer to a still-open confirmation (the caller validates it)."""
         ...
 
+    def reword_confirmation(self, cid: int, question: str) -> bool:
+        """A still-open confirmation asked in other words (its answers unchanged); False when it was answered."""
+        ...
+
 
 class RuleStore(Protocol):
     """Attribution the user confirmed."""

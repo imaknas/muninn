@@ -116,7 +116,7 @@ def test_a_project_no_longer_needing_the_only_ask_leaves_it_open_and_asks_him(h)
     h.engine.records_in.receive([rec("withdrawn", "task-pots-1", id_="w1", reason="not_needed", supersedes=["r:task-pots-1"])])
     assert h.engine.tasks.get("task-pots-1")["status"] == "open"  # it may be something he promised: he is asked
     [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
-    assert "還要做嗎" in c.question
+    assert c.question.endswith("不用做了,結案嗎?")
 
 
 def test_a_question_raised_waits_for_him_and_his_answer_is_the_principals(h):

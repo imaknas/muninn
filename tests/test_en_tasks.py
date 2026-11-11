@@ -25,12 +25,12 @@ def test_a_close_only_guessed_is_asked_in_english_and_one_no_project_needs_is_as
     post(h, task("m1", "garden", "Order potting soil"), task("m2", "balcony", "Measure the railing"))
     h.engine.tasks.close("m1", by="garden", inferred=True)
     [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
-    assert (c.question, tuple(c.options)) == ('Is T-1 "Order potting soil" done?', ("Done, close it", "Not yet"))
+    assert (c.question, tuple(c.options)) == ('garden says T-1 "Order potting soil" is done. Is it?', ("Done, close it", "Not yet"))
     h.engine.answer(c.id, "Done, close it")
     assert h.engine.tasks.get("m1")["status"] == "done"
     assert h.engine.tasks.withdrawn("m2", "balcony") == "asked"
     [d] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
-    assert d.question == 'Do you still need to do T-2 "Measure the railing"?' and tuple(d.options) == ("No, close it", "Still to do")
+    assert d.question == 'balcony says it no longer needs T-2 "Measure the railing". Do you still need to do it?' and tuple(d.options) == ("No, close it", "Still to do")
     assert d.data.get("why") == "balcony no longer needs it"
 
 

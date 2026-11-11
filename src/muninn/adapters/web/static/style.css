@@ -201,6 +201,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .hero-text { font-size: 16px; font-weight: 500; }
 .sub { color: var(--ink-2); font-size: 14px; }
 .clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sub.why { cursor: pointer; }
 .kicker { font-size: 12px; color: var(--muted); }
 .after-talk { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #EEEEEA; padding-top: 8px; }
 .status { display: flex; gap: 10px; align-items: flex-start; }

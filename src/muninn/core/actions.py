@@ -470,6 +470,17 @@ class Action(Protocol):
         ...
 
 
+DECIDERS = frozenset({"user", "muninn", "evidence"})  # who closes a task besides a project (by its name)
+
+
+def shortened(text: str, limit: int) -> str:
+    """At most `limit` characters, cut where a clause ends when there is one in its second half, marked as cut."""
+    if len(text) <= limit:
+        return text
+    cut = max(text.rfind(p, limit // 2, limit) for p in "(;,、。,;(")
+    return text[:cut if cut > 0 else limit].rstrip() + "…"
+
+
 @dataclass(frozen=True)
 class TaskClose:
     """A task done or dropped; the projects that sent it hear of it."""
@@ -493,10 +504,14 @@ class TaskClose:
     def question(self, ctx) -> tuple[str, tuple[str, str]]:
         t = ctx.tasks.get(self.key)
         words = ctx.words
-        what = words("actions.task_what", n=t["n"], title=t["title"][:60]) if t else self.key
+        what = words("actions.task_what", n=t["n"], title=shortened(t["title"], 60)) if t else self.key
+        # a project's word, not the user's: who says so is part of the question, or it reads as Muninn not knowing
+        said = "" if self.by in DECIDERS else "_by"
         if self.status == "done":
-            return words("actions.task_ask_done", what=what), (words("actions.task_ask_done_yes"), words("actions.task_ask_done_no"))
-        return words("actions.task_ask_still", what=what), (words("actions.task_ask_still_yes"), words("actions.task_ask_still_no"))
+            return (words(f"actions.task_ask_done{said}", what=what, by=self.by),
+                    (words("actions.task_ask_done_yes"), words("actions.task_ask_done_no")))
+        return (words(f"actions.task_ask_still{said}", what=what, by=self.by),
+                (words("actions.task_ask_still_yes"), words("actions.task_ask_still_no")))
 
     def apply(self, ctx, hold):
         done = ctx.tasks.change_status(self.key, self.status, by=self.by, why=self.why, hold=hold, only_to=self.only_to,
@@ -1087,6 +1102,25 @@ class ActionGate:
             {"action": action_to_dict(action), "by": by.value, **({"why": action.why} if getattr(action, "why", "") else {})},
             key=f"action:{json.dumps(action_to_dict(action), sort_keys=True)}"))
         return Ran(None, text, c.id) if c else None
+
+    def reword(self) -> int:
+        """The questions still waiting, asked as they would be asked now (a better wording reaches those already
+        asked, and what they name, e.g. a task's title, is its current one). How many changed."""
+        ctx = self._context()
+        changed = 0
+        for c in self._store.confirmations():
+            if c.kind != self.ASK or not isinstance((c.data or {}).get("action"), dict):
+                continue
+            try:
+                action = action_from_dict(c.data["action"])
+            except (KeyError, TypeError):
+                continue
+            if not hasattr(action, "question"):
+                continue
+            question, answers = action.question(ctx)
+            if question != c.question and tuple(answers) == tuple(c.options) and self._store.reword_confirmation(c.id, question):
+                changed += 1
+        return changed
 
     def answered(self, data: dict[str, Any], yes: bool, cid: int | None = None) -> Ran | None:
         """The user's answer to question `cid` the gate asked: yes is their decision, so done now (an action that
