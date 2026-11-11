@@ -156,6 +156,30 @@ def test_a_question_said_again_the_next_day_has_its_buttons_once_and_one_press_a
     assert after["suggest"] == []
 
 
+def test_a_question_only_brought_up_leaves_its_card_nothing_after_a_discussion():
+    h = make_harness(at(2026, 10, 21, 15))
+    c, buttons = asked(h)
+    conv = h.engine.conversation()
+    conv.speak({"kind": "question", "id": c.id}, c.question, buttons)
+    assert conv.suggestions_for("question", c.id) is None  # its card has the question and its answers once
+
+
+def test_a_discussed_question_said_again_shows_on_its_card_what_the_discussion_left_not_the_question_again():
+    from datetime import timedelta
+
+    h = make_harness(at(2026, 10, 21, 15))
+    c, buttons = asked(h)
+    conv = h.engine.conversation()
+    about = {"kind": "question", "id": str(c.id)}
+    replies(h, {"actions": [], "reply": "看你那段時間在哪個視窗。"})
+    conv.execute_turn(conv.understand_turn(None, "這要怎麼判斷?", about))
+    h.clock.t += timedelta(hours=11)  # still open after midnight: said again
+    conv.speak(about, c.question, buttons)
+    talk = conv.suggestions_for("question", c.id)
+    assert talk["last"] == "看你那段時間在哪個視窗。"
+    assert talk["suggest"] == []  # not the card's own answers a second time
+
+
 def test_buttons_already_drawn_twice_all_go_with_one_press():
     from datetime import timedelta
 

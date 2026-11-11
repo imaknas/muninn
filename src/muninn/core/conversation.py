@@ -226,13 +226,17 @@ class Conversation:
                 for i, s in (enumerate(t.get("suggest") or []) if pending else self.live(t))]
 
     def suggestions_for(self, kind: str, ref: str) -> dict[str, Any] | None:
-        """The latest discussion about an item still waiting (its card), with the next steps it left."""
+        """The latest discussion about an item still waiting (its card), with the next steps it left. What Muninn said
+        about it unasked (bringing it up, again the next day) is the item itself, which the card already shows with
+        its own answers: not what a discussion left, and with no word from the user there is no discussion at all."""
         talks = self._store.threads_about(kind, str(ref))
         if not talks:
             return None
         tid, t = talks[0]
-        return {"thread": tid, "suggest": self.buttons(t, pending=True),
-                "last": next((x["text"] for x in reversed(t["turns"]) if x["role"] == "muninn"), "")}
+        if not any(x["role"] == "user" for x in t["turns"]):
+            return None
+        return {"thread": tid, "suggest": [b for b in self.buttons(t, pending=True) if not b.get("turn")],
+                "last": next((x["text"] for x in reversed(t["turns"]) if x["role"] == "muninn" and not x.get("spoken")), "")}
 
 
 def stamped(suggest: Sequence[dict[str, Any]], turn: str | None = None) -> list[dict[str, Any]]:
