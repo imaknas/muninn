@@ -969,6 +969,24 @@ def test_the_conversation_opens_on_today_with_what_came_before_folded_above(page
     expect()(earlier.locator(".day")).to_have_text("昨天")  # its day named inside it
 
 
+def test_what_muninn_says_today_is_not_under_the_name_of_an_older_conversation(page, muninn):
+    from datetime import timedelta
+
+    now = muninn.h.clock.now()
+    then = (now - timedelta(days=8)).replace(hour=15)
+    muninn.h.store.save_thread("t-rain", {"about": None, "ts": then.isoformat(), "turns": [
+        {"role": "user", "text": "為什麼下雨天特別想睡?", "ts": then.isoformat()},
+        {"role": "muninn", "text": "光線暗、氣壓低,身體會想休息。", "ts": (then + timedelta(minutes=1)).isoformat()}],
+        "topic": {"title": "下雨天想睡", "state": "closed", "ts": then.isoformat()}})
+    muninn.h.engine.conversation().speak(None, "你不在的時候:每天走路已經 3 天沒有動靜。", [])
+    go(page, muninn)
+    t = talk(page)
+    expect()(t.get_by_text("你不在的時候:每天走路已經 3 天沒有動靜。")).to_be_visible()
+    expect()(t.get_by_text("在談:下雨天想睡")).to_be_hidden()  # that conversation is folded with its own lines only
+    t.locator("details.earlier > summary").click()
+    expect()(t.get_by_text("在談:下雨天想睡")).to_be_visible()
+
+
 def test_the_panel_lists_exactly_what_the_server_says_waits(desktop, muninn):
     seed(muninn)
     go(desktop, muninn)

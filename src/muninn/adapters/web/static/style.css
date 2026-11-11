@@ -171,6 +171,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .talk-fold .talk-lines { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .day { align-self: center; font-size: 12px; color: var(--muted); background: var(--line); border-radius: 999px; padding: 2px 10px; margin: 6px 0; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.divider.bare { display: none; }
 .outcome { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
 .outcome .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .outcome code { display: block; width: 100%; background: #F1F1EE; border-radius: 8px; padding: 6px 10px; overflow-x: auto; }

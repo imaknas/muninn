@@ -124,7 +124,7 @@ async function draw(feed: List<Thread>): Promise<void> {
     known.set(th.thread, th.about);
     for (const x of th.turns) if (x.spoken) shownSpoken.add(`${th.thread} ${x.ts}`);
     if (!th.turns.length) continue;
-    if (th.title) nodes.push(divider(w.talk.talkingAbout(th.title), th.thread));  // a divider only where there is a name to put on it
+    nodes.push(th.title ? divider(w.talk.talkingAbout(th.title), th.thread) : boundary(th.thread));
     for (const x of th.turns) {
       const stretch = x.ended ? talks.get(`${x.ended} ${x.ts}`) : undefined;
       if (stretch && stretch.turns.length) nodes.push(talkFold(stretch.label, stretch.turns));  // what was said in it, folded
@@ -210,7 +210,7 @@ export async function refreshStream(away = false): Promise<void> {
       if (stalePresses(th)) placeButtons(th.thread, th.suggest);
       continue;
     }
-    if (th.title) t.log.append(divider(w.talk.talkingAbout(th.title), th.thread));
+    t.log.append(th.title ? divider(w.talk.talkingAbout(th.title), th.thread) : boundary(th.thread));
     for (const x of fresh) {
       shownSpoken.add(`${th.thread} ${x.ts}`);
       t.log.append(at(el("p", { class: "reply" }, x.text), x.ts));
@@ -253,6 +253,12 @@ function divider(text: string, thread?: string | null): HTMLElement {
   return el("div", { class: "divider", role: "separator", ...(thread ? { "data-thread": thread } : {}) }, el("span", {}, text));
 }
 
+// where a conversation with no name begins: nothing to show, but what is said in it is not under the name of the
+// conversation before it (folding the earlier days keeps a name with its own lines only)
+function boundary(thread?: string | null): HTMLElement {
+  return el("div", { class: "divider bare", "aria-hidden": "true", ...(thread ? { "data-thread": thread } : {}) });
+}
+
 // talk about `about` (or about nothing in particular) from now on: the conversation already kept about it, else a new one
 export function openTalk(about: About | null, title: string | null, first?: string | null, resume?: Resume | Talk): void {
   const t = talk;
@@ -269,7 +275,7 @@ export function openTalk(about: About | null, title: string | null, first?: stri
     t.pastLease = resume && "lease_id" in resume ? resume.lease_id ?? null : null;
     // moved on before saying anything there: that divider goes, so looking through things never stacks them up
     if (t.log.lastElementChild?.classList.contains("divider")) t.log.lastElementChild.remove();
-    if (title) t.log.append(divider(w.talk.nowTalkingAbout(title)));
+    t.log.append(title ? divider(w.talk.nowTalkingAbout(title)) : boundary());
     if (t.thread) resumeLease(t);
   }
   setTopic(about, title);
