@@ -78,6 +78,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 #pill > * { pointer-events: none; }  /* its words are redrawn whenever what waits is read: a tap lands on the button itself */
 #pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wait-dot); }
 #pill b { font-weight: 500; }
+/* what waits is on its way: the same shimmer as a panel view's skeleton */
+#pill .reading { width: 72px; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #ECECE8 0%, #F6F6F3 50%, #ECECE8 100%);
+  background-size: 200% 100%; animation: shimmer 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { #pill .reading { animation: none; } }
 #pill .chev { width: 26px; height: 26px; border-radius: 50%; background: #F1F1EE; position: relative; }
 #pill .chev::after {
   content: ""; position: absolute; left: 9px; top: 7px; width: 6px; height: 6px;

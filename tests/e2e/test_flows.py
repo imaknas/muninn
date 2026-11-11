@@ -43,6 +43,35 @@ def test_what_waits_is_in_the_panel_and_never_in_the_conversation(request, munin
     no_stray_text(pg)
 
 
+def test_the_button_shows_what_waits_is_on_its_way_before_it_is_read(page, muninn):
+    held = []
+    page.route("**/api/waiting", lambda r: held.append(r))
+    page.goto(f"{muninn.url}/")
+    loading = page.get_by_role("button", name="讀取中")
+    expect()(loading).to_be_visible()  # not an empty frame
+    expect()(loading).to_have_attribute("aria-busy", "true")
+    eventually_on(page, lambda: held)
+    page.unroute("**/api/waiting")
+    for r in held:
+        r.continue_()
+    expect()(pill(page)).to_be_visible()
+    expect()(pill(page)).not_to_have_attribute("aria-busy", "true")
+
+
+def test_a_button_whose_first_read_failed_says_so_and_a_tap_reads_again(page, muninn):
+    from e2e_support import expect_console
+    seed(muninn)
+    expect_console(page, "status of 500")  # the failed read, on purpose
+    page.route("**/api/waiting", lambda r: r.fulfill(status=500, body="{}"))
+    page.goto(f"{muninn.url}/")
+    failed = page.get_by_role("button", name="沒讀到等你的事;點一下再讀一次")
+    expect()(failed).to_be_visible()  # not loading for ever
+    page.unroute("**/api/waiting")
+    failed.click()
+    expect()(pill(page)).to_have_accessible_name(pytest.importorskip("re").compile(r"^\d+ 件等你"))
+    expect()(waiting(page, "Red or white roses?")).to_have_count(1)
+
+
 @pytest.mark.parametrize("screen", SCREENS)
 def test_every_place_draws_with_no_stray_text_and_fits_the_window(request, muninn, screen):
     pg = request.getfixturevalue(screen)

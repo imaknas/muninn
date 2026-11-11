@@ -101,6 +101,7 @@ async function readEverything(): Promise<void> {
       stream.scrollTop = stream.scrollHeight;
     }
   } catch (e) {
+    if (mine === seq && !held) drawPillUnread();  // failed before what waits was read: not loading for ever
     handleError(e);
   }
 }
@@ -118,7 +119,14 @@ const readWaitingAgain = oneAtATime(() => readWaiting().catch(handleError));
 // elsewhere shows there even while the user is in the middle of something in the conversation. False when a newer
 // read has started meanwhile.
 async function readWaiting(mine = ++seq): Promise<boolean> {
-  const data = await loadData();
+  if (!held) drawPillReading();
+  let data: Data;
+  try {
+    data = await loadData();
+  } catch (e) {
+    if (mine === seq && !held) drawPillUnread();
+    throw e;
+  }
   const list = things(data);
   if (mine !== seq) return false;
   held = { data, list, at: Date.now() };
@@ -138,6 +146,23 @@ function drawPill(data: Parameters<typeof summary>[0], list: Thing[]): void {
     el("span", { class: waiting ? "muted" : "" }, `${waiting ? "· " : ""}${w.app.pillToday(today)}`),
     el("span", { class: "chev", "aria-hidden": "true" }),
   ]));
+  pill.removeAttribute("aria-busy");
+}
+
+// before what waits has been read once: the button shows it is on its way, not an empty frame
+function drawPillReading(): void {
+  const pill = must("#pill");
+  pill.setAttribute("aria-label", w.app.pillReading);
+  pill.setAttribute("aria-busy", "true");
+  pill.replaceChildren(el("span", { class: "reading", "aria-hidden": "true" }), el("span", { class: "chev", "aria-hidden": "true" }));
+}
+
+// the first read failed (the error is said as usual): the button says so instead of loading for ever; a tap reads again
+function drawPillUnread(): void {
+  const pill = must("#pill");
+  pill.setAttribute("aria-label", w.app.pillUnreadLabel);
+  pill.removeAttribute("aria-busy");
+  pill.replaceChildren(el("span", { class: "muted" }, w.app.pillUnread), el("span", { class: "chev", "aria-hidden": "true" }));
 }
 
 // the conversation is only the conversation: what waits on the user is in the panel, not here. A new user with no
@@ -209,7 +234,11 @@ window.addEventListener("error", (ev) => reportError(ev.message, `${ev.filename}
 mountTalk();
 mountViewer();
 watchOpen(() => { if (NARROW.matches && route().view) location.hash = ""; });  // the conversation, not the panel, on a phone
-must("#pill").addEventListener("click", () => { location.hash = route().view ? "" : "#things"; });
+must("#pill").addEventListener("click", () => {
+  location.hash = route().view ? "" : "#things";
+  if (!held && started) void readWaitingAgain();  // nothing read yet (the first read failed): again
+});
+drawPillReading();
 must("#scrim").addEventListener("click", () => { location.hash = ""; });
 window.addEventListener("hashchange", () => {
   show();
