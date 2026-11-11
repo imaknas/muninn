@@ -520,7 +520,7 @@ class Muninn:
         def tasks() -> None:
             self.tasks.sort_new()
             self.completion_detector().run()
-            self.gate.reword()
+            self.gate.tidy()
 
         def project_messages() -> None:
             if raw := self.project_inbox.collect():

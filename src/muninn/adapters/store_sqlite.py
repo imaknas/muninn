@@ -462,9 +462,15 @@ class SqliteStore:
             self._x("UPDATE confirmations SET answer=?, answered_at=? WHERE id=?", (answer, _ts(at), cid))
             return Confirmation(c.id, c.ts, c.kind, c.question, c.options, c.data, answer, c.key)
 
-    def reword_confirmation(self, cid: int, question: str) -> bool:
+    def revise_confirmation(self, cid: int, *, question: str | None = None, data: dict[str, Any] | None = None,
+                            key: str | None = None) -> bool:
+        sets = {k: v for k, v in (("question", question), ("data", None if data is None else json.dumps(data, ensure_ascii=False)),
+                                  ("key", key)) if v is not None}
+        if not sets:
+            return False
         with self._lock:
-            return self._x("UPDATE confirmations SET question=? WHERE id=? AND answer IS NULL", (question, cid)).rowcount > 0
+            return self._x(f"UPDATE confirmations SET {', '.join(f'{k}=?' for k in sets)} WHERE id=? AND answer IS NULL",
+                           (*sets.values(), cid)).rowcount > 0
 
     # learned rules
 

@@ -491,11 +491,26 @@ class TaskClose:
     by: str = "user"
     # the why came from a lent session's content: only these projects may hear it (None: anyone may)
     only_to: tuple[str, ...] | None = None
-    claim: str | None = None  # the project's claim this settles on
+    claim: str | None = None  # the project's claim this settles on (as kept before `claims`: for every origin)
     confirmed: int | None = None  # the question the user said yes to, when it was asked first
     mandate: str | None = None  # the user's standing permission it is settled under, when not asked
+    claims: tuple[tuple[str, str], ...] = ()  # (the project's key for its item, its claim): each origin's own
     name: ClassVar[str] = "task_close"
     reach: ClassVar[Reach] = Reach.OUTWARD_HELD
+
+    def ask_key(self) -> str:
+        """One question per task and outcome, however many of its items claimed it and in whatever words."""
+        return f"task_close:{self.key}:{self.status}"
+
+    def merged(self, other: TaskClose) -> TaskClose:
+        """The question already waiting, holding the other's claims too: one yes settles each origin on its own."""
+        claims = [tuple(c) for c in self.claims]
+        # one kept before `claims`, whose item is not known: kept with no item, matched when it is settled
+        loose = [("", c) for c in (self.claim, other.claim) if c and all(c != x for _, x in [*claims, *other.claims])]
+        for ref, cid in [*(tuple(c) for c in other.claims), *loose]:
+            if (ref, cid) not in claims and (not ref or ref not in {r for r, _ in claims}):
+                claims.append((ref, cid))
+        return replace(self, claims=tuple(claims), claim=None)
 
     def preview(self, ctx):
         t = ctx.tasks.get(self.key)
@@ -515,7 +530,8 @@ class TaskClose:
 
     def apply(self, ctx, hold):
         done = ctx.tasks.change_status(self.key, self.status, by=self.by, why=self.why, hold=hold, only_to=self.only_to,
-                                       confirmed=self.confirmed, claim=self.claim, mandate=self.mandate)
+                                       confirmed=self.confirmed, claims=[*(tuple(c) for c in self.claims), *([("", self.claim)] if self.claim else [])],
+                                       mandate=self.mandate)
         if done is None:
             return None
         t, prev = done
@@ -1016,6 +1032,11 @@ def action_to_dict(a: Any) -> dict[str, Any]:
     return {"name": a.name, **asdict(a)}
 
 
+def ask_key(action: Any) -> str:
+    """What makes two of the gate's questions the same one: the action's own say, else all it holds."""
+    return action.ask_key() if hasattr(action, "ask_key") else f"action:{json.dumps(action_to_dict(action), sort_keys=True)}"
+
+
 def action_from_dict(d: dict[str, Any]) -> Any:
     cls = ACTIONS[d["name"]]
     names = {f.name for f in fields(cls)}
@@ -1097,29 +1118,53 @@ class ActionGate:
         words = self.words
         question, answers = action.question(ctx) if hasattr(action, "question") else (
             words("actions.ask", text=text), (words("actions.yes"), words("actions.no")))
+        key = ask_key(action)
         c = self._store.add_confirmation(Confirmation(
             None, self._clock.now(), self.ASK, question, answers,
             {"action": action_to_dict(action), "by": by.value, **({"why": action.why} if getattr(action, "why", "") else {})},
-            key=f"action:{json.dumps(action_to_dict(action), sort_keys=True)}"))
+            key=key))
+        if c is None and hasattr(action, "merged"):  # already asked: the one waiting holds this one's part too
+            waiting = next((x for x in self._store.confirmations() if x.key == key), None)
+            if waiting is not None:
+                self._fold(waiting, [action])
         return Ran(None, text, c.id) if c else None
 
-    def reword(self) -> int:
-        """The questions still waiting, asked as they would be asked now (a better wording reaches those already
-        asked, and what they name, e.g. a task's title, is its current one). How many changed."""
+    def _fold(self, into: Confirmation, others: list[Any]) -> None:
+        action = action_from_dict(into.data["action"])
+        for o in others:
+            action = action.merged(o)
+        if action_to_dict(action) != into.data["action"]:
+            self._store.revise_confirmation(into.id, data={**into.data, "action": action_to_dict(action)})
+
+    def tidy(self) -> int:
+        """The questions still waiting, as they would be asked now: the same thing asked twice (kept before a question
+        had its own key) is one question holding both parts, the rest retired unanswered; each is asked in the current
+        words (and what it names, e.g. a task's title, is its current one). How many changed."""
         ctx = self._context()
-        changed = 0
-        for c in self._store.confirmations():
+        by_key: dict[str, list[tuple[Confirmation, Any]]] = {}
+        for c in sorted(self._store.confirmations(), key=lambda x: x.id or 0):
             if c.kind != self.ASK or not isinstance((c.data or {}).get("action"), dict):
                 continue
             try:
                 action = action_from_dict(c.data["action"])
             except (KeyError, TypeError):
                 continue
-            if not hasattr(action, "question"):
-                continue
-            question, answers = action.question(ctx)
-            if question != c.question and tuple(answers) == tuple(c.options) and self._store.reword_confirmation(c.id, question):
+            by_key.setdefault(ask_key(action), []).append((c, action))
+        changed = 0
+        for key, asked in by_key.items():
+            (first, action), rest = asked[0], asked[1:]
+            if rest and hasattr(action, "merged"):
+                self._fold(first, [a for _, a in rest])
+                for c, _ in rest:
+                    self._store.answer_confirmation(c.id, "", self._clock.now())  # retired: the first one asks it
+                changed += len(rest)
+            if first.key != key and self._store.revise_confirmation(first.id, key=key):
                 changed += 1
+            if hasattr(action, "question"):
+                question, answers = action.question(ctx)
+                if question != first.question and tuple(answers) == tuple(first.options) and \
+                        self._store.revise_confirmation(first.id, question=question):
+                    changed += 1
         return changed
 
     def answered(self, data: dict[str, Any], yes: bool, cid: int | None = None) -> Ran | None:

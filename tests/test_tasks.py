@@ -273,8 +273,48 @@ def test_a_question_already_waiting_is_asked_again_in_the_current_words_and_stil
     post(h, {"id": "x", "project": "garden", "type": "done", "task": "m1", "inferred": True, "text": "清單裡已經沒有這件"})
     [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
     h.store._x("UPDATE confirmations SET question=? WHERE id=?", ("T-1「Order soil」做完了嗎?", c.id))  # as an older Muninn asked it
-    assert h.engine.gate.reword() == 1 and h.engine.gate.reword() == 0
+    assert h.engine.gate.tidy() == 1 and h.engine.gate.tidy() == 0
     [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
     assert c.question == "garden 說 T-1「Order soil」已經做完了,結案嗎?"
     h.engine.answer(c.id, c.options[0])
     assert h.engine.tasks.get("m1")["status"] == "done"
+
+
+def _merged_and_both_claimed(h):
+    post(h, task("m1", "garden", "Order soil"), task("m2", "garden", "Order soil for the pots"))
+    matcher(h, {"m2": "m1"})
+    h.engine.tasks.sort_new()
+    for ref in ("m1", "m2"):
+        h.engine.tasks.claimed(ref, "garden", "done", "清單裡已經沒有這件", inferred=True, claim=f"c:{ref}:r0")
+
+
+def _settlements(h):
+    return {x["reply_to"]: x["decided"].get("claim") for x in h.engine.handoff_log.pending(status=None, include_held=True) if x.get("effect") == "done"}
+
+
+def test_two_items_claiming_one_task_done_ask_once_and_each_settlement_adopts_its_own_claim():
+    h = make_harness(at(2026, 10, 21, 21))
+    _merged_and_both_claimed(h)
+    [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]  # one question, not one per item
+    h.engine.answer(c.id, c.options[0])
+    assert h.engine.tasks.get("m1")["status"] == "done"
+    assert _settlements(h) == {"m1": "c:m1:r0", "m2": "c:m2:r0"}
+
+
+def test_the_same_task_asked_twice_before_is_one_question_holding_both_claims():
+    import json
+
+    h = make_harness(at(2026, 10, 21, 21))
+    _merged_and_both_claimed(h)
+    [c] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
+    for ref in ("m1", "m2"):  # as an older Muninn kept them: one question per claim, each holding its claim alone
+        action = {**c.data["action"], "claims": [], "claim": f"c:{ref}:r0"}
+        h.store._x("INSERT INTO confirmations (ts, kind, question, options, data, key) VALUES (?,?,?,?,?,?)",
+                   (c.ts.isoformat(), c.kind, c.question, json.dumps(list(c.options)), json.dumps({**c.data, "action": action}),
+                    f"action:{json.dumps(action, sort_keys=True)}"))
+    h.store.answer_confirmation(c.id, "", h.clock.now())
+    assert len([c for c in h.engine.pending_confirmations() if c.kind == "action"]) == 2
+    h.engine.gate.tidy()
+    [left] = [c for c in h.engine.pending_confirmations() if c.kind == "action"]
+    h.engine.answer(left.id, left.options[0])
+    assert _settlements(h) == {"m1": "c:m1:r0", "m2": "c:m2:r0"}

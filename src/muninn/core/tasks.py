@@ -97,7 +97,7 @@ class TaskRegistry:
         if t["status"] != "open":
             return status
         # the project's word alone settles nothing: under his standing permission it is taken (undoably); else he is asked
-        self.close(t["key"], status, by=project, why=why, inferred=mandate is None, claim=claim,
+        self.close(t["key"], status, by=project, why=why, inferred=mandate is None, claims=[(key, claim)] if claim else (),
                    mandate=mandate["id"] if mandate else None)
         return status
 
@@ -266,15 +266,15 @@ class TaskRegistry:
         return t
 
     def close(self, key: str, status: str = "done", *, by: str = "user", why: str = "",
-              only_to: Collection[str] | None = None, inferred: bool = False, claim: str | None = None,
+              only_to: Collection[str] | None = None, inferred: bool = False, claims: Sequence[tuple[str, str]] = (),
               mandate: str | None = None) -> Ran | None:
         """Done or dropped, through the gate (which decides whether the
         projects hear of it at once or later). `only_to`: the why came from a
         lent session's content, so only those projects hear it. `inferred`:
-        `by` only guessed it is done, so the user is asked first. `claim`: the
-        project's claim it settles on; `mandate`: the user's standing permission it is settled under. Undoable."""
+        `by` only guessed it is done, so the user is asked first. `claims`: (the project's key for its item, its
+        claim) it settles on; `mandate`: the user's standing permission it is settled under. Undoable."""
         limit = tuple(sorted(only_to)) if only_to is not None else None
-        return self._gate.run(TaskClose(key, status, why, by, limit, claim=claim, mandate=mandate),
+        return self._gate.run(TaskClose(key, status, why, by, limit, mandate=mandate, claims=tuple(claims)),
                               DecidedBy.INFERRED_UNSURE if inferred else decided_by(by))
 
     def set_due(self, key: str, due: str) -> Ran | None:
@@ -282,18 +282,19 @@ class TaskRegistry:
 
     def change_status(self, key: str, status: str, *, by: str, why: str, hold: timedelta | None,
                       only_to: Collection[str] | None = None, confirmed: int | None = None,
-                      claim: str | None = None, mandate: str | None = None) -> tuple[dict[str, Any], str] | None:
+                      claims: Sequence[tuple[str, str]] = (), mandate: str | None = None) -> tuple[dict[str, Any], str] | None:
         """The change itself (the gate logs it): every origin hears of it, with who decided it (`by`; `confirmed`:
-        the question the user said yes to; `claim`: the project's claim it settles on), the one that claimed it too
+        the question the user said yes to; `claims`: each item's claim it settles on, as `claim_for` finds them), the one that claimed it too
         (only the user settles: its claim is not the settlement), after `hold` when set. (task, previous status)."""
         t = self._store.task(key)
         if t is None or t["status"] == status:
             return None
         prev = t["status"]
         t = self._store.update_task(t["key"], self._clock.now(), status=status, closed_by=by, why=why)
-        decided = {"by": by, **({"confirmed": confirmed} if confirmed else {}), **({"claim": claim} if claim else {}),
+        decided = {"by": by, **({"confirmed": confirmed} if confirmed else {}),
                    **({"mandate": mandate} if mandate and not confirmed else {})}
-        self._tell(t, "done" if status == "done" else "dropped", why, hold=hold, only_to=only_to, decided=decided)
+        self._tell(t, "done" if status == "done" else "dropped", why, hold=hold, only_to=only_to, decided=decided,
+                   claims=claims)
         if self._on_close and status == "done":
             self._on_close(t)
         for old in self.open():  # the act it replaced is now asked about on its own
@@ -371,7 +372,8 @@ class TaskRegistry:
         return False
 
     def _tell(self, t: dict[str, Any], effect: str, why: str, hold: timedelta | None = None,
-              only_to: Collection[str] | None = None, decided: dict[str, Any] | None = None) -> None:
+              only_to: Collection[str] | None = None, decided: dict[str, Any] | None = None,
+              claims: Sequence[tuple[str, str]] = ()) -> None:
         pending = {h.get("reply_to"): h for h in self._handoffs.pending(include_held=True) if h.get("effect") in ("done", "dropped")}
         extra = {"not_before": (self._clock.now() + hold).isoformat()} if hold else {}
         for o in t["origins"]:
@@ -381,9 +383,20 @@ class TaskRegistry:
             said = why if only_to is None or o["project"] in only_to else ""  # outside it: that it happened, not why
             # the project that claimed it hears the settlement as a record only (v1 never echoed its own report)
             tell = self._handoffs.recorded if decided and decided.get("by") == o["project"] else self._handoffs.add
+            claim = claim_for(o["ref"], claims, len(t["origins"]))
             tell(project=o["project"], item=o["text"] or t["title"], fact=said or t["title"],
                                quote=said or None, effect=effect, reply_to=o["ref"], why=said,
-                               **({"decided": {**decided, "why": said}} if decided else {}), **extra)
+                               **({"decided": {**decided, **({"claim": claim} if claim else {}), "why": said}} if decided else {}), **extra)
+
+
+def claim_for(ref: str, claims: Sequence[tuple[str, str]], origins: int) -> str | None:
+    """The claim one item's settlement adopts: the one its project made about that item, never another item's. One
+    kept without its item (from before claims were kept by item) goes with the item its id names, or with the task's
+    only item."""
+    loose = [c for r, c in claims if not r]
+    return (next((c for r, c in claims if r == ref), None)
+            or next((c for c in loose if f":{ref}:" in c), None)
+            or (loose[0] if loose and origins == 1 else None))
 
 
 def _due(value: Any) -> str | None:
