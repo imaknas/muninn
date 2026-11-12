@@ -1,5 +1,5 @@
 """Tools for the conversation itself: what to do today, a question about the user's own plans,
-an answer to the question being discussed, a mail to find, news to analyse, a wish for Muninn,
+an answer to the question being discussed, a question about the mail, news to analyse, a wish for Muninn,
 and taking back something Muninn did."""
 
 from __future__ import annotations
@@ -7,10 +7,12 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Callable, ClassVar, Protocol, Sequence
 
-from ..models import ActionRecord, Confirmation
-from ..ports import Clock, ObservationStore, PreparedStore
+from ..mail_answer import MailQuestions
+from ..models import ActionRecord, Attachment, Confirmation
+from ..ports import Clock, PreparedStore
+from ..privacy import Cleared
 from ..project_messages import ProjectMessages
-from . import FACT, Outcome, Turn
+from . import FACT, LookedUp, Outcome, Turn
 
 
 class Today:
@@ -34,37 +36,48 @@ class Ask:
     description: ClassVar[str] = "The user is asking about the user's own plans, goals, applications, progress or decisions (e.g. \"Why do I need to practise Go?\", \"How far behind is the PhD?\"). args: {question: <the user's question>}"
     lookup: ClassVar[bool] = True
 
+    def __init__(self, answerer: Callable[[], Any]):
+        """`answerer()`: what answers questions about the user's plans now (answer.Answerer)."""
+        self._answerer = answerer
+
+    def prepare(self, a: dict[str, Any], said: str, cleared: Cleared | None, attachments: Sequence[Attachment]) -> LookedUp:
+        answered = self._answerer().reply(str(a.get("question") or said), cleared, attachments=attachments)
+        return LookedUp(answered.reply, answered.stood_in)
+
     def run(self, a: dict[str, Any], turn: Turn) -> Outcome:
         if not turn.answer:  # looked up before the round was carried out
             raise ValueError(turn.words("tools_conversation.no_answer"))
         return Outcome(turn.answer)
 
 
-class MailNotes(ObservationStore, PreparedStore, Protocol):
-    """The mail notes kept as observations, and the reply drafts prepared."""
-
-
 class FindMail:
     name: ClassVar[str] = "find_mail"
-    description: ClassVar[str] = "Find a recent email (to reply to it or read it). args: {query: <sender or subject keywords>}"
+    description: ClassVar[str] = ("Anything about the user's email: find a mail, list, sort, add up or compare several (bills and their amounts, dates), "
+                                  "what someone wrote. args: {question: <the user's question, complete on its own>, "
+                                  "terms: [<words a mail about it would contain: senders, subjects, and the other names they go by (a full name and its short form)>]}")
     lookup: ClassVar[bool] = True
 
-    def __init__(self, store: MailNotes, clock: Clock):
-        self._store = store
-        self._clock = clock
+    def __init__(self, questions: MailQuestions, drafts: PreparedStore):
+        """`drafts`: the reply drafts prepared, so a mail with one opens on it."""
+        self._questions = questions
+        self._drafts = drafts
+
+    def prepare(self, a: dict[str, Any], said: str, cleared: Cleared | None, attachments: Sequence[Attachment]) -> LookedUp:
+        terms = a.get("terms") or a.get("query") or []
+        found = self._questions.answer(str(a.get("question") or said), [terms] if isinstance(terms, str) else [str(t) for t in terms], cleared)
+        if found is None:
+            return LookedUp(None)
+        return LookedUp({"text": found.text, "mails": [list(m) for m in found.mails]}, found.stood_in)
 
     def run(self, a: dict[str, Any], turn: Turn) -> Outcome:
-        q = str(a["query"]).lower()
-        now = self._clock.now()
-        for o in reversed(self._store.observations(now - timedelta(days=21), now + timedelta(seconds=1), kinds=("mail",))):
-            p = o.payload
-            if q in str(p.get("from", "")).lower() or q in str(p.get("subject", "")).lower():
-                ready = next((r for r in self._store.prepared(status="ready")
-                              if r.kind == "mail_reply" and r.target == p.get("thread")), None)
-                if ready:
-                    return Outcome(turn.words("tools_conversation.mail_with_draft", subject=p.get("subject")), link=f"#packet/{ready.id}")
-                return Outcome(turn.words("tools_conversation.mail_found", subject=p.get("subject")), link=f"#mail/{p.get('account')}:{p.get('id')}")
-        raise ValueError(turn.words("tools_conversation.no_mail", query=a["query"]))
+        found = turn.answer
+        if not found:  # looked up before the round was carried out
+            raise ValueError(turn.words("tools_conversation.mail_unanswered"))
+        if not found["mails"]:
+            return Outcome(found["text"])
+        account, mid, thread = found["mails"][0]  # the one it rests on most opens, on its reply draft when it has one
+        ready = next((r for r in self._drafts.prepared(status="ready") if r.kind == "mail_reply" and r.target == thread), None)
+        return Outcome(found["text"], link=f"#packet/{ready.id}" if ready else f"#mail/{account}:{mid}")
 
 
 class RecordFact:
@@ -210,16 +223,18 @@ class ConversationTools:
     """The conversation's own tools: what to do today, a question about the user's own plans,
     news to analyse, a wish for Muninn, and taking back what Muninn did."""
 
-    def __init__(self, next_items: Callable[[], Sequence[dict[str, Any]]], add_feature: Callable[[str, str | None, Sequence[str]], int],
+    def __init__(self, next_items: Callable[[], Sequence[dict[str, Any]]], answerer: Callable[[], Any],
+                 add_feature: Callable[[str, str | None, Sequence[str]], int],
                  undoable: Callable[[], Sequence[ActionRecord]], undo: Callable[[int], bool], can_lend: bool = True):
-        """`undoable()`: what Muninn did lately that can be taken back, newest first. `can_lend`: a project's session
+        """`answerer()`: what answers questions about the user's plans now. `undoable()`: what Muninn did lately that can be taken back, newest first. `can_lend`: a project's session
         can take a conversation over (a session runner is set up); without one, talking to a project is not offered."""
         self._next = next_items
+        self._answerer = answerer
         self._add_feature = add_feature
         self._undoable = undoable
         self._undo = undo
         self._can_lend = can_lend
 
     def tools(self) -> list[Any]:
-        return [Today(self._next), Ask(), RecordFact(), RequestFeature(self._add_feature), UndoAction(self._undoable, self._undo),
+        return [Today(self._next), Ask(self._answerer), RecordFact(), RequestFeature(self._add_feature), UndoAction(self._undoable, self._undo),
                 *([TalkToProject()] if self._can_lend else [])]

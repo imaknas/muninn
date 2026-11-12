@@ -10,10 +10,35 @@ from __future__ import annotations
 
 import os
 import re
+from string import Formatter
 from types import ModuleType
 from typing import Callable, Iterable, Mapping, Union
 
 Text = Union[str, Callable[..., str]]
+
+STOPS = "。．."  # marks that end a sentence as a statement
+ENDS = STOPS + "！!？?"  # every mark that ends a sentence
+_FORMATTER = Formatter()
+
+
+def fill(template: str, params: Mapping[str, object]) -> str:
+    """`template` with `params` filled in (as `str.format`), where a value that already ends its sentence (a summary,
+    a project's words) and the template's own ending after it end it once: the template's question or exclamation
+    over the value's full stop ("…272 行。" in "{x}?" reads "…272 行?"), otherwise the value's ("…272 行。" then
+    "。對嗎?" reads "…272 行。對嗎?")."""
+    out: list[str] = []
+    for literal, field, spec, conversion in _FORMATTER.parse(template):
+        if literal:
+            if out and out[-1].endswith(tuple(ENDS)) and literal.startswith(tuple(ENDS)):
+                if literal[0] in STOPS or out[-1][-1] not in STOPS:
+                    literal = literal.lstrip(ENDS)
+                else:
+                    out[-1] = out[-1].rstrip(STOPS)
+            out.append(literal)
+        if field is not None:
+            value, _ = _FORMATTER.get_field(field, (), params)
+            out.append(_FORMATTER.format_field(_FORMATTER.convert_field(value, conversion), spec or ""))
+    return "".join(out)
 
 
 class Catalog:
@@ -26,7 +51,7 @@ class Catalog:
 
     def __call__(self, key: str, /, **params: object) -> str:
         text = self.texts[key]
-        return text(**params) if callable(text) else text.format(**params)
+        return text(**params) if callable(text) else fill(text, params)
 
     def join(self, items: Iterable[str]) -> str:
         return self._separator.join(items)

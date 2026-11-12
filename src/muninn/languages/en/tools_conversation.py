@@ -2,9 +2,7 @@
 TEXTS = {
     "nothing_today": "Nothing is due or behind today.",
     "no_answer": "The local model isn't answering right now, so I kept the question as a note",
-    "mail_with_draft": "Found \"{subject}\"; a reply draft is ready",
-    "mail_found": "Found \"{subject}\"",
-    "no_mail": "No mail about \"{query}\" in the last three weeks",
+    "mail_unanswered": "Couldn't look through your mail: no model answered. Ask again in a moment",
     "what_answer": "What's the answer?",
     "already_answered": "That question has already been answered",
     "passing_on": "I'll pass it on to {project}: {answer}",

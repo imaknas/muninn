@@ -32,7 +32,7 @@ class TaskGroup:
 GROUPS = (
     TaskGroup("route", ("route",), "standard"),
     TaskGroup("facts", ("facts",), "standard"),
-    TaskGroup("answer", ("answer", "why"), "standard"),
+    TaskGroup("answer", ("answer", "why", "mail_answer"), "standard"),
     TaskGroup("draft", ("packet", "packet_fit", "form_fill"), "fast"),
     TaskGroup("mail", ("mail_triage",), "fast"),
     TaskGroup("reflect", ("reflect_digest", "reflect_week"), "fast"),

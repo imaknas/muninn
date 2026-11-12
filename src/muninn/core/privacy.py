@@ -5,6 +5,9 @@ pivot, decision_tree, target notes, URLs, observations or free-text notes.
 Plans whose default sensitivity is `sensitive`, and goals/deadlines marked
 `private: true`, are left out entirely.
 
+Mail is the user's own exception too: with cloud_mail on, a personal mail (mail_payload) and the notes and
+texts of personal mail a cleared question is about (mail_notes_payload) may go to the cloud; work mail never does.
+
 One exception the user chose: their own words, once a WorkCheck has cleared
 them as not about work, may go to the cloud with the context needed to
 understand them (understanding_payload). That context is built without the
@@ -111,6 +114,14 @@ def mail_payload(m: MailMessage) -> CloudSafe | None:
         return None
     data = {"from": m.sender, "subject": m.subject, "date": m.ts.isoformat(), "body": m.text}
     return _make_cloud_safe(json.dumps(data, ensure_ascii=False))
+
+
+def mail_notes_payload(data: dict[str, Any], cleared: Cleared | None, personal: bool) -> CloudSafe | None:
+    """Mail Muninn has read (its notes and texts) with a question about it, for a cloud model: only personal mail, as
+    the user allowed for it, and only for a question cleared as not about work. Work mail never gets a cloud payload."""
+    if not personal or not isinstance(cleared, Cleared):
+        return None
+    return _make_cloud_safe(json.dumps(data, ensure_ascii=False, default=str))
 
 
 UNDERSTANDING_DOMAIN = "personal"  # the request domain of cleared words: the user's life outside work

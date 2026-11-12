@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Collection, Sequence
 
-from .answer import Answerer
 from .dossier import Dossier
 from .facts import ImpactAnalyzer
 from .models import ALL_STATUSES, Attachment, DomainPlan
@@ -193,13 +192,13 @@ class CommandRunner:
 
     def __init__(self, tools: ToolRegistry, context: CommandContext, understanding: Any, *,
                  sensitive_domains: Callable[[], Collection[str]], add_note: Callable[[str], Any],
-                 dossier: Callable[[], Dossier], answerer: Callable[[], Answerer],
+                 dossier: Callable[[], Dossier],
                  impact_analyzer: Callable[[], ImpactAnalyzer], apply_impact: Callable[..., list[Outcome]],
                  link_case: Callable[[str, int | None], None], lease_projects: Callable[[Sequence[str]], set[str]],
                  idea_next: IdeaNext | None = None, words: Language):
         """`understanding` asks the model (deciding first whether the cloud may read the turn);
-        `add_note` keeps the user's words; `dossier`, `answerer` and `impact_analyzer` give the
-        discussion's material, answers to questions and what news settles; `apply_impact(fact,
+        `add_note` keeps the user's words; `dossier` and `impact_analyzer` give the
+        discussion's material and what news settles; `apply_impact(fact,
         impact, quote=, fyi=, only_to=)` acts on it; `link_case` ties what was done to the model
         call that decided it; `lease_projects` names the projects of the lent sessions content came from;
         `idea_next` adds what Muninn does next in a discussion of an idea."""
@@ -210,7 +209,6 @@ class CommandRunner:
         self._sensitive = sensitive_domains
         self._add_note = add_note
         self._dossier = dossier
-        self._answerer = answerer
         self._impact_analyzer = impact_analyzer
         self._apply_impact = apply_impact
         self._link_case = link_case
@@ -320,11 +318,11 @@ class CommandRunner:
         if plan:
             if not beside:  # only a round beside a deep talk has a project to tell
                 plan["for_project"] = None
-            for a in plan["actions"]:
-                if a["tool"] == "ask":  # the slow lookup also happens here, outside the engine lock
-                    answered = self._answerer().reply(str((a.get("args") or {}).get("question") or text), cleared, attachments=attachments)
-                    a["answer"] = answered.reply
-                    plan["stood_in"] = plan["stood_in"] or answered.stood_in
+            for a in plan["actions"]:  # a lookup's slow part also happens here, outside the engine lock
+                looked = self.tools.prepare(a["tool"], dict(a.get("args") or {}), text, cleared, attachments)
+                if looked is not None:
+                    a["answer"] = looked.answer
+                    plan["stood_in"] = plan["stood_in"] or looked.stood_in
             if beside:  # beside a deep talk: nothing done here sends the conversation anywhere else
                 plan["actions"] = [a for a in plan["actions"] if "conversation" not in self.tools.acts_on(a["tool"])]
                 plan["suggest"] = [s for s in plan.get("suggest") or [] if "conversation" not in self.tools.acts_on(s["tool"])]

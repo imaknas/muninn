@@ -14,10 +14,10 @@ from datetime import datetime, timedelta
 from typing import Any, Callable, Protocol, Sequence
 
 from .actions import ActionGate, DecidedBy, TrackerStatus
-from .llm_router import LLMRequest, LLMRouter
+from .llm_router import Completion, LLMRequest, LLMRouter
 from .models import ActionRecord, DomainPlan, MailMessage, Observation, Prepared, Sensitivity, Signal
 from .ports import ActionLog, Clock, Mailbox, MarkerStore, ObservationStore, PreparedStore, StateStore
-from .privacy import mail_payload
+from .privacy import Cleared, mail_notes_payload, mail_payload
 from .language import Language, written_in
 from .reply_json import json_object
 
@@ -77,6 +77,17 @@ class MailTriager:
             req = LLMRequest(system, text, Sensitivity.SENSITIVE, None, json_mode=True, task="mail_triage")
         reply, backend = self._router.complete_with_backend(req)
         return parse_triage(reply), backend
+
+    def ask(self, system: str, data: dict[str, Any], *, cleared: Cleared | None, personal: bool) -> Completion:
+        """A question about mail already read (mail_answer.py), under the same rule as reading it: the cloud only for
+        personal mail when cloud_mail allows it, and only when the question itself was cleared; otherwise sensitive."""
+        content = mail_notes_payload(data, cleared, personal) if self._cloud else None
+        if content is not None:
+            req = LLMRequest(system, content, Sensitivity.PERSONAL, "mail", json_mode=True, task="mail_answer")
+        else:
+            req = LLMRequest(system, json.dumps(data, ensure_ascii=False, default=str), Sensitivity.SENSITIVE, None,
+                             json_mode=True, task="mail_answer")
+        return self._router.complete_case(req)
 
 
 def unreadable(m: MailMessage) -> str | None:
@@ -262,10 +273,12 @@ class Mailroom:
         return True
 
     def tools(self) -> list[Any]:
-        """Finding a recent mail."""
+        """Questions about the mail read: finding one, listing or comparing several."""
+        from .mail_answer import MailQuestions
         from .tools.conversation import FindMail
 
-        return [FindMail(self._store, self._clock)]
+        return [FindMail(MailQuestions(self._store, self._clock, lambda: self.mailboxes, lambda: self.triager, words=self.words),
+                         self._store)]
 
     def jobs(self) -> list[Any]:
         from .actors import Job

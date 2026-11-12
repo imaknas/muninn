@@ -113,6 +113,17 @@ points:
     on_failure: retry_later
     eval: {scorer: mail_triage, truth: "the user's answer to the status-update card the mail brings"}
 
+  mail_answer:
+    caller: core/mail_answer.py
+    purpose: Answers the user's question about their mail (find one, list, sort, add up or compare several) from the notes of the mail Muninn has read and the text of the best matches
+    kind: generate
+    shape: completion
+    model_group: answer
+    material: sensitive
+    output: {format: json, schema: llm/mail_answer.schema.json}
+    on_failure: say_so
+    eval: {scorer: judge, truth: "the cloud model's answer as reference; the user next saying \"that's wrong\" or asking again"}
+
   packet:
     caller: core/prepare.py
     purpose: Writes an application packet for a job opening (summary, fit points, gaps, which résumé to use, draft answers to form questions, what to ask on the first call)

@@ -3,7 +3,9 @@
 A tool has a name (what the model writes), the line describing it in the
 model's tool list, whether it is a lookup (its result is the answer, and it
 is never offered as a next step), and `run`, which checks the arguments and
-does it. Each tool takes only what it needs. The registry holds the tools in
+does it. A lookup that asks a model of its own also has `prepare`, run while
+the sentence is understood (the slow part, outside the engine's lock); what
+it found reaches `run` as the turn's `answer`. Each tool takes only what it needs. The registry holds the tools in
 order and is handed to the command runner; adding a tool is adding a class
 and registering it.
 """
@@ -14,6 +16,8 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar, Collection, Protocol, Sequence
 
 from ..language import Language
+from ..models import Attachment
+from ..privacy import Cleared
 
 
 @dataclass
@@ -28,6 +32,14 @@ class Outcome:
     failed: bool = False  # it was not done (the text says why)
 
 
+@dataclass(frozen=True)
+class LookedUp:
+    """What a lookup's `prepare` found: handed to its `run` as the turn's answer (None: nothing answered)."""
+
+    answer: Any
+    stood_in: bool = False  # a local model answered in place of the cloud
+
+
 @dataclass
 class Turn:
     """What one round knows besides the arguments."""
@@ -35,7 +47,7 @@ class Turn:
     about: dict[str, Any] | None = None  # the item the user is discussing
     only_to: set[str] | None = None  # a lent session's content: only these projects may hear what it says
     via: tuple[str, ...] = ()  # where that content came from ("lease:<id>", "project:<name>"), with only_to
-    answer: str | None = None  # an `ask` looked up before the round was carried out
+    answer: Any = None  # what the tool's `prepare` looked up before the round was carried out
     made: dict[str, Any] | None = None  # the latest thing this conversation brought into being ({kind, id})
     thread: str | None = None  # the conversation this round is in
     words: Language = field(kw_only=True)  # the language Muninn speaks to the user in
@@ -46,6 +58,8 @@ class Tool(Protocol):
     description: ClassVar[str]  # its line in the model's tool list
     lookup: ClassVar[bool]  # its result is the answer; never offered as a next step
     # optional, acts_on: ClassVar[tuple[str, ...]]: the kinds of things it settles ("idea", "conversation")
+    # optional, prepare(args, said, cleared, attachments) -> LookedUp: a lookup's slow part, done while the sentence
+    # is understood (`said`: the user's sentence; `cleared`: it may go to the cloud; `attachments`: files sent with it)
 
     def run(self, args: dict[str, Any], turn: Turn) -> Outcome:
         """Checks the arguments and does it; ValueError (said to the user) when it cannot."""
@@ -87,6 +101,12 @@ class ToolRegistry:
 
     def run(self, name: str, args: dict[str, Any], turn: Turn) -> Outcome:
         return self._tools[name].run(args, turn)
+
+    def prepare(self, name: str, args: dict[str, Any], said: str, cleared: Cleared | None,
+                attachments: Sequence[Attachment] = ()) -> LookedUp | None:
+        """A lookup's slow part, for a tool that has one (None for one that does not)."""
+        prepare = getattr(self._tools.get(name), "prepare", None)
+        return prepare(args, said, cleared, attachments) if prepare is not None else None
 
     @classmethod
     def collect(cls, sources: Sequence[Any], order: Sequence[str]) -> ToolRegistry:

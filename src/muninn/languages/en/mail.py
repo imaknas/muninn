@@ -1,5 +1,6 @@
 # what Muninn says about the mail it read: a to-do to read one it could not, a status it set, a draft it saved (core/mail.py)
 TEXTS = {
+    "none_read": "I haven't read any of your mail yet",
     "format_empty": "the body is empty; it may be only pictures or attachments",
     "format_garbled": "the body is garbled; its encoding may be broken",
     "no_content": "can't see what it says",

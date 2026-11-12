@@ -15,7 +15,7 @@ from muninn.adapters.channels.webpush import VapidKeys
 from muninn.adapters.web.app import create_app
 from muninn.adapters.web.devices import DeviceRegistry
 from muninn.config import Config
-from muninn.languages import CODES, language, system_language
+from muninn.languages import CODES, fill, language, system_language
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "muninn"
 
@@ -94,3 +94,14 @@ def test_the_offline_page_keeps_every_screens_words():
     assert areas == sorted(p.stem for p in (ts / "words" / "en").glob("*.ts"))
     listed = re.search(r"const WORD_AREAS = \[([^\]]*)\]", (ts / "sw.ts").read_text(encoding="utf-8"))
     assert listed and sorted(re.findall(r'"([^"]+)"', listed.group(1))) == areas
+
+
+def test_a_filled_in_value_that_ends_its_sentence_is_not_ended_twice():
+    zh, en = language("zh-TW"), language("en")
+    said = zh("project_messages.claim_check", project="garden", text="要不要先種番茄?", answer="已在 9 月決定先種番茄。")
+    assert said == "garden 說你對「要不要先種番茄?」決定了:已在 9 月決定先種番茄。對嗎?"
+    assert zh("project_messages.claim_check", project="garden", text="種什麼", answer="番茄") == "garden 說你對「種什麼」決定了:番茄。對嗎?"
+    assert fill("{a}. Is it?", {"a": "Why?"}) == "Why? Is it?" and fill("{{a}} {a:>3}.", {"a": "1"}) == "{a}   1."
+    assert zh("actions.ask", text="先種番茄。") == "先種番茄?"  # a question stays a question
+    assert en("actions.ask", text="Plant the tomatoes first.") == "Plant the tomatoes first?"
+    assert en("actions.ask", text="Plant the tomatoes first?") == "Plant the tomatoes first?"

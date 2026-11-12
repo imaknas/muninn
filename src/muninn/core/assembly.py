@@ -370,7 +370,7 @@ class Muninn:
                                  self.understanding.is_work_line, self.calendar_view, words=self.words)
         return CommandRunner(self.command_tools(), context, self.understanding,
                              sensitive_domains=lambda: self.attr_cfg.sensitive_domains,
-                             add_note=lambda text: self.add_note(text, None), dossier=self.dossier, answerer=self.answerer,
+                             add_note=lambda text: self.add_note(text, None), dossier=self.dossier,
                              impact_analyzer=self.impact_analyzer, apply_impact=self.apply_impact,
                              link_case=self.link_case, lease_projects=self.lease_projects, idea_next=self.idea_next(),
                              words=self.words)
@@ -403,8 +403,8 @@ class Muninn:
             PlanTools(full, self._plans, self._goal_progress, self.gate, self.clock),
             BlockTools(calendar=self.calendar, clock=self.clock, tz=self.tz, hours=self.hours, gate=self.gate),
             self.mailroom,
-            ConversationTools(lambda: self.home_view()["next"], self.add_feature_request, self.undoable_actions, self.undo_action,
-                              can_lend=self.leases is not None),
+            ConversationTools(lambda: self.home_view()["next"], self.answerer, self.add_feature_request, self.undoable_actions,
+                              self.undo_action, can_lend=self.leases is not None),
             AttributionTools(lambda: self.domains(), self.whereabouts.saved_names, self.gate),
             self.plan_review,
             self.questions(),

@@ -2,9 +2,7 @@
 TEXTS = {
     "nothing_today": "今天沒有到期或落後的事。",
     "no_answer": "本機模型現在沒有回應,問題先記成筆記了",
-    "mail_with_draft": "找到「{subject}」,回信草稿已經準備好了",
-    "mail_found": "找到「{subject}」",
-    "no_mail": "最近三週沒有跟「{query}」有關的信",
+    "mail_unanswered": "這次沒能查信:沒有模型回答,等一下再問一次",
     "what_answer": "要回答什麼?",
     "already_answered": "這個問題已經回答過了",
     "passing_on": "會轉給 {project}:{answer}",

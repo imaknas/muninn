@@ -1,5 +1,6 @@
 # what Muninn says about the mail it read: a to-do to read one it could not, a status it set, a draft it saved (core/mail.py)
 TEXTS = {
+    "none_read": "我還沒讀過任何信",
     "format_empty": "內文是空的,可能只有圖片或附件",
     "format_garbled": "內文是亂碼,可能是編碼壞掉了",
     "no_content": "看不到內容",
