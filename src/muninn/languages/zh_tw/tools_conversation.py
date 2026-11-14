@@ -19,7 +19,8 @@ TEXTS = {
     "undone": "撤回了:{what}",
     "ask_what": "問哪個專案、問什麼?",
     "a_deep_talk": "深談",
-    "not_passed_on": "這段內容來自 {source},不轉給 {project}",
+    "not_passed_on": ("這段對話裡有 {source} 帶回來的內容,它讀到的外部內容(網頁之類)不能經由我去指使別的專案,"
+                      "所以這裡說的不會轉給 {project}。要找 {project},在沒有 {source} 內容的對話裡再說一次。"),
     "asked": "問了 {project},它回了會出現在這裡",
     "which_project": "是哪個專案?",
     "lent": "接到 {project}",

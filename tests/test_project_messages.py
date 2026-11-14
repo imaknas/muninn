@@ -212,3 +212,17 @@ def test_a_project_closing_a_question_it_never_answered_is_said_as_that(harness)
     [hd] = h.engine.handoffs()
     h.engine.messages.receive([{"id": "d1", "project": "garden", "type": "done", "text": "(這個專案把問題結案了,但沒有回答)", "handoff_id": hd["id"]}])
     assert conv.thread(tid)["turns"][-1]["text"] == "garden 把這個問題結案了,沒有回答。"
+
+
+def test_a_conversation_holding_one_projects_reply_does_not_ask_another_and_says_why(harness):
+    import json
+
+    h = harness
+    r, conv, tid = asked(h)
+    [hd] = h.engine.handoffs()
+    h.engine.messages.receive([{"id": "r1", "project": "garden", "type": "progress", "text": "報價 3200", "handoff_id": hd["id"]}])
+    h.local.reply = json.dumps({"actions": [{"tool": "ask_project", "args": {"project": "balcony", "question": "花架做好了嗎?"}}],
+                                "reply": ""}, ensure_ascii=False)
+    (o,) = conv.execute_turn(conv.understand_turn(tid, "也問 balcony 花架好了沒")).outcomes
+    assert o.failed and "不會轉給 balcony" in o.text and "在沒有 garden 內容的對話裡再說一次" in o.text
+    assert not [x for x in h.engine.handoffs() if x["project"] == "balcony"]  # nothing went to balcony
