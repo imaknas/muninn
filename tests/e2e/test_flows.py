@@ -394,6 +394,28 @@ def test_an_ideas_sandbox_starts_able_to_act_and_each_write_is_asked(desktop, mu
     expect()(waiting(desktop, "想改 notes/plan.md")).to_have_count(1)  # the one still open waits in the panel too
 
 
+
+def test_a_command_asked_while_the_phone_slept_is_in_the_talk_when_it_is_back_in_view(desktop, muninn):
+    muninn.runner.sandboxes = ["idea-4"]
+    lid = muninn.h.engine.leases.attach(None, "idea-4")["lease_id"]
+    asleep, dead = [True], []
+    # the phone asleep: the talk's stream is dead (held for good, never an error that would reconnect it)
+    desktop.route("**/api/leases/*/events", lambda r: dead.append(r) if asleep[0] else r.continue_())
+    go(desktop, muninn)
+    t = talk(desktop)
+    expect()(desktop.get_by_text("可動手(每次先問你)")).to_have_count(1)
+    eventually_on(desktop, lambda: dead)
+    muninn.relay_wants(lid, 1, "idea-4", "Bash", "run_command", "python try.py")  # said live to nobody
+    run = t.get_by_label("idea-4 想跑指令")
+    desktop.wait_for_timeout(300)
+    expect()(run).to_have_count(0)
+    asleep[0] = False
+    desktop.evaluate("document.dispatchEvent(new Event('visibilitychange'))")  # back in view
+    expect()(run).to_have_count(1)
+    button(run, "允許這一次", exact=True).click()
+    t.get_by_text("允許跑:python try.py").wait_for()
+    assert muninn.desk.result(f"{lid}:w1") == {"v": 2, "decision": "allow"}
+
 # ── a new user ─────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("screen", SCREENS)

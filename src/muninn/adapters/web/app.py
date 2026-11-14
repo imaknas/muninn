@@ -1286,12 +1286,16 @@ def create_app(
         # not missed. Subscribed before it is read, so nothing falls between the two.
         lease = await run_in_threadpool(engine.store.lease, lease_id) if engine.leases is not None else None
         now = {"type": "lease", "lease": engine.leases.shown(lease)} if lease is not None else None
+        # and what it waits on the user for: a request made while no stream was open here (the phone asleep) is
+        # said once live, so it is said again on every opening, to be answered in the conversation
+        asks = ([{"type": "permission_card", "card": c} for c in await run_in_threadpool(permissions.pending)
+                 if c.get("lease") == lease_id] if permissions is not None and lease is not None else [])
 
         async def stream():
             try:
                 yield ": open\n\n"
-                if now is not None:
-                    yield f"data: {json.dumps(now, ensure_ascii=False)}\n\n"
+                for ev in ([now] if now is not None else []) + asks:
+                    yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
                 while True:
                     try:
                         ev = await asyncio.wait_for(q.get(), timeout=15)

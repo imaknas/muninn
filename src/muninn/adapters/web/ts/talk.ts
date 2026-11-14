@@ -523,11 +523,22 @@ function startLease(t: Conversation, lease: Conversation["lease"] & object): voi
   renderLeaseBar(t);
   if (lease.can_work && lease.mode !== "work") workOffer(t);
   t.input.placeholder = w.talk.talkTo(called(lease));
+  openLeaseStream(t, lease.lease_id);
+}
+
+function openLeaseStream(t: Conversation, leaseId: string): void {
   if (t.stream) t.stream.close();
-  const es = new EventSource(`/api/leases/${encodeURIComponent(lease.lease_id)}/events`);
+  const es = new EventSource(`/api/leases/${encodeURIComponent(leaseId)}/events`);
   t.stream = es;
   es.onmessage = (m) => { if (talk === t) leaseEvent(t, JSON.parse(m.data) as LeaseEvent); };
 }
+
+// back in view with a deep talk open: its stream may have died while the phone slept, and what was said on it
+// meanwhile (a request to run a command) with it; a fresh one opens with the talk as it is and what it waits on
+document.addEventListener("visibilitychange", () => {
+  const t = talk;
+  if (document.visibilityState === "visible" && t?.lease && t.stream) openLeaseStream(t, t.lease.lease_id);
+});
 
 // a lent conversation: a line over the input names the project, with the rarer actions
 function renderLeaseBar(t: Conversation): void {
