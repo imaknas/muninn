@@ -62,6 +62,9 @@ def test_a_button_whose_first_read_failed_says_so_and_a_tap_reads_again(page, mu
     from e2e_support import expect_console
     seed(muninn)
     expect_console(page, "status of 500")  # the failed read, on purpose
+    # the stream of changes, held: its opening reads again too, and landing after the unroute it would take the
+    # failed button away before the tap (the tap is what this is about)
+    page.route("**/api/changes/events", lambda r: None)
     page.route("**/api/waiting", lambda r: r.fulfill(status=500, body="{}"))
     page.goto(f"{muninn.url}/")
     failed = page.get_by_role("button", name="沒讀到等你的事;點一下再讀一次")
