@@ -104,7 +104,8 @@ export interface PermissionRequest {
 }
 
 export interface ActiveLease { lease_id: string; project: string; label?: string; thread: string; state: string; warn: boolean }
-export interface Turn { role: "user" | "answer" | "session" | string; text: string; ts?: string | null; files?: Sent[]; detail?: string }
+export interface Turn { role: "user" | "answer" | "session" | string; text: string; ts?: string | null; files?: Sent[]; detail?: string;
+  id?: number }  // a deep talk's line: its id, which only grows
 // a file the user sent with what they said: kept on the server, shown again from /api/uploads/{id}
 // (lease, path: a file a deep talk's session showed him, from that talk)
 export interface Sent { id: string; name: string; media_type: string; size?: number; lease?: string; path?: string }
@@ -145,17 +146,20 @@ export interface CommandReply {
   mode?: LeaseMode;  // a lease's mode: on attaching, and after switching (with `note`)
   can_work?: boolean;
   note?: string;
+  turn?: number;  // the deep talk's line this kept (what the user said, a switch's note): drawn here already
   lent?: Lent;  // the round opened an idea's sandbox and the conversation went on there
   topic?: { title: string | null; switched: boolean };  // the conversation it went on with (switched: Muninn judged it was another one)
 }
 // a conversation just lent (or, when usage is high, the question whether to go on)
 export interface LeaseReply {
   needs_confirm?: string; thread?: string | null; lease_id?: string; project?: string; label?: string; state?: string; mode?: LeaseMode; can_work?: boolean;
+  turn?: number;
 }
 // a conversation lent because the user asked to try an idea out: said in one line, or why it could not be
 export interface Lent {
   needs_confirm?: string; thread?: string | null; lease_id?: string; project?: string; label?: string; state?: string; mode?: LeaseMode; can_work?: boolean;
   text?: string; error?: string; opened?: boolean;  // opened: the session was handed what was said, and is answering
+  turn?: number;  // the talk's line saying it was handed over (not drawn: the receipt above says as much)
 }
 export interface Undoable { text: string; action_id: number }
 // what the user asked of Muninn itself and is not live yet; live_check_off: why nothing is marked live by itself
@@ -351,10 +355,10 @@ export interface Api {
   "POST /api/leases/keepalive": Ok;
   "POST /api/leases/terminal": { command: string; lease_id: string };
   "POST /api/leases/detach": { lease_id: string; state: string };
-  "POST /api/leases/work": { lease_id: string; mode: LeaseMode; note?: string };
-  "POST /api/leases/discuss": { lease_id: string; mode: LeaseMode; note?: string };
+  "POST /api/leases/work": { lease_id: string; mode: LeaseMode; note?: string; turn?: number };
+  "POST /api/leases/discuss": { lease_id: string; mode: LeaseMode; note?: string; turn?: number };
   "GET /api/permission-requests/pending": List<PermissionRequest>;
-  "POST /api/permission-requests/{rid}/decision": { ok: boolean; note: string | null };
+  "POST /api/permission-requests/{rid}/decision": { ok: boolean; note: string | null; turn?: number | null };
   "POST /api/client-error": Ok;
   // whether commands of a kind the user allowed before run without asking (null: every command is asked)
   "GET /api/permissions/auto-commands": { on: boolean | null };

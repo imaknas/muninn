@@ -249,7 +249,7 @@ def test_what_is_the_projects_in_muninns_answer_is_told_to_the_session_at_once_w
     assert [t["role"] for t in turns][-3:] == ["user", "muninn", "relay"] and turns[-1]["text"] == SANDBOX
     lease = h.store.lease(lid)
     assert lease["answering"] and lease["last_user_at"] == said_at  # it answers that too; he did not speak
-    assert shown == [(lid, {"type": "relay", "text": SANDBOX})]
+    assert shown == [(lid, {"type": "relay", "text": SANDBOX, "turn": h.store.lease_turns(lid)[-1]["id"]})]
 
 
 def test_while_the_session_answers_his_words_what_muninn_tells_it_waits_for_its_turn_to_end(app, monkeypatch):
@@ -274,7 +274,7 @@ def test_while_the_session_answers_his_words_what_muninn_tells_it_waits_for_its_
 
     runner.events = events
     feed._follow(lid)
-    assert runner.calls[-1] == ("send", TOLD) and shown == [(lid, {"type": "relay", "text": SANDBOX})]
+    assert runner.calls[-1] == ("send", TOLD) and shown == [(lid, {"type": "relay", "text": SANDBOX, "turn": h.store.lease_turns(lid)[-1]["id"]})]
     assert h.store.lease_turns(lid)[-1]["role"] == "relay"
 
 

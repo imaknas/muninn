@@ -4,6 +4,7 @@ redesign keeps them passing. What the current layout itself looks like is in tes
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -400,7 +401,7 @@ def test_a_command_asked_while_the_phone_slept_is_in_the_talk_when_it_is_back_in
     lid = muninn.h.engine.leases.attach(None, "idea-4")["lease_id"]
     asleep, dead = [True], []
     # the phone asleep: the talk's stream is dead (held for good, never an error that would reconnect it)
-    desktop.route("**/api/leases/*/events", lambda r: dead.append(r) if asleep[0] else r.continue_())
+    desktop.route("**/api/leases/*/events?*", lambda r: dead.append(r) if asleep[0] else r.continue_())
     go(desktop, muninn)
     t = talk(desktop)
     expect()(desktop.get_by_text("可動手(每次先問你)")).to_have_count(1)
@@ -415,6 +416,59 @@ def test_a_command_asked_while_the_phone_slept_is_in_the_talk_when_it_is_back_in
     button(run, "允許這一次", exact=True).click()
     t.get_by_text("允許跑:python try.py").wait_for()
     assert muninn.desk.result(f"{lid}:w1") == {"v": 2, "decision": "allow"}
+
+
+def test_what_a_deep_talk_answered_while_the_phone_slept_is_in_the_talk_once_when_it_is_back(desktop, muninn):
+    lid = muninn.h.engine.leases.attach(None, "garden")["lease_id"]
+    asleep, dead = [False], []
+    desktop.route("**/api/leases/*/events?*", lambda r: dead.append(r) if asleep[0] else r.continue_())
+    go(desktop, muninn)
+    t = talk(desktop)
+    expect()(desktop.get_by_text("跟 garden 深談")).to_have_count(1)
+    say(desktop, "要不要加滴灌?")
+    t.get_by_text("garden 在想⋯").wait_for()
+    muninn.session_streams(lid, {"type": "text_delta", "text": "加,"})  # it starts answering while he looks
+    t.get_by_text("加,", exact=True).wait_for()
+    # the phone goes to sleep: the stream it reopens on the way is held dead, and the answer goes on without it
+    asleep[0] = True
+    desktop.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    eventually_on(desktop, lambda: dead)
+    event = lambda n, kind, **d: muninn.h.engine.leases.on_event({"v": 2, "seq": n, "lease_id": lid, "ts": "", "type": kind, **d})  # noqa: E731
+    event(1, "assistant", text="加,一天兩次。")
+    event(2, "turn_end")
+    desktop.wait_for_timeout(300)
+    expect()(t.get_by_text("加,一天兩次。")).to_have_count(0)
+    asleep[0] = False
+    desktop.evaluate("document.dispatchEvent(new Event('visibilitychange'))")  # back in view
+    lines = t.locator(".said, .reply.session")
+    said = [re.compile("^" + re.escape(x)) for x in ("要不要加滴灌?", "加,一天兩次。")]  # each with its time
+    expect()(lines).to_have_text(said)  # each once, in order; the half answer gone
+    expect()(t.locator(".status")).to_have_count(0)  # it finished while away: nothing still spinning
+    desktop.evaluate("document.dispatchEvent(new Event('visibilitychange'))")  # back once more, nothing new
+    desktop.wait_for_timeout(500)
+    expect()(lines).to_have_text(said)
+
+
+def test_a_command_request_that_timed_out_while_the_phone_slept_is_no_longer_answerable_when_it_is_back(desktop, muninn):
+    muninn.runner.sandboxes = ["idea-4"]
+    lid = muninn.h.engine.leases.attach(None, "idea-4")["lease_id"]
+    asleep, dead = [False], []
+    desktop.route("**/api/leases/*/events?*", lambda r: dead.append(r) if asleep[0] else r.continue_())
+    go(desktop, muninn)
+    t = talk(desktop)
+    expect()(desktop.get_by_text("可動手(每次先問你)")).to_have_count(1)
+    muninn.relay_wants(lid, 1, "idea-4", "Bash", "run_command", "python try.py")
+    run = t.get_by_label("idea-4 想跑指令")
+    expect()(run).to_have_count(1)  # asked while he looks
+    asleep[0] = True  # then the phone sleeps past the five minutes it waits
+    desktop.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    eventually_on(desktop, lambda: dead)
+    muninn.h.clock.t += timedelta(minutes=6)
+    muninn.desk.expire()
+    asleep[0] = False
+    desktop.evaluate("document.dispatchEvent(new Event('visibilitychange'))")  # back in view
+    expect()(run).to_have_count(0)  # nothing left to tap that would only say it is too late
+    expect()(t.get_by_text("沒回應,沒讓它跑:python try.py")).to_have_count(1)
 
 # ── a new user ─────────────────────────────────────────────────────────────
 
@@ -725,7 +779,7 @@ def test_a_rename_made_before_the_talks_stream_opens_is_not_missed(desktop, muni
     ideas.explore(n)
     muninn.h.engine.leases.attach(None, f"idea-{n}")
     held = []
-    desktop.route("**/api/leases/*/events", lambda route: held.append(route))  # the talk's stream waits until the rename is made
+    desktop.route("**/api/leases/*/events?*", lambda route: held.append(route))  # the talk's stream waits until the rename is made
     go(desktop, muninn)
     expect()(desktop.get_by_text(f"跟 idea-{n} 深談", exact=False)).to_have_count(1)
     while not held:

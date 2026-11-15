@@ -475,6 +475,9 @@
     },
     "note": {
      "type": "string"
+    },
+    "turn": {
+     "type": "number"
     }
    },
    "required": [
@@ -493,6 +496,9 @@
     },
     "note": {
      "type": "string"
+    },
+    "turn": {
+     "type": "number"
     }
    },
    "required": [
@@ -524,6 +530,16 @@
      "anyOf": [
       {
        "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "turn": {
+     "anyOf": [
+      {
+       "type": "number"
       },
       {
        "type": "null"
@@ -779,6 +795,9 @@
     },
     "note": {
      "type": "string"
+    },
+    "turn": {
+     "type": "number"
     },
     "lent": {
      "$ref": "#/$defs/Lent"
@@ -1949,6 +1968,9 @@
     },
     "can_work": {
      "type": "boolean"
+    },
+    "turn": {
+     "type": "number"
     }
    }
   },
@@ -2032,6 +2054,9 @@
     },
     "opened": {
      "type": "boolean"
+    },
+    "turn": {
+     "type": "number"
     }
    }
   },
@@ -3923,6 +3948,9 @@
     },
     "detail": {
      "type": "string"
+    },
+    "id": {
+     "type": "number"
     }
    },
    "required": [

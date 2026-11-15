@@ -255,6 +255,7 @@ class ChannelLease:
                 or entering(thread, since=heard, uncleared=self._share_uncleared)
                 or (self.words("lease.files_for_you") if attachments else None))
         opened = False
+        handed: int | None = None  # the line saying so, kept in the talk (the screen that opened it knows it)
         # what it left undecided last time is its to ask, now that the user is in the talk again: not left waiting elsewhere
         unasked = left_by((thread or {}).get("talk_left"), project)
         if unasked:
@@ -263,8 +264,8 @@ class ChannelLease:
         if said:
             try:
                 self._runner.send(lease_id, said, secrets.token_hex(8), attachments)
-                self._store.add_lease_turn(lease_id, "answer", self.words("lease.handed_over_files" if attachments else "lease.handed_over",
-                                                                          project=self.label(project)), now)
+                handed = self._store.add_lease_turn(lease_id, "answer", self.words("lease.handed_over_files" if attachments
+                                                                                   else "lease.handed_over", project=self.label(project)), now)
                 self._update(lease_id, answering=1)  # it starts on the opening at once
                 opened = True
                 if unasked:
@@ -272,7 +273,8 @@ class ChannelLease:
             except RunnerError:
                 pass  # lent all the same: the session knows the idea, and the user can say it again
         return {"thread": tid, "lease_id": lease_id, "project": project, "label": self.label(project), "state": got.get("state") or "attaching",
-                "mode": mode, "can_work": self.can_work(project), "opened": opened, "resumed": earlier is not None}
+                "mode": mode, "can_work": self.can_work(project), "opened": opened, "resumed": earlier is not None,
+                **({"turn": handed} if handed else {})}
 
     def _last_heard(self, lease: dict[str, Any]) -> str | None:
         """When a talk last heard anything of this conversation (its last line): what was said here after it is
@@ -420,12 +422,12 @@ class ChannelLease:
                 raise ValueError(self.words("lease.talk_gone")) from e
             raise ValueError(friendly(e, words=self.words)) from e
         # what they said as they said it, and the files themselves (shown again), not a line naming them
-        self._store.add_lease_turn(lease["lease_id"], "user", "" if text == sent and attachments else text, now,
-                                   [a.meta for a in attachments])
+        turn = self._store.add_lease_turn(lease["lease_id"], "user", "" if text == sent and attachments else text, now,
+                                          [a.meta for a in attachments])
         self._heard(lease["lease_id"], unsaid, now)  # after the user's line, as the open screen shows it
         self._update(lease["lease_id"], last_user_at=now.isoformat(), last_activity=now.isoformat(),
                                  warn_state="none", answering=1)
-        return {"leased": True, "lease_id": lease["lease_id"], "thread": thread_id}
+        return {"leased": True, "lease_id": lease["lease_id"], "thread": thread_id, "turn": turn}  # the screen drew it already
 
     # ── what Muninn tells a talk of its answer beside it ────────────────────
 
@@ -468,8 +470,7 @@ class ChannelLease:
     def _heard(self, lease_id: str, said: Sequence[str], now: datetime) -> None:
         """What the talk was told of Muninn's answers, kept among its lines and shown once it has heard it."""
         for x in said:
-            self._store.add_lease_turn(lease_id, "relay", x, now)
-            self._told(lease_id, {"type": "relay", "text": x})
+            self._told(lease_id, {"type": "relay", "text": x, "turn": self._store.add_lease_turn(lease_id, "relay", x, now)})
 
     def _hold(self, lease_id: str, said: Sequence[str], first: bool = False) -> None:
         if not said:
@@ -557,8 +558,8 @@ class ChannelLease:
         now = self._clock.now()
         self._update(lease["lease_id"], mode=mode, last_activity=now.isoformat())
         note = self.words(MODE_NOTES[mode])
-        self._store.add_lease_turn(lease["lease_id"], "answer", note, now)
-        return {"lease_id": lease["lease_id"], "mode": mode, "note": note}
+        turn = self._store.add_lease_turn(lease["lease_id"], "answer", note, now)
+        return {"lease_id": lease["lease_id"], "mode": mode, "note": note, "turn": turn}
 
     def forget(self, lease_id: str) -> None:
         """The runner no longer knows this lease (it lost it): end it here and give the thread back, so the user
@@ -603,7 +604,8 @@ class ChannelLease:
     # ── the runner's side: its events ───────────────────────────────────────
 
     def on_event(self, ev: dict[str, Any]) -> bool:
-        """Applies one event; False for one already seen (events can be replayed after a reconnect)."""
+        """Applies one event; False for one already seen (events can be replayed after a reconnect). A line it keeps
+        in the talk is named on the event (`turn`, its id), so a screen that shows the event knows it has that line."""
         lease = self._store.lease(str(ev.get("lease_id")))
         seq = int(ev.get("seq") or 0)
         if lease is None or seq <= int(lease["last_seq"] or 0):
@@ -622,17 +624,17 @@ class ChannelLease:
             if isinstance(ev.get("project"), str) and ev["project"]:  # it goes by a new name (its sandbox made a project)
                 fields["project"] = ev["project"]
             if ev.get("resumed") is False and ev.get("detail"):  # it was to go on from last time and could not
-                self._store.add_lease_turn(lease["lease_id"], "answer",
-                                           self.words("lease.not_resumed", detail=ev["detail"]), now)
+                ev["turn"] = self._store.add_lease_turn(lease["lease_id"], "answer",
+                                                        self.words("lease.not_resumed", detail=ev["detail"]), now)
         elif kind == "assistant":
             text = str(ev.get("text") or "")
             if text:
-                self._store.add_lease_turn(lease["lease_id"], "session", text, now)
+                ev["turn"] = self._store.add_lease_turn(lease["lease_id"], "session", text, now)
             fields["last_activity"] = now.isoformat()
         elif kind == "turn_end":
             fields["answering"] = 0
         elif kind == "file" and isinstance(ev.get("id"), str):  # a file of the project the session showed the user
-            self._store.add_lease_turn(lease["lease_id"], "file", str(ev.get("summary") or ""), now, files=[{
+            ev["turn"] = self._store.add_lease_turn(lease["lease_id"], "file", str(ev.get("summary") or ""), now, files=[{
                 "id": ev["id"], "name": str(ev.get("name") or self.words("lease.a_file")), "media_type": str(ev.get("mime") or ""),
                 "size": int(ev.get("size") or 0), "path": str(ev.get("path") or ""), "lease": lease["lease_id"]}])
         elif kind == "quota":  # the session's usage windows: {id, label, used (0..1), resets_at (ISO)}
@@ -647,7 +649,7 @@ class ChannelLease:
         elif kind == "attachments":  # where the session kept the files the user sent: said beside the talk
             paths = [str(x) for x in ev.get("paths") or []]
             if paths:
-                self._store.add_lease_turn(lease["lease_id"], "answer", self.words("lease.saved_files", project=self.label(lease["project"]),
+                ev["turn"] = self._store.add_lease_turn(lease["lease_id"], "answer", self.words("lease.saved_files", project=self.label(lease["project"]),
                                                                                   n=len(paths)), now,
                                            detail="\n".join(paths))
         elif kind == "handover":
@@ -978,7 +980,7 @@ class PermissionDesk:
                 and self._trust.allows(row.get("project"), str(row.get("input_summary") or "")):
             decided = self._store.decide_permission(rid, "allow", None, "auto", now)
             if decided is not None:  # allowed as it was before; said in the talk, nobody is asked
-                return {**decided, "note": self._note(decided, now)}
+                return {**decided, **self._note(decided, now)}
         if before is None:
             self._tell(row, now)
         return row
@@ -1068,7 +1070,7 @@ class PermissionDesk:
         decided = self._store.decide_permission(rid, decision, answers, "user", now)
         if decided is None:
             return row
-        return {**decided, "note": self._note(decided, now)}
+        return {**decided, **self._note(decided, now)}
 
     def expire(self) -> int:
         """Requests nobody answered in five minutes are denied."""
@@ -1081,12 +1083,13 @@ class PermissionDesk:
                 n += 1
         return n
 
-    def _note(self, row: dict[str, Any], now: datetime, timed_out: bool = False) -> str:
-        """What the user decided joins the lent conversation, so it reads back when they return to it."""
+    def _note(self, row: dict[str, Any], now: datetime, timed_out: bool = False) -> dict[str, Any]:
+        """What the user decided joins the lent conversation, so it reads back when they return to it: {note, its
+        line's id as `note_turn` when it has one}."""
         text = answer_text(row, timed_out, words=self.words)
         if row.get("lease_id"):
-            self._store.add_lease_turn(row["lease_id"], "answer", text, now)
-        return text
+            return {"note": text, "note_turn": self._store.add_lease_turn(row["lease_id"], "answer", text, now)}
+        return {"note": text}
 
 
 WORK_RISKS = ("write_file", "run_command")  # what a session in work mode asks before doing

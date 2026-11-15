@@ -89,7 +89,8 @@ def test_a_permission_request_round_trip(app):
     [card] = client.get("/api/permission-requests/pending").json()["items"]
     assert card["kind"] == "ask_user" and card["question"]["questions"][0]["question"] == "A or B?"
     assert client.post(f"/api/permission-requests/{req['id']}/decision",
-                       json={"decision": "allow", "answers": {"A or B?": "B"}}).json() == {"ok": True, "note": "你選了:B"}
+                       json={"decision": "allow", "answers": {"A or B?": "B"}}).json() == {
+        "ok": True, "note": "你選了:B", "turn": h.store.lease_turns(lid)[0]["id"]}  # the line the screen drew, named
     assert [t["role"] for t in h.store.lease_turns(lid)] == ["answer"]  # reads back when the user returns
     got = client.get(f"/api/permission-requests/{req['id']}?wait=25", headers=auth)
     assert got.status_code == 200 and got.json() == {"v": 2, "decision": "allow", "answers": {"A or B?": "B"}}

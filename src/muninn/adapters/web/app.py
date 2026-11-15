@@ -1281,6 +1281,10 @@ def create_app(
         if feed is None:
             return JSONResponse({"error": "not set up"}, status_code=404)
         lease_id = request.path_params["lease_id"]
+        try:
+            after = int(request.query_params.get("after") or 0)  # the last line of the talk the screen has
+        except ValueError:
+            after = 0
         q = feed.subscribe(lease_id)
         # first, the talk as it is now: a change made before this stream opened (or while it was reconnecting) is
         # not missed. Subscribed before it is read, so nothing falls between the two.
@@ -1290,11 +1294,18 @@ def create_app(
         # said once live, so it is said again on every opening, to be answered in the conversation
         asks = ([{"type": "permission_card", "card": c} for c in await run_in_threadpool(permissions.pending)
                  if c.get("lease") == lease_id] if permissions is not None and lease is not None else [])
+        # before them, the lines said in it since the screen's last one: those said while no stream reached it are in
+        # the talk when it is back; whether it is still answering (a spinner left from before goes); and which
+        # requests still wait (one that timed out meanwhile is no longer answerable)
+        turns = ([{"type": "turns", "turns": [x for x in await run_in_threadpool(engine.store.lease_turns, lease_id)
+                                              if int(x["id"]) > after],
+                   "answering": bool(lease.get("answering")), "asking": [a["card"]["id"] for a in asks]}]
+                 if lease is not None else [])
 
         async def stream():
             try:
                 yield ": open\n\n"
-                for ev in ([now] if now is not None else []) + asks:
+                for ev in ([now] if now is not None else []) + turns + asks:
                     yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
                 while True:
                     try:
@@ -1330,7 +1341,8 @@ def create_app(
         row = await call(permissions.receive, data)
         res = await run_in_threadpool(permissions.result, row["id"])
         if feed is not None and row.get("note") and row.get("lease_id"):  # allowed without asking: said in the talk
-            feed.publish(row["lease_id"], {"type": "permission_answered", "id": row["id"], "text": row["note"]})
+            feed.publish(row["lease_id"], {"type": "permission_answered", "id": row["id"], "text": row["note"],
+                                           "turn": row.get("note_turn")})
         if res:
             return JSONResponse(res, status_code=200)
         card = await run_in_threadpool(permissions.card, row["id"])
@@ -1385,8 +1397,9 @@ def create_app(
         if rid in waiting:
             waiting[rid].set()
         if feed is not None and row.get("note") and row.get("lease_id"):
-            feed.publish(row["lease_id"], {"type": "permission_answered", "id": rid, "text": row["note"]})
-        return JSONResponse({"ok": True, "note": row.get("note")})
+            feed.publish(row["lease_id"], {"type": "permission_answered", "id": rid, "text": row["note"],
+                                           "turn": row.get("note_turn")})
+        return JSONResponse({"ok": True, "note": row.get("note"), "turn": row.get("note_turn")})
 
     @authed
     @guarded

@@ -796,13 +796,14 @@ class LeaseStore(Protocol):
     def update_lease(self, lease_id: str, **fields: Any) -> dict[str, Any] | None: ...
 
     def add_lease_turn(self, lease_id: str, role: str, text: str, at: datetime, files: Sequence[dict[str, str]] = (),
-                       detail: str = "") -> None:
+                       detail: str = "") -> int:
         """`files`: what the user sent with it ({id, name, media_type}), to show it again; `detail`: what a note
-        (an answer role line) folds away under its one line."""
+        (an answer role line) folds away under its one line. Returns the line's id: it only grows, so a screen that
+        has drawn the lines up to one knows which are new to it."""
         ...
 
     def lease_turns(self, lease_id: str) -> list[dict[str, Any]]:
-        """{role (user | session | answer | muninn), text, ts, files?, detail?}, oldest first."""
+        """{id, role (user | session | answer | muninn | relay | file), text, ts, files?, detail?}, oldest first."""
         ...
 
 

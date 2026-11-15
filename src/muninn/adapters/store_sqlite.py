@@ -985,12 +985,13 @@ class SqliteStore:
             return self._lease(db.execute("SELECT * FROM leases WHERE lease_id = ?", (lease_id,)).fetchone())
 
     def add_lease_turn(self, lease_id: str, role: str, text: str, at: datetime, files: Sequence[dict[str, str]] = (),
-                       detail: str = "") -> None:
-        self._x("INSERT INTO lease_turns (lease_id, role, text, ts, files, detail) VALUES (?, ?, ?, ?, ?, ?)",
-                (lease_id, role, text, at.isoformat(), json.dumps(list(files), ensure_ascii=False) if files else None, detail or None))
+                       detail: str = "") -> int:
+        return int(self._x("INSERT INTO lease_turns (lease_id, role, text, ts, files, detail) VALUES (?, ?, ?, ?, ?, ?)",
+                           (lease_id, role, text, at.isoformat(), json.dumps(list(files), ensure_ascii=False) if files else None,
+                            detail or None)).lastrowid or 0)
 
     def lease_turns(self, lease_id: str) -> list[dict[str, Any]]:
-        return [{"role": r["role"], "text": r["text"], "ts": r["ts"], **({"files": json.loads(r["files"])} if r["files"] else {}),
+        return [{"id": r["id"], "role": r["role"], "text": r["text"], "ts": r["ts"], **({"files": json.loads(r["files"])} if r["files"] else {}),
                  **({"detail": r["detail"]} if r["detail"] else {})}
                 for r in self._q("SELECT * FROM lease_turns WHERE lease_id = ? ORDER BY id", (lease_id,))]
 

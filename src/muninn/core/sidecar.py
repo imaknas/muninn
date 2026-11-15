@@ -63,8 +63,8 @@ class Sidecar:
         said = "" if plan["actions"] else first_sentences(r.reply, SAID_MAX, self.words)
         line = "\n".join(x for x in [said, *(o.text for o in r.outcomes)] if x)
         if line:
-            self._serialize(lambda: self._store.add_lease_turn(lease_id, "muninn", line, self._clock.now()))
-            self._tell(lease_id, {"type": "sidecar", "text": line})
+            turn = self._serialize(lambda: self._store.add_lease_turn(lease_id, "muninn", line, self._clock.now()))
+            self._tell(lease_id, {"type": "sidecar", "text": line, "turn": turn})
         if plan.get("for_project"):  # after its answer, as the user sees it; outside the lock: it calls the runner
             self._relay(lease_id, plan["for_project"])
         return line or None

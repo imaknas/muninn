@@ -26,11 +26,11 @@ interface Conversation {
   stuck?: boolean;  // the session failed: taking it back by hand is offered
   resuming?: string | null;  // the lease that goes on once its handover is written (what was said waits for it)
   quotaNote?: string;
+  lines: Map<number, string>;  // the deep talks' lines on the screen (or above it, in what was said before): id → its talk
 }
 
 let talk: Conversation | null = null;  // the stream, once mounted
 const known = new Map<string, About | null>();  // every conversation kept: what each is about
-const shownLeases = new Set<string>();  // deep talks whose turns are already in the stream
 const shownSpoken = new Set<string>();  // what Muninn brought up unasked, already in the stream (thread + ts)
 
 // ── the topic: what the user is looking at, so what they say is about it ──
@@ -66,7 +66,7 @@ export interface Resume { thread: string; last?: string; lease_id?: string | nul
 
 export function mountTalk(): void {
   const input = must<HTMLTextAreaElement>("#say-input");
-  talk = { thread: null, pastLease: null, about: null, log: must("#log"), input, lease: null, stream: null, pinned: false, bubble: null, status: null };
+  talk = { thread: null, pastLease: null, about: null, log: must("#log"), input, lease: null, stream: null, pinned: false, bubble: null, status: null, lines: new Map() };
   mountFiles();
   must("#say").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -134,6 +134,7 @@ async function draw(feed: List<Thread>): Promise<void> {
     nodes.push(suggestRow(unplaced(th), th.thread));
   }
   t.log.replaceChildren(...kids(nodes));
+  t.lines.clear();  // the open talk's lines went with the rest: drawn again from what the server has
   foldEarlier(t.log);  // the conversation opens on today
   if (t.pinned) {  // the user just chose what to talk about and has not said it yet: a redraw keeps that, and says so
     const chosen = topic.title && !(t.thread && t.thread === feed.items[feed.items.length - 1]?.thread);
@@ -147,7 +148,12 @@ async function draw(feed: List<Thread>): Promise<void> {
     t.thread = last.thread;
     t.about = last.about;
     t.pinned = false;
-    if (last.lease_id) await resumeLease(t);
+    if (last.lease_id) {
+      // the talk's stream opens again from the lines drawn now: one still open would add what it caught up on
+      // under a log that is about to be drawn again
+      if (t.stream) t.stream.close();
+      await resumeLease(t);
+    }
   }
   scrollEnd(t);
 }
@@ -358,16 +364,18 @@ function leaseReply(t: Conversation, r: CommandReply, thinking: HTMLElement): bo
   }
   if (r.note && r.mode) {  // switched with /work or /discuss
     thinking.remove();
-    modeSwitched(t, r.mode, r.note);
+    modeSwitched(t, r.mode, r.note, r.turn);
     return true;
   }
   if (r.lease_id && r.project && !r.leased) {  // just attached
     thinking.remove();
+    if (r.turn) t.lines.set(r.turn, r.lease_id);
     startLease(t, { lease_id: r.lease_id, project: r.project, label: r.label, state: r.state || "attaching", mode: r.mode, can_work: r.can_work });
     return true;
   }
   if (r.leased) {
     thinking.remove();
+    if (r.turn && r.lease_id) t.lines.set(r.turn, r.lease_id);  // what they said, drawn as they said it
     if (r.lent) lent(t, r.lent);  // given back a moment ago, and lent again as they came back to it
     t.resuming = null;
     t.bubble = null;
@@ -385,6 +393,7 @@ function leaseReply(t: Conversation, r: CommandReply, thinking: HTMLElement): bo
 function lent(t: Conversation, x: Lent): void {
   if (x.error) { t.log.append(el("p", { class: "thinking" }, x.error)); return; }
   if (x.text) t.log.append(at(receipt(x.text)));
+  if (x.turn && x.lease_id) t.lines.set(x.turn, x.lease_id);  // the talk's own line saying it was handed over: the receipt says so
   if (x.lease_id && x.project) {
     startLease(t, { lease_id: x.lease_id, project: x.project, label: x.label, state: x.state || "attaching", mode: x.mode, can_work: x.can_work });
     // gone into while it writes its handover: this view stays with it, and it goes on once it has written it
@@ -414,10 +423,11 @@ async function resumeLease(t: Conversation): Promise<void> {
     const info = await api<LeaseInfo>(`/api/leases?thread=${encodeURIComponent(t.thread || "")}`);
     if (info.enabled && !info.lease && t.pastLease) return await showPastLease(t);  // awaited: its failure is caught here
     if (!info.enabled || !info.lease) return;
-    if (!shownLeases.has(info.lease.lease_id)) {  // coming back to it: its turns are already in the stream
-      shownLeases.add(info.lease.lease_id);
-      const since = talkEnds.get(info.lease.lease_id) || "";  // what came before is above, with how it ended then
-      for (const x of info.lease.turns.filter((x) => (x.ts || "") > since)) t.log.append(turnLine(x, called(info.lease)));
+    const since = talkEnds.get(info.lease.lease_id) || "";  // what came before is above, with how it ended then
+    for (const x of info.lease.turns) {
+      if (x.id != null && t.lines.has(x.id)) continue;  // coming back to it: already in the stream
+      if (x.id != null) t.lines.set(x.id, info.lease.lease_id);
+      if ((x.ts || "") > since) t.log.append(turnLine(x, called(info.lease)));
     }
     startLease(t, info.lease);
     // what it is still waiting on, answerable right here
@@ -519,7 +529,6 @@ function startLease(t: Conversation, lease: Conversation["lease"] & object): voi
   t.lease = lease;
   if (autoCommands === null) void readAutoCommands(t);
   t.stuck = !!("error" in lease && lease.error);  // it failed before this view opened
-  shownLeases.add(lease.lease_id);
   renderLeaseBar(t);
   if (lease.can_work && lease.mode !== "work") workOffer(t);
   t.input.placeholder = w.talk.talkTo(called(lease));
@@ -528,13 +537,17 @@ function startLease(t: Conversation, lease: Conversation["lease"] & object): voi
 
 function openLeaseStream(t: Conversation, leaseId: string): void {
   if (t.stream) t.stream.close();
-  const es = new EventSource(`/api/leases/${encodeURIComponent(leaseId)}/events`);
+  // from the screen's last line of this talk: what was said after it comes first (a line it has is never drawn twice
+  // either way: ids are counted across talks, so another talk's later line says nothing of this one's)
+  const after = Math.max(0, ...[...t.lines].filter(([, lease]) => lease === leaseId).map(([id]) => id));
+  const es = new EventSource(`/api/leases/${encodeURIComponent(leaseId)}/events?after=${after}`);
   t.stream = es;
   es.onmessage = (m) => { if (talk === t) leaseEvent(t, JSON.parse(m.data) as LeaseEvent); };
 }
 
 // back in view with a deep talk open: its stream may have died while the phone slept, and what was said on it
-// meanwhile (a request to run a command) with it; a fresh one opens with the talk as it is and what it waits on
+// meanwhile (its answers, a request to run a command) with it; a fresh one opens with the lines since the screen's
+// last, the talk as it is and what it waits on
 document.addEventListener("visibilitychange", () => {
   const t = talk;
   if (document.visibilityState === "visible" && t?.lease && t.stream) openLeaseStream(t, t.lease.lease_id);
@@ -570,15 +583,17 @@ function workOffer(t: Conversation): void {
 
 async function setMode(t: Conversation, mode: LeaseMode): Promise<void> {
   try {
-    const r = await api<{ mode: LeaseMode; note?: string }>(`/api/leases/${mode}`, { thread: t.thread });
-    modeSwitched(t, r.mode, r.note);
+    const r = await api<{ mode: LeaseMode; note?: string; turn?: number }>(`/api/leases/${mode}`, { thread: t.thread });
+    modeSwitched(t, r.mode, r.note, r.turn);
   } catch (err) { handleError(err); }
 }
 
-function modeSwitched(t: Conversation, mode: LeaseMode, note?: string): void {
+function modeSwitched(t: Conversation, mode: LeaseMode, note?: string, turn?: number): void {
   if (t.lease) t.lease.mode = mode;
   t.log.querySelector(".work-offer")?.remove();
   renderLeaseBar(t);
+  if (turn && t.lines.has(turn)) note = undefined;  // already drawn (the stream brought it first)
+  if (turn && t.lease) t.lines.set(turn, t.lease.lease_id);
   if (note) t.log.append(at(receipt(note)));
   scrollEnd(t);
 }
@@ -627,25 +642,41 @@ function setStatus(t: Conversation, text: string | null): void {
 // what the lent session's event stream says
 type LeaseEvent =
   | { type: "text_delta"; text?: string }
-  | { type: "assistant"; text: string }
+  | { type: "assistant"; text: string; turn?: number }
   | { type: "tool_use"; kind?: StepKind; summary?: string }  // summary: one line saying what it did, as is
-  | { type: "sidecar"; text: string }
-  | { type: "relay"; text: string }
-  | { type: "attachments"; paths?: string[] }  // where the session kept the files the user sent
+  | { type: "sidecar"; text: string; turn?: number }
+  | { type: "relay"; text: string; turn?: number }
+  | { type: "attachments"; paths?: string[]; turn?: number }  // where the session kept the files the user sent
   | { type: "turn_end" }
-  | { type: "file"; id: string; name: string; mime: string; size: number; path?: string; summary?: string; lease_id?: string }
+  | { type: "file"; id: string; name: string; mime: string; size: number; path?: string; summary?: string; lease_id?: string; turn?: number }
   | { type: "quota"; windows?: { id: string; label?: string; used: number }[] }
   | { type: "idle_warning" }
   | { type: "permission_card"; card: PermissionRequest }
-  | { type: "permission_answered"; id: string; text?: string }
+  | { type: "permission_answered"; id: string; text?: string; turn?: number | null }
+  | { type: "turns"; turns: Turn[]; answering: boolean; asking: string[] }  // the lines since the screen's last, as its stream opens
   | { type: "handover"; handover?: Handover }
   | { type: "error"; error: string; detail?: string }
-  | { type: "state"; state: string; resumed?: boolean; detail?: string }
+  | { type: "state"; state: string; resumed?: boolean; detail?: string; turn?: number }
   | { type: "lease"; lease: { lease_id: string; project: string; label?: string; state: string; mode?: LeaseMode; can_work?: boolean; warn?: boolean; error?: string | null } };
+
+// a line of the talk this screen has not drawn yet (marked drawn now); an event that keeps none is always new
+function unseen(t: Conversation, turn: number | null | undefined): boolean {
+  if (turn == null) return true;
+  if (t.lines.has(turn)) return false;
+  t.lines.set(turn, t.lease ? t.lease.lease_id : "");
+  return true;
+}
 
 function leaseEvent(t: Conversation, e: LeaseEvent): void {
   const scroll = () => scrollEnd(t);
+  // drawn already, from the lines its stream opened with: a state still counts, only its line is not drawn again
+  const drawn = "turn" in e && e.type !== "permission_answered" && !unseen(t, e.turn);
+  if (drawn && e.type !== "state") {
+    if (e.type === "assistant" && t.bubble) { t.bubble.remove(); t.bubble = null; }
+    return;
+  }
   switch (e.type) {
+    case "turns": caughtUp(t, e.turns, e.answering, e.asking); return;
     case "text_delta": setStatus(t, null); sessionBubble(t).textContent += e.text || ""; scroll(); return;
     case "assistant": setStatus(t, null); sessionBubble(t).replaceChildren(...markdown(e.text)); t.bubble = null; scroll(); return;
     case "tool_use": {
@@ -670,7 +701,7 @@ function leaseEvent(t: Conversation, e: LeaseEvent): void {
     }
     case "idle_warning": setStatus(t, w.talk.idle); return;  // given back by itself
     case "permission_card": showAsk(t, e.card); scroll(); return;
-    case "permission_answered": showAnswer(t, e.id, e.text); scroll(); return;
+    case "permission_answered": showAnswer(t, e.id, e.text, e.turn); scroll(); return;
     case "handover": setStatus(t, null); stepsDone(t); t.log.append(at(handoverCard(e.handover || {}, t.lease ? called(t.lease) : null))); scroll(); return;
     case "error": setStatus(t, null); stepsDone(t); t.stuck = true; renderLeaseBar(t); t.log.append(el("p", { class: "muted" }, w.talk.sessionError(e.error, e.detail))); scroll(); return;
     case "lease":  // what is shown of the talk changed (a new name, its mode, its state): drawn from it whole
@@ -678,7 +709,7 @@ function leaseEvent(t: Conversation, e: LeaseEvent): void {
       return;
     case "state":
       if (t.lease) t.lease.state = e.state;
-      if (e.resumed === false && e.detail) { t.log.append(el("p", { class: "thinking" }, w.talk.notResumed(e.detail))); scroll(); }
+      if (e.resumed === false && e.detail && !drawn) { t.log.append(el("p", { class: "thinking" }, w.talk.notResumed(e.detail))); scroll(); }
       if (e.state === "detached" && t.lease && t.resuming === t.lease.lease_id) {
         t.resuming = null;  // it goes on with the same session: this stream stays open for what it says next
         setStatus(t, w.talk.isThinking(called(t.lease)));
@@ -699,19 +730,40 @@ function leaseEvent(t: Conversation, e: LeaseEvent): void {
 // a question or a web page the session asks about, answered in the conversation; the answer stays as a line
 function showAsk(t: Conversation, p: PermissionRequest | undefined): void {
   if (!p || t.log.querySelector(`[data-pid="${CSS.escape(p.id)}"], [data-aid="${CSS.escape(p.id)}"]`)) return;
-  const card = permissionCard(p, (note) => showAnswer(t, p.id, note));
+  const card = permissionCard(p, (note, turn) => showAnswer(t, p.id, note, turn));
   card.dataset.pid = p.id;
+  card.dataset.lease = p.lease || "";
   t.log.append(card);
   if (t.status) t.log.append(t.status);
 }
 
-function showAnswer(t: Conversation, id: string, text?: string): void {
+function showAnswer(t: Conversation, id: string, text?: string, turn?: number | null): void {
   if (t.log.querySelector(`[data-aid="${CSS.escape(id)}"]`)) return;
+  const card = t.log.querySelector(`[data-pid="${CSS.escape(id)}"]`);
+  if (!unseen(t, turn)) { card?.remove(); return; }  // its line came with what the stream opened with
   const line = at(receipt(text || w.talk.answered));
   line.dataset.aid = id;
-  const card = t.log.querySelector(`[data-pid="${CSS.escape(id)}"]`);
   if (card) card.replaceWith(line);
   else t.log.append(line);
+}
+
+// the talk's lines said while no stream reached this screen (the phone asleep), as its stream opens again: each in
+// its place at the end; the session's answer takes the place of what of it had come before the stream died
+function caughtUp(t: Conversation, turns: Turn[], answering: boolean, asking: string[]): void {
+  const label = t.lease ? called(t.lease) : w.talk.project;
+  const lease = t.lease ? t.lease.lease_id : "";
+  for (const card of t.log.querySelectorAll<HTMLElement>("[data-pid]")) {  // what is no longer asked (timed out meanwhile) goes
+    if (card.dataset.lease === lease && !asking.includes(card.dataset.pid || "")) card.remove();
+  }
+  for (const x of turns) {
+    if (!unseen(t, x.id)) continue;
+    const line = turnLine(x, label);
+    if (x.role === "session" && t.bubble) { t.bubble.replaceWith(line); t.bubble = null; }
+    else t.log.append(line);
+  }
+  if (!answering) { setStatus(t, null); stepsDone(t); t.bubble = null; }  // it finished while away: nothing is still going
+  else if (t.status) t.log.append(t.status);  // stays last
+  scrollEnd(t);
 }
 
 
@@ -763,12 +815,12 @@ function handoverCard(h: Handover, project?: string | null): HTMLElement {
 
 // a lent session's relay asking: a question it put, or a web page outside the project's own sites.
 // `answered` (in the conversation): the card turns into the line saying what was decided.
-export function permissionCard(p: PermissionRequest, answered?: (note: string) => void): HTMLElement {
+export function permissionCard(p: PermissionRequest, answered?: (note: string, turn?: number | null) => void): HTMLElement {
   const inline = !!answered;
   const decide = async (decision: string, answers?: Record<string, string | string[]>) => {
     try {
-      const r = await api<{ note: string }>(`/api/permission-requests/${encodeURIComponent(p.id)}/decision`, { decision, answers });
-      if (answered) { answered(r.note); render(); return; }  // the waiting copy of the card goes too
+      const r = await api<{ note: string; turn?: number | null }>(`/api/permission-requests/${encodeURIComponent(p.id)}/decision`, { decision, answers });
+      if (answered) { answered(r.note, r.turn); render(); return; }  // the waiting copy of the card goes too
       toast(r.note || w.talk.answered);
     } catch (err) { handleError(err); }
     if (!inline) render();
