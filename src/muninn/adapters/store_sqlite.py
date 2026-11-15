@@ -319,6 +319,10 @@ class SqliteStore:
         rows = self._q("SELECT MAX(ts) AS t FROM observations WHERE domain = ?", (domain,))
         return _dt(rows[0]["t"]) if rows and rows[0]["t"] else None
 
+    def last_observed(self, kind: str) -> datetime | None:
+        rows = self._q("SELECT MAX(ts) AS t FROM observations WHERE kind = ?", (kind,))
+        return _dt(rows[0]["t"]) if rows and rows[0]["t"] else None
+
     def unattributed(self, limit: int) -> list[Observation]:
         return [self._obs(r) for r in self._q("SELECT * FROM observations WHERE domain IS NULL ORDER BY ts DESC LIMIT ?", (limit,))]
 

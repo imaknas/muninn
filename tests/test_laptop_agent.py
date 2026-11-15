@@ -68,3 +68,38 @@ def test_window_hours_reach_the_goal_through_ingest():
     h.engine.ingest([Observation("aw", at(2026, 10, 21, 18), "window", "w1", {"app": "Code", "title": "main.go — go-katas", "duration_s": 3600}, sensitivity=Sensitivity.PERSONAL)])
     goals = {g["id"]: g for g in h.engine.today_view()["domains"][0]["goals"]}
     assert abs(goals["golang"]["actual"] - (1 + 10 / 60)) < 0.01
+
+
+def test_transcripts_still_sync_when_muninn_cannot_be_reached(tmp_path, monkeypatch):
+    (tmp_path / "config.json").write_text('{"ingest_url": "https://muninn.example/api/ingest", "token": "t"}')
+    monkeypatch.setattr(agent, "CONFIG", tmp_path / "config.json")
+    monkeypatch.setattr(agent, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(agent, "collect_windows", lambda cfg, state, now: [{"key": "w1"}])
+    monkeypatch.setattr(agent, "collect_git", lambda cfg, state, now: [])
+
+    def unreachable(cfg, observations):
+        raise agent.urllib.error.URLError("tlsv1 alert internal error")
+
+    synced = []
+    monkeypatch.setattr(agent, "ingest", unreachable)
+    monkeypatch.setattr(agent, "sync_transcripts", lambda cfg: synced.append(cfg))
+    assert agent.main() == 1
+    assert len(synced) == 1
+
+
+def test_a_computer_that_went_quiet_is_said_once_per_silence():
+    h = make_harness(at(2026, 10, 21, 20))
+    assert h.engine.remind_quiet_computer() == []  # no computer ever sent anything: nothing to miss
+    h.engine.ingest([Observation("aw", at(2026, 10, 21, 18), "window", "w1", {"app": "Code", "title": "notes"},
+                                 sensitivity=Sensitivity.PERSONAL)])
+    h.clock.t = at(2026, 10, 22, 20)
+    assert h.engine.remind_quiet_computer() == []  # a day off the computer is not a silence
+    h.clock.t = at(2026, 10, 24, 9)
+    [item] = h.engine.remind_quiet_computer()
+    assert "2" in item.title and "~/.muninn-agent/agent.log" in item.body
+    h.clock.t = at(2026, 10, 25, 9)
+    assert h.engine.remind_quiet_computer() == []  # once, not every tick
+    h.engine.ingest([Observation("aw", at(2026, 10, 25, 8), "window", "w2", {"app": "Code", "title": "notes"},
+                                 sensitivity=Sensitivity.PERSONAL)])
+    h.clock.t = at(2026, 10, 28, 9)
+    assert len(h.engine.remind_quiet_computer()) == 1  # a new silence after it came back is said again

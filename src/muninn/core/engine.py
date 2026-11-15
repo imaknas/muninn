@@ -387,6 +387,19 @@ class Engine:
             items += self._once(marker, now, lambda item=item: item)
         return items
 
+    def remind_quiet_computer(self, after: timedelta = timedelta(days=2)) -> list[InboxItem]:
+        """Said once per silence, when the computers that were sending their activity have sent nothing for a while.
+        A collector that cannot reach Muninn can only fail where nobody looks (its own log on that computer), and it
+        cannot tell a computer left off from one that broke, so the reminder asks rather than claims."""
+        now = self.clock.now()
+        last = self.store.last_observed("window")
+        if last is None or now - last < after:
+            return []
+        item = InboxItem(None, now, "muninn", "info", self.words("engine.quiet_computer_title", days=(now - last).days),
+                         self.words("engine.quiet_computer_body", when=f"{local(last, self.tz):%Y-%m-%d %H:%M}"),
+                         {"quiet_computer": last.isoformat()})
+        return self._once(f"quiet-computer:{last.isoformat()}", now, lambda: item)
+
     def _once(self, marker: str, now: datetime, build) -> list[InboxItem]:
         """Runs a scheduled report at most once per marker; a failure releases
         the marker so the next scheduler attempt can retry."""
@@ -603,6 +616,7 @@ class Engine:
         and notify, then the jobs that act on what was found. A failing job is logged and skipped."""
         self.collect()
         self.remind_relink()
+        self.remind_quiet_computer()
         self._run_jobs("early")
         self.reattribute_unattributed()
         try:

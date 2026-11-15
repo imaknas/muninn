@@ -283,6 +283,7 @@ def main() -> int:
         new = ingest(cfg, observations) if observations else 0
     except (urllib.error.URLError, OSError) as e:
         log(f"ingest failed, will retry next run: {e}")
+        sync_transcripts(cfg)  # a separate path to the server: one failing does not stop the other
         return 1
     if "aw_until_next" in state:
         state["aw_until"] = state.pop("aw_until_next")

@@ -4,6 +4,10 @@ TEXTS = {
     "suggested": " (the local model suggests {domain})",
     "relink_title": "{name}'s access has expired; tap to reconnect it in the app",
     "relink_body": "Until it's reconnected, nothing goes on your calendar and no mail is read.",
+    "quiet_computer_title": "Nothing from your computer for {days} days",
+    "quiet_computer_body": "The last activity came at {when}. If you have used the computer since, its collector may not reach "
+                           "Muninn: look at its log on that computer (on a Mac, ~/.muninn-agent/agent.log), or install it "
+                           "again from Settings, Computer activity.",
     "morning_push": lambda n, first: (f"Good morning · 1 thing is waiting on you (first: {first})" if n == 1
                                       else f"Good morning · {n} things are waiting on you (first: {first})"),
     "waiting_on_you": "Waiting on you: {items}",

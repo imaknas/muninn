@@ -512,6 +512,9 @@ class Muninn:
     def remind_relink(self) -> list[InboxItem]:
         return self.engine.remind_relink()
 
+    def remind_quiet_computer(self) -> list[InboxItem]:
+        return self.engine.remind_quiet_computer()
+
     def tick(self) -> Composition:
         return self.engine.tick()
 
