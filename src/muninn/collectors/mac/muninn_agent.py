@@ -131,11 +131,15 @@ def collect_windows(cfg: dict, state: dict, now: datetime) -> list[dict]:
 
 def repos(roots: list[str], nested: set[str], depth: int = 3) -> list[Path]:
     """Repositories directly under each root, plus any found up to `depth`
-    levels down inside `nested` folders (e.g. ~/<team>/<area>/<repo>)."""
+    levels down inside `nested` folders (e.g. ~/<team>/<area>/<repo>). A
+    worktree (its .git a file) is not one: its commits are its repository's,
+    read there (log --all)."""
 
     def walk(d: Path, left: int) -> list[Path]:
-        if (d / ".git").exists():
+        if (d / ".git").is_dir():
             return [d]
+        if (d / ".git").exists():
+            return []
         if left == 0:
             return []
         try:
@@ -149,12 +153,14 @@ def repos(roots: list[str], nested: set[str], depth: int = 3) -> list[Path]:
         r = Path(root).expanduser()
         if not r.is_dir():
             continue
-        if (r / ".git").exists():
+        if (r / ".git").is_dir():
             out.append(r)
             continue
         for d in sorted(p for p in r.iterdir() if p.is_dir() and not p.name.startswith(".")):
-            if (d / ".git").exists():
+            if (d / ".git").is_dir():
                 out.append(d)
+            elif (d / ".git").exists():
+                continue
             elif d.name in nested:
                 out += walk(d, depth)
     return out

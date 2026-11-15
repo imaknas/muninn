@@ -233,13 +233,24 @@ class Engine:
 
     def suggest_attributions(self, lookback: timedelta = timedelta(days=7), limit: int = 5) -> int:
         """Asks the user (with a local-model suggestion when available) where
-        unattributed repos belong. Nothing is attributed until they answer."""
+        unattributed repos belong. Nothing is attributed until they answer.
+        Where projects are registered (records), only those are asked about: any other folder (a scratch
+        repo, a worktree whose main checkout could not be told) is not one of the user's projects, and a question
+        already asked about one is taken back."""
         now = self.clock.now()
         asked = set(self.store.get_state("attribution:asked") or [])
+        known = self.records.projects()
+        dropped: set[str] = set()  # asked again should one become a project
+        if known:
+            for c in self.store.confirmations():
+                if c.kind == "attribution" and c.data.get("rule") == "repo" and c.data.get("match") not in known:
+                    self.store.answer_confirmation(c.id, "", now)  # retired: no longer the question
+                    dropped.add(str(c.data.get("match")))
+        asked -= dropped
         repos: dict[str, set[str]] = {}
         for o in self.store.unattributed(500):
             repo = o.payload.get("repo")
-            if repo and repo not in asked and o.ts >= now - lookback:
+            if repo and repo not in asked and o.ts >= now - lookback and (not known or repo in known):
                 repos.setdefault(repo, set()).update(o.payload.get("langs") or ())
         domains = self.domains()
         created = 0
@@ -257,7 +268,7 @@ class Engine:
             )
             asked.add(repo)
             created += c is not None
-        self.store.update_state("attribution:asked", lambda now: sorted(set(now or ()) | asked))
+        self.store.update_state("attribution:asked", lambda before: sorted((set(before or ()) | asked) - dropped))
         return created
 
     @staticmethod
@@ -308,7 +319,7 @@ class Engine:
         out = []
         for c in self.store.confirmations(pending_only=False):
             repo = c.data.get("match")
-            if c.kind != "attribution" or c.answer is None or repo in seen:
+            if c.kind != "attribution" or not c.answer or repo in seen:  # "": retired, never answered
                 continue
             seen.add(repo)
             rule = learned.get(f"repo:{repo}")

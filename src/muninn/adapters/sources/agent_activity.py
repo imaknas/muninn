@@ -34,10 +34,37 @@ def repo_root(cwd: str) -> Path | None:
     for candidate in (p, *p.parents):
         try:
             if (candidate / ".git").exists():
-                return candidate
+                return main_checkout(candidate)
         except OSError:
             return None
     return None
+
+
+def main_checkout(root: Path) -> Path:
+    """The checkout a linked worktree belongs to (its .git is a file naming <main>/.git/worktrees/<name>, or
+    <main>.git/worktrees/<name> for a bare one): work in a worktree is that project's. Any other folder itself."""
+    try:
+        line = (root / ".git").read_text().strip() if (root / ".git").is_file() else ""
+    except OSError:
+        return root
+    if not line.startswith("gitdir:"):
+        return root
+    gitdir = Path(line.removeprefix("gitdir:").strip())
+    gitdir = gitdir if gitdir.is_absolute() else (root / gitdir).resolve()
+    if gitdir.parent.name != "worktrees":
+        return root  # a submodule's: a repository of its own
+    common = gitdir.parent.parent
+    return common.parent if common.name == ".git" else common.with_name(common.name.removesuffix(".git"))
+
+
+def worktree_home(p: Path) -> Path:
+    """A folder inside an agent's worktree (<project>/.claude/worktrees/<name>/…), even one already cleaned
+    up: the project it was made from. Any other folder itself."""
+    parts = p.parts
+    for i in range(1, len(parts) - 1):
+        if parts[i] == ".claude" and parts[i + 1] == "worktrees":
+            return Path(*parts[:i])
+    return p
 
 
 def is_home_dir(p: Path) -> bool:
@@ -49,9 +76,10 @@ def is_home_dir(p: Path) -> bool:
 def repo_name(cwd: str, workspace_roots: Sequence[Path]) -> str | None:
     """The project a working directory belongs to: its top-level directory
     under a workspace root (so nested repos count toward their project),
-    else the enclosing git repository, else the directory itself. None for a
-    home directory, which is not a project."""
-    p = Path(cwd)
+    else the enclosing git repository, else the directory itself; a
+    worktree's is the project it was made from. None for a home directory,
+    which is not a project."""
+    p = worktree_home(Path(cwd))
     if is_home_dir(p):
         return None
     for ws in workspace_roots:
@@ -60,8 +88,8 @@ def repo_name(cwd: str, workspace_roots: Sequence[Path]) -> str | None:
         except ValueError:
             continue
         if rel.parts:
-            return rel.parts[0]
-    root = repo_root(cwd)
+            return main_checkout(ws / rel.parts[0]).name  # a worktree beside its project is that project
+    root = repo_root(str(p))
     return root.name if root is not None else p.name
 
 

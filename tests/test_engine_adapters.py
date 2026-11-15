@@ -361,6 +361,54 @@ def test_home_directory_is_not_a_project(tmp_path):
     assert repo_name("/home/someone/code/resume/sub", [Path("/home/someone/code")]) == "resume"
 
 
+def test_a_worktree_is_its_projects(tmp_path):
+    from muninn.adapters.sources.agent_activity import repo_name
+
+    hub = tmp_path / "hub"
+    (hub / ".git" / "worktrees" / "brave-otter").mkdir(parents=True)
+    wt = hub / ".claude" / "worktrees" / "brave-otter"
+    wt.mkdir(parents=True)
+    (wt / ".git").write_text(f"gitdir: {hub}/.git/worktrees/brave-otter\n")
+    assert repo_name(str(wt / "src"), []) == "hub"
+    assert repo_name(str(hub / ".claude" / "worktrees" / "gone-since"), []) == "hub"  # cleaned up already
+    ws = tmp_path / "ws"
+    (ws / "garden" / ".git" / "worktrees" / "garden-fix").mkdir(parents=True)
+    (ws / "garden-fix").mkdir()
+    (ws / "garden-fix" / ".git").write_text(f"gitdir: {ws}/garden/.git/worktrees/garden-fix\n")
+    assert repo_name(str(ws / "garden-fix" / "docs"), [ws]) == "garden"  # beside its project in the workspace
+    elsewhere = tmp_path / "codex" / "a1b2" / "garden"
+    elsewhere.mkdir(parents=True)
+    (elsewhere / ".git").write_text(f"gitdir: {ws}/garden/.git/worktrees/garden1\n")
+    assert repo_name(str(elsewhere), []) == "garden"
+    sub = hub / "vendor" / "lib"
+    sub.mkdir(parents=True)
+    (sub / ".git").write_text("gitdir: ../../.git/modules/lib\n")
+    assert repo_name(str(sub), []) == "lib"  # a submodule is a repository of its own
+
+
+def test_only_registered_projects_are_asked_about_and_questions_about_other_folders_are_taken_back():
+    from muninn.core.models import Observation, Sensitivity
+    from muninn.core.ports import NoProjectRecords
+
+    class Registered(NoProjectRecords):
+        def projects(self) -> set[str]:
+            return {"garden"}
+
+    h = make_harness(at(2026, 10, 20, 10))
+    seen = lambda repo, k: Observation("claude_code", at(2026, 10, 20, 9), "claude_activity", k, {"repo": repo},  # noqa: E731
+                                       sensitivity=Sensitivity.PERSONAL)
+    h.engine.ingest([seen("brave-otter", "c1")], evaluate=False)
+    assert h.engine.suggest_attributions() == 1  # asked before projects were registered
+    h.engine.engine.records = Registered()
+    h.engine.ingest([seen("garden", "c2"), seen("scratch-repo", "c3")], evaluate=False)
+    assert h.engine.suggest_attributions() == 1
+    assert [c.data["match"] for c in h.engine.pending_confirmations()] == ["garden"]
+    assert h.engine.attribution_decisions() == []  # taken back is not decided
+    h.engine.engine.records = NoProjectRecords()  # none registered (no records system): every folder is asked about
+    assert h.engine.suggest_attributions() == 2
+    assert sorted(c.data["match"] for c in h.engine.pending_confirmations()) == ["brave-otter", "garden", "scratch-repo"]
+
+
 def test_forget_repo():
     from muninn.core.models import Observation, Sensitivity
 

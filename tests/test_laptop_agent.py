@@ -39,6 +39,8 @@ def test_repo_names_match_the_server(tmp_path):
     (tmp_path / "acme" / "billing" / "coordinator" / ".git").mkdir(parents=True)
     (tmp_path / "resume" / ".git").mkdir(parents=True)
     (tmp_path / "notes" / "deep" / ".git").mkdir(parents=True)  # not a nested root: ignored
+    (tmp_path / "resume-fix").mkdir()
+    (tmp_path / "resume-fix" / ".git").write_text(f"gitdir: {tmp_path}/resume/.git/worktrees/resume-fix\n")  # its commits are resume's
     found = agent.repos([str(tmp_path)], {"acme"})
     assert sorted(p.name for p in found) == ["api", "coordinator", "resume"]
 
