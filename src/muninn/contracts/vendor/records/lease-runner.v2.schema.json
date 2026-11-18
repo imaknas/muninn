@@ -204,7 +204,7 @@
         },
         "detail": {
           "type": "string",
-          "description": "A message for people; agent_login = the agent that runs the session is not logged in or its credentials expired (detail says which)"
+          "description": "A message for people; agent_login = the agent that runs the session is not logged in or its credentials expired (detail says which); folder_refused = the agent won't start a session in the project's folder, since it would load code the folder holds that runs as the owner (detail names it)"
         },
         "error": {
           "enum": [
@@ -231,7 +231,8 @@
             "upgrade_failed",
             "file_refused",
             "rename_failed",
-            "runtime_unsupported"
+            "runtime_unsupported",
+            "folder_refused"
           ]
         },
         "limit": {

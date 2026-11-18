@@ -167,6 +167,23 @@ def test_a_runtime_that_cannot_hold_a_talk_says_what_it_lacks(setup):
         leases.attach(None, "garden")
 
 
+def test_a_folder_the_platform_refuses_is_said_with_the_path_it_names(setup):
+    *_, runner, _, _, leases, _ = setup
+    got = leases.attach(None, "garden")
+    runner.fail = RunnerError("folder_refused", "skills/notes/.claude-plugin")
+    with pytest.raises(ValueError, match="外掛或 hook.*skills/notes/.claude-plugin"):
+        leases.send(got["thread"], "再看一次排水")
+    with pytest.raises(ValueError, match="外掛或 hook.*skills/notes/.claude-plugin"):
+        leases.attach(None, "blog")
+
+
+def test_a_refusal_muninn_does_not_know_yet_still_says_the_runners_words(setup):
+    *_, runner, _, _, leases, _ = setup
+    runner.fail = RunnerError("disk_full", "專案那台電腦的硬碟滿了")
+    with pytest.raises(ValueError, match=r"disk_full.*硬碟滿了"):
+        leases.attach(None, "garden")
+
+
 def test_an_idle_lease_is_given_back_without_asking(setup):
     store, _, channel, runner, threads, _, leases, _ = setup
     got = leases.attach(None, "garden")

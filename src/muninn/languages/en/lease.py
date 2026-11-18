@@ -26,6 +26,7 @@ TEXTS = {
     "unreachable": "Can't reach the service that runs the sessions.",
     "work_not_allowed": "This project can't go hands-on now (the project registry doesn't allow it, or its sandbox isn't ready yet).",
     "runtime_unsupported": "The computer that runs the sessions can't start a deep talk in its current environment.",
+    "folder_refused": "The project's folder holds code that would run as you (a plugin or hooks), so the platform won't start a session there.",
     "trouble": "Something went wrong there ({category}).",
     # what a switch of mode is noted as in the talk
     "mode_work": "Hands-on allowed: from now on it asks you before it changes a file or runs a command (what you allowed before must be allowed again)",

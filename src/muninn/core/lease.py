@@ -67,16 +67,20 @@ ERRORS = {  # the runner's refusals by category, as the user is told them
     "unreachable": "lease.unreachable",
     "work_not_allowed": "lease.work_not_allowed",
     "runtime_unsupported": "lease.runtime_unsupported",
+    "folder_refused": "lease.folder_refused",
 }
-SAYS_WHY = {"busy", "runtime_unsupported"}  # refusals whose detail is the runner's own words for the user
+SAYS_WHY = {"busy", "runtime_unsupported", "folder_refused"}  # refusals whose detail is the runner's own words for the user
 MODE_NOTES = {"work": "lease.mode_work", "discuss": "lease.mode_discuss"}  # the modes, and how a switch to each is noted
 PUSH_TITLES = {"ask_user": "lease.push_ask", "write_file": "lease.push_write", "run_command": "lease.push_run",
                "open_web": "lease.push_web"}
 
 
 def friendly(e: RunnerError, *, words: Language) -> str:
-    said = words(ERRORS[e.category]) if e.category in ERRORS else words("lease.trouble", category=e.category)
-    return said + (f" {e.detail}" if e.category in SAYS_WHY and e.detail else "")
+    """A refusal Muninn does not know yet is said with the runner's detail as it is: the detail is written for
+    people, and without it the user is left with a code."""
+    known = e.category in ERRORS
+    said = words(ERRORS[e.category]) if known else words("lease.trouble", category=e.category)
+    return said + (f" {e.detail}" if (e.category in SAYS_WHY or not known) and e.detail else "")
 
 
 class LeaseStorage(LeaseStore, StateStore, ProjectMessageStore, Protocol):

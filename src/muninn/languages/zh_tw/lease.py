@@ -20,6 +20,7 @@ TEXTS = {
     "unreachable": "連不到負責跑 session 的服務。",
     "work_not_allowed": "這個專案現在不能動手(專案登錄沒開,或沙盒還沒準備好)。",
     "runtime_unsupported": "跑 session 的那台電腦現在的執行環境開不了深談。",
+    "folder_refused": "專案資料夾裡有會用你的身分執行的程式(外掛或 hook),平台不在那裡開 session。",
     "trouble": "那邊出了問題({category})。",
     # what a switch of mode is noted as in the talk
     "mode_work": "允許動手:之後它改檔案、跑指令前會先問你(先前允許過的要重新允許)",
