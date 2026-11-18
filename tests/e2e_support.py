@@ -14,6 +14,7 @@ from __future__ import annotations
 import datetime as dt
 import fcntl
 import json
+import re
 import os
 import shutil
 import socket
@@ -229,6 +230,19 @@ def expect_console(page, text: str) -> None:
     EXPECTED.setdefault(id(page), []).append(text)
 
 
+# WebKit's words when the connection under one of the app's event streams drops (a test machine starved for seconds
+# lets the server's idle connection close as the stream reuses it): the browser opens the stream again by itself and
+# nothing shows on the screen, so it is not an error of the app's
+_STREAM_DROPPED = re.compile(r"/api/(changes|leases/[^/]+)/events\S* due to access control checks")
+
+
+def app_errors(page) -> list[str]:
+    """What the app's own script got wrong on this page, collected as the test goes on."""
+    errors: list[str] = []
+    page.on("pageerror", lambda e: None if _STREAM_DROPPED.search(str(e)) else errors.append(f"page error: {e}"))
+    return errors
+
+
 def _page(browser, muninn, **context):
     """A paired page on the app; fails the test on any page or console error it did not say it causes."""
     p, b = browser
@@ -237,10 +251,10 @@ def _page(browser, muninn, **context):
     ctx.add_cookies([{"name": COOKIE, "value": muninn.pair(), "url": muninn.url}])
     pg = ctx.new_page()
     pg.clock.set_system_time(muninn.h.clock.now())  # the screen's today is the app's today, as on a real device
-    errors: list[str] = []
-    pg.on("pageerror", lambda e: errors.append(f"page error: {e}"))
+    errors = app_errors(pg)
     pg.on("console", lambda m: errors.append(f"console {m.type}: {m.text}")
-          if m.type == "error" and not any(x in m.text for x in EXPECTED.get(id(pg), [])) else None)
+          if m.type == "error" and not _STREAM_DROPPED.search(m.text) and not any(x in m.text for x in EXPECTED.get(id(pg), []))
+          else None)
     return ctx, pg, errors
 
 

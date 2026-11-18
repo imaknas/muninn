@@ -620,7 +620,9 @@ def test_what_was_said_on_one_device_is_in_the_others_conversation_when_it_comes
     phone.wait_for_timeout(1500)  # longer than the server takes to tell open screens
     expect()(talk(phone).get_by_text("明天幾點看牙醫?")).to_have_count(0)  # the phone was away meanwhile
     phone.evaluate(seen % "visible")  # back to it
-    expect()(talk(phone).get_by_text("明天幾點看牙醫?")).to_have_count(1)
+    # coming back reads everything again, after any read already on its way: on a test machine starved for CPU each of
+    # those requests waits behind the others, and two whole rounds of them took longer than the usual wait
+    expect()(talk(phone).get_by_text("明天幾點看牙醫?")).to_have_count(1, timeout=40_000)
     expect()(talk(phone).get_by_text("明天 10:30,在牙醫診所。")).to_have_count(1)
     phone.evaluate("window.dispatchEvent(new Event('focus'))")  # nothing new: drawn once, not twice
     expect()(talk(phone).get_by_text("明天 10:30,在牙醫診所。")).to_have_count(1)
@@ -1078,14 +1080,13 @@ def test_the_panel_lists_exactly_what_the_server_says_waits(desktop, muninn):
 # ── first run ──────────────────────────────────────────────────────────────
 
 def test_a_fresh_install_without_https_is_used_in_this_computers_browser_and_stays_paired(browser, tmp_path):
-    from e2e_support import SETUP_TOKEN, Muninn
+    from e2e_support import SETUP_TOKEN, Muninn, app_errors
 
     m = Muninn(tmp_path, https=False)  # as installed: http on this computer, no HTTPS address yet
     _, b = browser
     ctx = b.new_context(service_workers="block")
     pg = ctx.new_page()
-    errors = []
-    pg.on("pageerror", lambda e: errors.append(str(e)))
+    errors = app_errors(pg)
     pg.goto(f"{m.url}/#setup={SETUP_TOKEN}")
     pg.get_by_role("button", name="先跳過,去配對手機").click()
     pg.get_by_text("先在這台電腦的瀏覽器用 Muninn").click()
@@ -1105,13 +1106,12 @@ def test_a_fresh_install_without_https_is_used_in_this_computers_browser_and_sta
 
 
 def test_a_first_run_sets_up_a_model_from_the_printed_link_and_pairs_a_phone_by_its_qr_code(browser, muninn):
-    from e2e_support import SETUP_TOKEN
+    from e2e_support import SETUP_TOKEN, app_errors
 
     _, b = browser
     ctx = b.new_context(ignore_https_errors=True, service_workers="block")
     pg = ctx.new_page()
-    errors = []
-    pg.on("pageerror", lambda e: errors.append(str(e)))
+    errors = app_errors(pg)
     pg.goto(f"{muninn.url}/#setup={SETUP_TOKEN}")
     pg.get_by_text("設定 Muninn").wait_for()
     pg.get_by_label("Anthropic API").check()
