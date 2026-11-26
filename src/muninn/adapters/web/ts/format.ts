@@ -12,6 +12,8 @@ export const fmtMD = (iso: string): string => { const d = new Date(iso); return 
 export const called = (x: { project?: string | null; label?: string | null } | null | undefined, none = w.format.project): string =>
   (x && (x.label || x.project)) || none;
 
+// a text that may run to several paragraphs (a project's question with its background), where one line is shown
+export const firstLine = (text: string): string => text.trim().split("\n", 1)[0] ?? "";
 export const sender = (from: string | null | undefined): string => (from || "").replace(/<.*>/, "").trim();
 
 export const PROVIDER: Record<string, string> = { google: "Google", microsoft: "Microsoft" };

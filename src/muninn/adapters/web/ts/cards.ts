@@ -2,7 +2,7 @@
 
 import { api } from "./api.js";
 import { el, ICON, kids, svg, toast } from "./dom.js";
-import { called, fmtTime, PROVIDER } from "./format.js";
+import { called, firstLine, fmtTime, PROVIDER } from "./format.js";
 import { answered, handleError, prompt, reader, render } from "./shell.js";
 import { openTalk, setTopic } from "./talk.js";
 import { w } from "./words.js";
@@ -163,10 +163,10 @@ export function talkQuestionsCard(wt: Waiting): HTMLElement {
 export function projectQuestionCard(q: ProjectQuestion): HTMLElement {
   const box = el("textarea", { placeholder: w.cards.answerPlaceholder, "aria-label": w.cards.answerLabel(q.project) });
   const about: About = { kind: "project_question", id: q.id };
-  const title = w.cards.projectAsksTitle(q.project, q.text);
+  const title = w.cards.projectAsksTitle(q.project, firstLine(q.text));
   return el("section", { class: "card review", "aria-label": w.cards.projectAsks(q.project) },
     el("div", { class: "card-top" }, el("span", {}, w.cards.projectAsks(q.project))),
-    el("p", { class: "hero-text" }, q.text),
+    el("p", { class: "hero-text keep-lines" }, q.text),
     q.note ? el("p", { class: "sub" }, q.note) : null,
     afterTalk(q.talk, about, title),
     box,

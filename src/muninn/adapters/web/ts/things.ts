@@ -4,7 +4,7 @@
 
 import { api } from "./api.js";
 import { el, kids, type Child } from "./dom.js";
-import { called, PROVIDER, sender, WEEKDAY } from "./format.js";
+import { called, firstLine, PROVIDER, sender, WEEKDAY } from "./format.js";
 import { confirmationCard, leaseCard, projectQuestionCard, questionCard, relinkCard, reviewCard, talkQuestionsCard, taskRow } from "./cards.js";
 import { renderPacket } from "./pages.js";
 import { updateBadges } from "./shell.js";
@@ -91,7 +91,7 @@ function draw(d: Data, wt: Waiting, now: Date): Drawn | null {
     }
     case "pq": {
       const q = d.asks.find((x) => String(x.id) === ref);
-      return q ? { id: wt.id, kind: "project", title: q.text, state: w.things.asksYou(q.project), card: () => projectQuestionCard(q),
+      return q ? { id: wt.id, kind: "project", title: firstLine(q.text), state: w.things.asksYou(q.project), card: () => projectQuestionCard(q),
                    about: { kind: "project_question", id: q.id } } : null;
     }
     case "talkq": {

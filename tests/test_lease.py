@@ -26,9 +26,12 @@ class FakeRunner:
             raise self.fail
         self.calls.append(call)
 
-    def start(self, project, session_id, thread, *, resume=False, mode="discuss"):
+    def start(self, project, session_id, thread, *, resume=False, mode="discuss", question=None):
+        if question is not None and question in getattr(self, "closed_questions", ()):
+            raise RunnerError("question_unknown", "not an open question of the project")
         self._rec("start", project, thread, resume)
         self.started_mode = mode
+        self.started_question = question
         return {"lease_id": session_id, "project": project, "mode": mode, "state": "attaching"}
 
     def send(self, lease_id, text, client_msg_id, attachments=()):
@@ -811,3 +814,26 @@ def test_every_column_of_a_lease_is_cleared_set_afresh_or_its_own_for_good_when_
     afresh = {"thread", "project", "mode", "state", "started", "last_activity", "last_user_at"}  # attach's `fresh`
     for_good = {"lease_id", "last_seq"}  # the session's own: its id, and how far its events were read
     assert columns == set(STRETCH) | afresh | for_good, "a new column of a lease: say whether lending it again clears it"
+
+
+def test_a_talk_opened_from_a_projects_question_starts_from_that_question(setup):
+    store, clock, _, runner, threads, _, leases, _ = setup
+    store.add_project_message({"id": "m7", "project": "garden", "type": "question", "text": "要不要做集水井?\n\n背景:後院排水。"}, clock.now())
+    threads.d["t1"] = {"about": {"kind": "project_question", "id": "m7"}, "turns": []}
+    leases.attach("t1", "garden")
+    assert runner.started_question == "m7"
+    threads.d["t2"] = {"about": {"kind": "project_question", "id": "m7"}, "turns": []}
+    leases.attach("t2", "blog")  # another project's talk is not about garden's question
+    assert runner.started_question is None
+    threads.d["t3"] = {"about": {"kind": "task", "id": "m7"}, "turns": []}
+    leases.attach("t3", "garden")
+    assert runner.started_question is None
+
+
+def test_a_question_the_project_closed_meanwhile_still_opens_the_talk(setup):
+    store, clock, _, runner, threads, _, leases, _ = setup
+    store.add_project_message({"id": "m7", "project": "garden", "type": "question", "text": "要不要做集水井?"}, clock.now())
+    runner.closed_questions = {"m7"}  # closed on the platform before Muninn heard
+    threads.d["t1"] = {"about": {"kind": "project_question", "id": "m7"}, "turns": []}
+    got = leases.attach("t1", "garden")
+    assert got["lease_id"] and runner.started_question is None

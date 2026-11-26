@@ -882,8 +882,10 @@ class SessionRunner(Protocol):
     """Runs the project sessions a conversation is lent to (contracts/vendor/records/lease-runner.v2)."""
 
     def start(self, project: str, session_id: str, thread: str, *, resume: bool = False,
-              mode: str = "discuss") -> dict[str, Any]:
-        """The lease: {lease_id, project, mode, state}; mode as in set_mode."""
+              mode: str = "discuss", question: str | None = None) -> dict[str, Any]:
+        """The lease: {lease_id, project, mode, state}; mode as in set_mode. `question`: the id of an open question the
+        project asked the user that the talk is about (the session starts from it whole); question_unknown when it is
+        not one."""
         ...
 
     def send(self, lease_id: str, text: str, client_msg_id: str, attachments: Sequence[Attachment] = ()) -> None:

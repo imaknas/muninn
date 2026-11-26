@@ -16,6 +16,7 @@
     "open_questions": {"type": "array", "items": {"type": "string"}},
     "tasks_for_owner": {"type": "array", "items": {"type": "object", "required": ["text"], "properties": {"text": {"type": "string"}, "due": {"type": "string"}, "key": {"type": "string"}}}},
     "ended": {"type": "array", "description": "earlier to-dos this conversation shows have ended: done (a claimed record was sent) or not_needed (withdrawn, unless it is a STATE.md line)", "items": {"type": "object", "required": ["key", "outcome"], "properties": {"key": {"type": "string"}, "outcome": {"enum": ["done", "not_needed"]}, "basis": {"type": "string"}}}},
+    "answered": {"type": "object", "description": "the lease was opened about a question (create's question) and the owner decided it: their answer as they confirmed it; closed: whether the question was closed with it (done --question sent as the project); already_closed: it was no longer open, so this answer was not sent", "required": ["question", "answer"], "properties": {"question": {"type": "string"}, "answer": {"type": "string"}, "closed": {"type": "boolean"}, "already_closed": {"type": "boolean"}}},
     "notes_markdown": {"type": "string"},
     "notes_written": {"type": "boolean"},
     "fallback": {"type": "boolean"},

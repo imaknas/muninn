@@ -13,6 +13,7 @@ def _claim_wrong(project, answer):
 TEXTS = {
     "no_answer_needed": "This question needs no answer: close it and don't ask it again; if a decision from the user is really needed, ask it as a new question.",
     "no_project": "There is no project called {project}",
+    "answered_in_talk": "Decided in a deep talk with the project",
     "in_lease_handover": "In the deep talk's handover; asked when that deep talk is picked up again",
     "inbox_title": _inbox_title,
     "dismissed_why": "You skipped this question in Muninn",

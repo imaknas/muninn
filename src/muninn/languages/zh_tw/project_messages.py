@@ -13,6 +13,7 @@ def _claim_wrong(project, answer):
 TEXTS = {
     "no_answer_needed": "這題不用回答,把它結掉,之後不要再問;真的需要他決定時再當新問題問。",
     "no_project": "沒有叫 {project} 的專案",
+    "answered_in_talk": "在跟專案的深談裡決定了",
     "in_lease_handover": "在深談的交接裡,回到那段深談時問他",
     "inbox_title": _inbox_title,
     "dismissed_why": "你在 Muninn 略過了這個問題",

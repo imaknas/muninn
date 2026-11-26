@@ -237,8 +237,15 @@ class ChannelLease:
         earlier = self._earlier(thread_id, project)
         session_id = earlier["lease_id"] if earlier else str(uuid.uuid4())
         mode = "work" if self.can_work(project) else "discuss"
+        question = self._asked_about(thread_id, project)
         try:
-            got = self._runner.start(project, session_id, tid, resume=earlier is not None, mode=mode)
+            try:
+                got = self._runner.start(project, session_id, tid, resume=earlier is not None, mode=mode, question=question)
+            except RunnerError as e:
+                if e.category != "question_unknown":
+                    raise
+                # the project closed it on its side since: the talk is about it all the same, with nothing left to answer
+                got = self._runner.start(project, session_id, tid, resume=earlier is not None, mode=mode)
         except RunnerError as e:
             raise ValueError(friendly(e, words=self.words)) from e
         lease_id = str(got.get("lease_id") or session_id)
@@ -279,6 +286,16 @@ class ChannelLease:
         return {"thread": tid, "lease_id": lease_id, "project": project, "label": self.label(project), "state": got.get("state") or "attaching",
                 "mode": mode, "can_work": self.can_work(project), "opened": opened, "resumed": earlier is not None,
                 **({"turn": handed} if handed else {})}
+
+    def _asked_about(self, thread_id: str | None, project: str) -> str | None:
+        """The open question of `project` the conversation is about (it was opened from that question): the talk starts
+        from the question whole, and an answer the user confirms there closes it."""
+        about = (self._load(thread_id) or {}).get("about") if thread_id else None
+        if not isinstance(about, dict) or about.get("kind") != "project_question":
+            return None
+        qid = str(about.get("id") or "")
+        return qid if any(q["id"] == qid and q["project"] == project
+                          for q in self._store.project_messages(type="question", status="open")) else None
 
     def _last_heard(self, lease: dict[str, Any]) -> str | None:
         """When a talk last heard anything of this conversation (its last line): what was said here after it is

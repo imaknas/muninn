@@ -205,6 +205,20 @@ class ProjectMessages:
         self._store.claim_project_message(q["id"], {**claim, "text": claim.get("text") or "", "wrong": True}, now)
         self._store.move_project_message(q["id"], "open", now, was="withdrawn")
 
+    def answered_in_talk(self, qid: str, project: str, answer: str) -> None:
+        """He decided the question in a talk with the project, which confirmed it with him there and closed it on its
+        side (the platform sent its 'done' as the project): it leaves his list as answered, nothing goes back, and the
+        project's word that he decided it, come before or after, is not asked about again."""
+        q = self._question(qid, project)
+        if q is None:
+            return
+        now = self._clock.now()
+        if q["status"] == "open":
+            self._store.answer_project_message(qid, answer.strip()[:MAX_TEXT] or self.words("project_messages.answered_in_talk"), now)
+        for c in self._store.confirmations():  # its 'done' came first: he is not asked to confirm what he just said
+            if c.key == f"{DECISION_CLAIM}:{qid}":
+                self._store.answer_confirmation(c.id, "", now)
+
     def _said(self, q: dict[str, Any], why: str) -> dict[str, Any]:
         """Why his answer goes to the project; to a question it got wrong, also that it is to look again at what it did
         (`recheck`: told as a note of its own where the project keeps records)."""

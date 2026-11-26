@@ -108,3 +108,53 @@ def test_a_to_do_a_deep_talks_later_handover_no_longer_lists_stays_the_users():
     # a requester that stops listing a to-do says nothing about it: only a claim or a withdrawal changes it
     assert sorted(t["title"] for t in e.tasks.open()) == ["拍後院照片", "決定要不要集水井", "買水管", "量後院長度"]
     assert not [d for d in e.home_view()["done"] if "拍後院照片" in d["text"]] and own["key"] in [t["key"] for t in e.tasks.open()]
+
+
+def _question_talk(h):
+    from muninn.core.lease import ChannelLease
+    from test_lease import FakeRunner
+
+    e = h.engine
+    e.leases = ChannelLease(e.store, h.clock, FakeRunner(), h.channel, lambda now: False, lambda tid: e.conversation().thread(tid),
+                            lambda tid, change: e.conversation().update_thread(tid, change), ended=lambda lease, report: e.talk_ended(lease, report), words=ZH)
+    e.messages.receive([{"id": "m7", "project": "garden", "type": "question", "text": "要不要做集水井?\n\n背景:後院排水。"}])
+    e.conversation().update_thread("t1", lambda t: {"about": {"kind": "project_question", "id": "m7"}, "turns": []})
+    return e, e.leases.attach("t1", "garden")["lease_id"]
+
+
+def test_a_question_decided_in_a_talk_with_the_project_leaves_his_list_with_nothing_sent_back():
+    from test_lease import ev
+
+    h = make_harness(at(2026, 10, 25, 14))
+    e, lid = _question_talk(h)
+    assert "pq:m7" in [w.id for w in e.waiting()]
+    e.leases.on_event(ev(lid, 1, "handover", handover={"summary": "談了集水井", "answered": {"question": "m7", "answer": "先不做", "closed": True}}))
+    e.leases.on_event(ev(lid, 2, "state", state="detached"))
+    assert e.messages.open_questions() == [] and e.handoffs() == []  # the platform closed it as the project
+    # the platform's 'done' for it arrives after: he is not asked whether he decided what he just decided
+    e.messages.claimed("m7", "garden", {"id": "c:m7", "text": "先不做"})
+    e.messages.withdrawn("m7", "garden", "settled")
+    assert e.waiting() == [] and e.store.confirmations() == []
+
+
+def test_a_question_whose_done_came_before_the_handover_is_not_asked_about():
+    from test_lease import ev
+
+    h = make_harness(at(2026, 10, 25, 14))
+    e, lid = _question_talk(h)
+    e.messages.claimed("m7", "garden", {"id": "c:m7", "text": "先不做"})
+    e.messages.withdrawn("m7", "garden", "settled")
+    assert [c.kind for c in e.store.confirmations()] == ["decision_claim"]
+    e.leases.on_event(ev(lid, 1, "handover", handover={"summary": "談了集水井", "answered": {"question": "m7", "answer": "先不做", "closed": True}}))
+    e.leases.on_event(ev(lid, 2, "state", state="detached"))
+    assert e.store.confirmations() == [] and e.handoffs() == []
+
+
+def test_an_answer_the_platform_could_not_send_leaves_the_question_waiting():
+    from test_lease import ev
+
+    h = make_harness(at(2026, 10, 25, 14))
+    e, lid = _question_talk(h)
+    e.leases.on_event(ev(lid, 1, "handover", handover={"summary": "談了集水井", "answered": {"question": "m7", "answer": "先不做", "closed": False}}))
+    e.leases.on_event(ev(lid, 2, "state", state="detached"))
+    assert [q["id"] for q in e.messages.open_questions()] == ["m7"]

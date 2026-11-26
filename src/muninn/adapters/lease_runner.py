@@ -51,9 +51,10 @@ class HttpSessionRunner:
         return data
 
     def start(self, project: str, session_id: str, thread: str, *, resume: bool = False,
-              mode: str = "discuss") -> dict[str, Any]:
+              mode: str = "discuss", question: str | None = None) -> dict[str, Any]:
         return self._call("POST", "/v1/leases", {"project": project, "mode": mode, "session_id": session_id,
-                                                 "thread": thread, "resume": resume})
+                                                 "thread": thread, "resume": resume,
+                                                 **({"question": question} if question else {})})
 
     def send(self, lease_id: str, text: str, client_msg_id: str, attachments: Sequence[Attachment] = ()) -> None:
         files = [{"name": a.name, "media_type": a.media_type, "data": base64.b64encode(a.data).decode()} for a in attachments]

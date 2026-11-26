@@ -835,6 +835,10 @@ class Muninn:
         self.topic_memory().went_on(tid)
         if report is not None:
             self.idea_reports().returned(lease, report)
+            # the question the talk was opened about, decided there: the platform closed it as the project
+            answered = (lease.get("handover") or {}).get("answered")
+            if isinstance(answered, dict) and (answered.get("closed") or answered.get("already_closed")):
+                self.messages.answered_in_talk(str(answered.get("question") or ""), lease["project"], str(answered.get("answer") or ""))
 
     def project_answered(self, asked: dict[str, Any], m: dict[str, Any]) -> None:
         """A project's answer to what the user had Muninn ask it: said in that conversation, kept to that project."""
