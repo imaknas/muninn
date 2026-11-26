@@ -187,7 +187,9 @@ export function taskRow(t: Task): HTMLElement {
     el("div", { class: "body" },
       el("span", { class: "title" }, t.title),
       el("span", { class: "meta" }, [t.due ? w.cards.dueBy(fmtDue(t.due)) : null, t.projects.length ? t.projects.join(w.cards.listSeparator) : "Muninn", `T-${t.n}`]
-        .filter(Boolean).join(" · "))),
+        .filter(Boolean).join(" · ")),
+      // what the project says around it (a review list's lines): a few lines, the rest on a tap
+      t.context ? el("p", { class: "sub clamp keep-lines context", onclick: (ev: Event) => (ev.currentTarget as Element).classList.toggle("clamp") }, t.context) : null),
     afterTalk(t.talk, about, t.title),
     el("div", { class: "options" },
       t.mail ? el("a", { class: "btn", href: `#mail/${encodeURIComponent(t.mail)}` }, w.cards.readMail) : null,

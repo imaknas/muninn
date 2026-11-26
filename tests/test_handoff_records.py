@@ -50,6 +50,19 @@ def test_a_raised_task_is_kept_and_its_amendment_changes_its_words(h):
     assert (t["title"], t["due"]) == ("買兩個陶盆", "2026-10-30")
 
 
+def test_a_review_list_keeps_its_lines_in_the_context_and_each_new_list_replaces_the_last(h):
+    first = rec("raised", "review-garden", id_="r:review-garden", terms={"text": "garden 待你看的:它的審閱清單,第 1 版"},
+                terms_rev=1, context="- 後院排水的量測\n- 新的灌溉排程\n細節:docs/review.md")
+    assert h.engine.records_in.receive([first])[0]["status"] == "accepted"  # the list is in the context, the text one line
+    assert h.engine.tasks.get("review-garden")["context"].splitlines()[0] == "- 後院排水的量測"
+    h.engine.records_in.receive([rec("amended", "review-garden", id_="a:review-garden:2", terms={"text": "garden 待你看的:它的審閱清單,第 2 版"},
+                                     terms_rev=2, supersedes=["r:review-garden"], context="- 新的灌溉排程")])
+    t = h.engine.tasks.get("review-garden")
+    assert (t["title"], t["context"]) == ("garden 待你看的:它的審閱清單,第 2 版", "- 新的灌溉排程")
+    lines = rec("raised", "review-blog", id_="r:review-blog", terms={"text": "第一行\n第二行"}, terms_rev=1)
+    assert h.engine.records_in.receive([lines])[0]["status"] == "invalid"  # a task's text is one line (acts section 2)
+
+
 def test_a_bad_record_is_refused_alone_and_the_users_settlements_are_only_muninns(h):
     got = h.engine.records_in.receive([
         rec("settled", "task-x", origin="principal", outcome="done", terms_rev=1,

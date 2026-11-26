@@ -197,9 +197,9 @@ class Inbox:
                                                **({"context": r["context"]} if r.get("context") else {}),
                                                **({"new_reason": said} if said else {})}])
                 if not new:  # the task came the v1 way before: it reads as the terms its settlement is now bound to
-                    self._tasks.amended(key, project, terms["text"], terms.get("due"))
+                    self._tasks.amended(key, project, terms["text"], terms.get("due"), r.get("context"))
             elif r["type"] == "amended":
-                self._tasks.amended(key, project, terms["text"], terms.get("due"))
+                self._tasks.amended(key, project, terms["text"], terms.get("due"), r.get("context"))
             elif r["type"] == "withdrawn":
                 replaced = r.get("reason") == "replaced"
                 self._tasks.withdrawn(key, project, said, replaced=replaced, replaced_by=self._replacement(r) if replaced else None)
@@ -234,7 +234,7 @@ class Inbox:
         """An item's terms as the record now kept says them (its words, and a task's date)."""
         terms = r.get("terms") or {}
         if r["ext"] == ph.label(ACTS):
-            self._tasks.amended(r["key"], r["project"], terms["text"], terms.get("due"))
+            self._tasks.amended(r["key"], r["project"], terms["text"], terms.get("due"), r.get("context"))
         else:
             self._messages.amend_question(r["key"], terms["text"])
 
