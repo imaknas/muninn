@@ -36,12 +36,14 @@ class Views:
                  relink: Callable[[], list[str]], day_stays: Callable[[], Sequence[Any]],
                  open_tasks: Callable[[], Sequence[dict[str, Any]]], ideas: Callable[[], Sequence[dict[str, Any]]],
                  talk: Callable[[str, str], dict[str, Any] | None], label: Callable[[str], str] = lambda name: name,
-                 words: Language):
+                 program: Callable[[dict[str, Any]], bool] = lambda t: False, words: Language):
         """`base`: the plans and domains; `decisions`: the plan review's; `pending`: Muninn's open
         questions; `todos`: the projects' to-dos, owner → project → items; `relink`: connections
         whose authorization lapsed; `day_stays`: where the user was today; `open_tasks`: what only
         the user can do; `ideas`: the ideas kept, oldest first; `talk(kind, ref)`: the latest discussion about an item;
-        `label(backend)`: what the user calls the model that prepared something."""
+        `label(backend)`: what the user calls the model that prepared something; `program(task)`: a program asks for
+        it (it acts on done or not needed alone)."""
+        self._program = program
         self.words = words  # the language Muninn speaks to the user in
         self._label = label
         self._store = store
@@ -147,7 +149,7 @@ class Views:
             "tasks": [{"key": t["key"], "n": t["n"], "title": t["title"], "due": t["due"], "context": t["context"],
                        "projects": sorted({o["project"] for o in t["origins"]}),
                        "mail": next((x[5:] for x in t["links"] if x.startswith("mail:")), None),  # the mail it came from
-                       "talk": self._talk("task", t["key"])} for t in self._open_tasks()],
+                       "program": self._program(t), "talk": self._talk("task", t["key"])} for t in self._open_tasks()],
             "ideas": [{"n": i["n"], "text": i["text"], "ts": i["ts"], "status": i.get("status") or "open",
                        "talk": self._talk("idea", str(i["n"]))}
                       for i in reversed(self._ideas())],  # the newest first; open ones and those set aside

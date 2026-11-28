@@ -1169,7 +1169,10 @@ def create_app(
     @guarded
     async def project_question_answer(request: Request) -> Response:
         data = await body(request)
-        h = await call(messages.answer, request.path_params["mid"], str(data["answer"]))
+        if "option" in data:  # one of the answers it offers: its label is the answer
+            h = await call(messages.answer, request.path_params["mid"], option=str(data["option"]))
+        else:
+            h = await call(messages.answer, request.path_params["mid"], str(data["answer"]))
         return JSONResponse({"ok": h is not None, "handoff_id": h and h["id"]}, status_code=200 if h else 404)
 
     @authed

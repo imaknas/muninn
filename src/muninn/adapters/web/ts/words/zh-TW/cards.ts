@@ -63,6 +63,8 @@ export const cards = {
   projectAsks: (project: string) => `${project} 問你`,
   reply: "回覆",
   skipNoAnswer: "略過,不用回答",
+  programActsOnOptions: "這是程式在問：只有按下的選項會被執行。打字回答的話，它會再問你一次。",
+  programActsOnClose: "這是程式交代的：它只看「完成」或「不用了」。",
   // ── Tasks and ideas ──
   dueBy: (date: string) => `${date} 前`,
   listSeparator: "、",

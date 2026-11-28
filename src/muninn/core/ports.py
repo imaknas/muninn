@@ -785,6 +785,11 @@ class ProjectMessageStore(Protocol):
         """An open question's words, as the project now asks it; False if there is none open with that id."""
         ...
 
+    def offer_project_message(self, mid: str, options: Sequence[dict[str, str]], program: bool, at: datetime) -> bool:
+        """The options a question is answered by ({id, label}), and whether a program asked it; False if there is
+        no such question."""
+        ...
+
     def dismiss_project_message(self, mid: str, at: datetime) -> dict[str, Any] | None:
         """Closes an open question unanswered; None if there is no open question with that id."""
         ...

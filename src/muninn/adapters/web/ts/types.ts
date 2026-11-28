@@ -46,6 +46,7 @@ export interface Waiting {
 export interface Task {
   key: string; n: number; title: string; due: string | null; context: string | null; projects: string[]; talk: Talk | null;
   mail: string | null;  // account:id of the mail it came from
+  program: boolean;  // a program asks for it: it acts on done or not needed alone
 }
 // an idea that belongs to no plan yet (core/ideas.py)
 export interface Idea { n: number; text: string; ts: string; status: "open" | "shelved"; talk: Talk | null }
@@ -92,6 +93,8 @@ export interface ReviewItem {
 export interface ProjectQuestion {
   id: string; project: string; text: string; ts?: string; lease_thread: string | null; lease_id: string | null; talk: Talk | null; label?: string;
   note?: string;  // what the project says he decided, or that he said it was not so
+  options: { id: string; label: string }[];  // the answers it offers (none: answered in words)
+  program: boolean;  // a program asked it: only an option chosen is acted on
 }
 
 export type StepKind = "ask_user" | "read" | "search" | "write_file" | "run_command" | "open_web" | "other";

@@ -141,6 +141,7 @@ class Muninn:
         handoff_outbox: HandoffOutbox | None = None,
         sandboxes: Sandboxes | None = None,
         parties: ph.Parties | None = None,
+        programs: Sequence[str] = (),
         ph_extensions: dict[str, ph.Ext] | None = None,
         running: RunningVersion | None = None,
         release_feed: ReleaseFeed | None = None,
@@ -176,7 +177,8 @@ class Muninn:
                                  week_hours=lambda: [(f"{p.title}·{g.title}", float(g.target)) for p in self._plans() for g in p.goals
                                                      if g.metric == "hours" and g.period == "week"],
                                  today=lambda: local_date(self.clock.now(), self.tz), tz=tz, words=words)
-        self.tasks = tasks or TaskRegistry(store, clock, self.handoff_log, ModelTaskMatch(router), self.gate, on_close=self.task_closed, words=words)
+        self.tasks = tasks or TaskRegistry(store, clock, self.handoff_log, ModelTaskMatch(router), self.gate, on_close=self.task_closed,
+                                           program=lambda t: self.programs.task(t), words=words)
         self.messages = messages or ProjectMessages(store, clock, self.handoff_log, self.tasks,
                                                     projects=lambda: self.records.projects(), answered=self.project_answered,
                                                     words=words)
@@ -187,8 +189,10 @@ class Muninn:
         vendor = Path(__file__).resolve().parents[1] / "contracts" / "vendor"
         exts = ph_extensions or ph.extensions(vendor)
         self.handoff_versions = handoff_records.Versions(store)
-        self.records_in = handoff_records.Inbox(store, clock, self.parties, exts, self.messages, self.tasks, self.handoff_versions, words=words)
-        self.records_out = handoff_records.Outbox(store, clock, self.parties, exts, self.handoff_versions, words=words)
+        self.programs = handoff_records.Programs(programs, store)  # the requesters that are programs (configured)
+        self.records_in = handoff_records.Inbox(store, clock, self.parties, exts, self.messages, self.tasks, self.handoff_versions,
+                                                self.programs, words=words)
+        self.records_out = handoff_records.Outbox(store, clock, self.parties, exts, self.handoff_versions, self.programs, words=words)
         self.transport = Transport(store, clock, self.parties, self.records_in, self.records_out, Roles(self.parties))
         self.handoff_log.on_added(self.transport.catch_up)  # a settlement not held for an undo is sent as it is made
         self.transport.backfill()  # once: what was held before the log existed
@@ -625,7 +629,7 @@ class Muninn:
                      decisions=self.review_decisions, pending=self.pending_confirmations, todos=self.external_todos,
                      relink=self.needs_relink, day_stays=self.day_stays, open_tasks=lambda: self.tasks.open(), ideas=self.ideas.listed,
                      talk=lambda kind, ref: self.conversation().suggestions_for(kind, ref), label=self.router.label_of,
-                     words=self.words)
+                     program=self.programs.task, words=self.words)
 
     def home_view(self) -> dict[str, Any]:
         return self.views().home()

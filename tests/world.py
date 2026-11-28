@@ -272,6 +272,7 @@ class World:
 
     def project_question(self) -> str:
         self.e.messages.receive([{"id": "q1", "project": "garden", "type": "question", "text": "紅玫瑰還是白玫瑰?"}])
+        self.e.messages.offer("q1", [{"id": "red", "label": "紅的"}, {"id": "white", "label": "白的"}], program=False)
         return "q1"
 
     def lease(self) -> dict[str, Any]:

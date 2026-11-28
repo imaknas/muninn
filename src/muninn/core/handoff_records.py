@@ -27,7 +27,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Protocol, Sequence
+from typing import Any, Iterable, Protocol, Sequence
 
 from . import ph
 from .ports import Clock, HandoffStore, RecordLogStore, RecordStore, StateStore
@@ -48,6 +48,8 @@ class Messages(Protocol):
     def receive(self, raw: Sequence[dict[str, Any]]) -> int: ...
 
     def amend_question(self, qid: str, text: str) -> bool: ...
+
+    def offer(self, qid: str, options: Sequence[dict[str, str]], program: bool) -> bool: ...
 
     def claimed(self, qid: str, project: str, claim: dict[str, Any]) -> None: ...
 
@@ -117,14 +119,34 @@ class Versions:
         return self._all()
 
 
+class Programs:
+    """The requesters that are programs (the Program binding, proposed for Principal Handoff 0.7): they act on a
+    settlement by code, so only an option chosen, or done or dropped, in the principal's own word or his yes, is
+    something they act on. Which they are is configured, never read from what they send."""
+
+    def __init__(self, parties: Iterable[str], store: RecordStore):
+        self._parties = frozenset(parties)
+        self._store = store
+
+    def asks(self, ext: str, project: str, key: str) -> bool:
+        """A program asks for this item: it raised it (core section 1: the requester its need records name)."""
+        return bool(self._parties) and any(r.get("type") == "raised" and r.get("by") in self._parties
+                                           for r in self._store.records_of(ext, project, key))
+
+    def task(self, t: dict[str, Any]) -> bool:
+        """A program asks for this task (one of its items is a program's)."""
+        return any(self.asks(ACTS, o["project"], o["ref"]) for o in t.get("origins") or [])
+
+
 class InStore(RecordStore, RecordLogStore, StateStore, Protocol):
     """The projects' records, the logs they enter, and which version each project speaks."""
 
 
 class Inbox:
     def __init__(self, store: InStore, clock: Clock, parties: ph.Parties, exts: dict[str, ph.Ext], messages: Messages, tasks: Tasks,
-                 versions: Versions, *, words: Language):
+                 versions: Versions, programs: Programs, *, words: Language):
         self.words = words
+        self._programs = programs
         self._versions = versions
         self._store = store
         self._clock = clock
@@ -233,8 +255,10 @@ class Inbox:
         if r["type"] == "raised":
             self._messages.receive([{"id": key, "project": project, "type": "question", "text": terms["text"],
                                      **({"context": r["context"]} if r.get("context") else {})}])
+            self._offer(r)
         elif r["type"] == "amended":
             self._messages.amend_question(key, terms["text"])
+            self._offer(r)
         elif r["type"] == "withdrawn":  # no longer asked: it leaves his list, never as his answer (decisions section 2)
             self._messages.withdrawn(key, project, r.get("reason"))
         elif r["type"] == "claimed":  # the project's word that he decided it: beside the question, his to confirm
@@ -242,6 +266,11 @@ class Inbox:
             self._messages.claimed(key, project, {"id": r["id"], "text": str(answer.get("text") or answer.get("option") or ""),
                                                   **({"option": answer["option"]} if answer.get("option") else {})})
 
+
+    def _offer(self, r: dict[str, Any]) -> None:
+        """A question is answered by its options, when it has them (Decisions section 3)."""
+        options = (r.get("terms") or {}).get("options") or []
+        self._messages.offer(r["key"], options, self._programs.asks(DECISIONS, r["project"], r["key"]))
 
     def _held(self, ext: str, project: str, key: str) -> list[dict[str, Any]]:
         """What Muninn holds about an item: the 0.6 forms of the valid records kept for it (core section 6)."""
@@ -260,6 +289,7 @@ class Inbox:
             self._tasks.amended(r["key"], r["project"], terms["text"], terms.get("due"), r.get("context"))
         else:
             self._messages.amend_question(r["key"], terms["text"])
+            self._offer(r)
 
     def _replaced(self, r: dict[str, Any]) -> bool:
         """The act is withdrawn as replaced: its requester's current need record says so."""
@@ -297,8 +327,10 @@ LOGGED_THROUGH = "ph:log:handoffs"  # state: every handoff up to this id is in t
 
 
 class Outbox:
-    def __init__(self, store: OutStore, clock: Clock, parties: ph.Parties, exts: dict[str, ph.Ext], versions: Versions, *, words: Language):
+    def __init__(self, store: OutStore, clock: Clock, parties: ph.Parties, exts: dict[str, ph.Ext], versions: Versions,
+                 programs: Programs, *, words: Language):
         self.words = words
+        self._programs = programs
         self._versions = versions
         self._store = store
         self._clock = clock
@@ -399,7 +431,9 @@ class Outbox:
             out = [{**base, "ext": ph.label(ACTS), "id": f"s:{key}:h{hid}", "type": "settled", "key": key, "outcome": effect,
                     "authority": authority, "terms_rev": need["terms_rev"], "terms_digest": ph.terms_digest(need),
                     **({"evidence": evidence} if evidence else {}), **({"adopts": adopts} if adopts else {}),
-                    **self._supersedes(project, key, hid), **({"note": h["why"]} if h.get("why") else {})}]
+                    **self._supersedes(project, key, hid),
+                    # a program acts on done or dropped alone, and a note would send it back to ask again
+                    **({"note": h["why"]} if h.get("why") and not self._programs.asks(ACTS, project, key) else {})}]
             if effect == "already_done" and h.get("same_as"):  # a microsecond after: Muninn's times only ever rise
                 out.append(self._related({**base, "ts": ph.stamp(when + timedelta(microseconds=1))}, key, hid, h["same_as"]))
             return out

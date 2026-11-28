@@ -358,6 +358,7 @@ def build(config: Config, *, dry_run: bool = False) -> App:
         gate=gate,
         owner_label=str(cfg["owner_label"]),
         parties=handoff_records.parties_from(cfg["principal_id"], str(cfg["owner_label"])),
+        programs=[str(p) for p in cfg["program_requesters"] or []],
         ph_extensions=ph.extensions(CONTRACTS / "vendor"),
         running=running_version(Path(__file__).resolve().parents[2], cfg.data_dir, words),
         **release_check(cfg),

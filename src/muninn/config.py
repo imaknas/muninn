@@ -54,6 +54,9 @@ DEFAULTS: dict[str, Any] = {
     # the user's identifier in Principal Handoff records (the principal, configured on both sides); unset: made from
     # owner_label as "person:<label>"
     "principal_id": None,
+    # the requesters that are programs (their party ids, e.g. project:<service>): they act only on an option chosen,
+    # or a to-do done or dropped, in the user's own word or his yes (the Principal Handoff Program binding)
+    "program_requesters": [],
     "cloud_mail": False,  # personal mail may be read by the cloud model; work mail never is
     # lending a conversation to a project's session: the session runner's local URL and the file holding its
     # Bearer token; both unset = the feature is off

@@ -92,6 +92,20 @@ settlement Muninn made on evidence apart from any claimant (the user's own words
 
 A question asked of a project for the user (v1 `asks`) is outside the specification and stays a v1 handoff.
 
+## Requesters that are programs (Program binding, proposed for 0.7, experimental)
+
+A requester that acts on a settlement by code reads only an option chosen, or done or dropped, in the principal's own
+word or his yes. Which requesters are programs is configured (`program_requesters`: their party ids, e.g.
+`project:<service>`; none by default), never taken from what they send. For an item a program raised:
+
+- A question offers its options as the way to answer, and says that only the option tapped is carried out and that a
+  written answer makes the program ask again. An option tapped is told as `answer.option` with that option's label,
+  word for word, as `answer.text`, and no note; what the user writes is `answer.text` alone. (Every question with
+  options offers them; only a program's says so.)
+- A to-do says the program acts on done or not needed alone. It is settled only by the user's own word
+  (`principal`) or his yes to what Muninn asked (`confirmed`): never under the standing permission for project claims,
+  and never on Muninn's own reading of what he said, which asks him instead. Its settlement carries no note.
+
 ## Privacy, beyond the specification
 
 What a record tells a project is only what that project may hear: content that came from a deep talk with one project,

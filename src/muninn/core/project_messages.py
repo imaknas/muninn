@@ -22,7 +22,7 @@ Messages are kept by the sender's id, so a retried post is a no-op.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, Mapping, Protocol
+from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
 
 from .handoffs import Handoffs
 from .tasks import TaskRegistry
@@ -140,6 +140,12 @@ class ProjectMessages:
         """The project changed what it asks: the open question reads as it now does."""
         return self._store.amend_project_message(qid, text.strip()[:MAX_TEXT], self._clock.now())
 
+    def offer(self, qid: str, options: Sequence[Mapping[str, str]], program: bool) -> bool:
+        """How a question is answered: by one of its options ({id, label}), and whether a program asked it (then
+        only an option chosen is acted on)."""
+        return self._store.offer_project_message(qid, [{"id": str(o["id"]), "label": str(o["label"])} for o in options],
+                                                 program, self._clock.now())
+
     def open_questions(self) -> list[dict[str, Any]]:
         """Each with `note` when a project said he decided it: what it says, or that he said it was not so."""
         return [{**q, "note": self._claim_note(q)} if q.get("claim") else q
@@ -241,10 +247,20 @@ class ProjectMessages:
                                   effect="answers", reply_to=q["id"], dismissed=True,
                                   **self._said(q, self.words("project_messages.dismissed_why")))
 
-    def answer(self, mid: str, answer: str) -> dict[str, Any] | None:
+    def answer(self, mid: str, answer: str = "", option: str | None = None) -> dict[str, Any] | None:
         """The handoff carrying the answer back, or None if there is no open
-        question with that id."""
-        answer = answer.strip()
+        question with that id. `option`: the option he chose, whose label is the answer, word for word (a program
+        acts on that alone; anything he writes is the answer instead, and a program asks again)."""
+        if option is not None:
+            q = next((m for m in self._store.project_messages(type="question", status="open") if m["id"] == mid), None)
+            chosen = next((o for o in (q or {}).get("options") or [] if o["id"] == option), None)
+            if q is None:
+                return None
+            if chosen is None:
+                raise ValueError("no such option")
+            answer = chosen["label"]
+        else:
+            answer = answer.strip()
         if not answer:
             raise ValueError("answer must not be empty")
         q = self._store.answer_project_message(mid, answer[:MAX_TEXT], self._clock.now())
@@ -252,4 +268,5 @@ class ProjectMessages:
             return None
         return self._handoffs.add(project=q["project"], item=q["text"], fact=answer[:MAX_TEXT],
                                   quote=answer[:MAX_TEXT], effect="answers", reply_to=q["id"],
+                                  **({"option": option} if option is not None else {}),
                                   **self._said(q, self.words("project_messages.answered_why")))

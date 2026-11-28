@@ -2905,6 +2905,27 @@
     },
     "note": {
      "type": "string"
+    },
+    "options": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "label": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id",
+       "label"
+      ]
+     }
+    },
+    "program": {
+     "type": "boolean"
     }
    },
    "required": [
@@ -2913,7 +2934,9 @@
     "text",
     "lease_thread",
     "lease_id",
-    "talk"
+    "talk",
+    "options",
+    "program"
    ]
   },
   "ProjectTodos": {
@@ -3567,6 +3590,9 @@
        "type": "null"
       }
      ]
+    },
+    "program": {
+     "type": "boolean"
     }
    },
    "required": [
@@ -3577,7 +3603,8 @@
     "context",
     "projects",
     "talk",
-    "mail"
+    "mail",
+    "program"
    ]
   },
   "TaskModel": {

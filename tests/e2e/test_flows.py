@@ -1146,3 +1146,18 @@ def test_coming_back_after_hours_away_opens_with_what_came_meanwhile(desktop, mu
     talk(desktop).get_by_text("你不在的時候:23:30 之後還在工作", exact=False).wait_for()
     go(desktop, muninn)  # opened again a moment later: said once
     expect()(talk(desktop).get_by_text("你不在的時候", exact=False)).to_have_count(1)
+
+
+def test_a_programs_question_is_answered_by_tapping_one_of_its_options_and_says_only_that_is_carried_out(desktop, muninn):
+    seed(muninn)
+    e = muninn.h.engine
+    e.messages.offer("q1", [{"id": "red", "label": "紅的"}, {"id": "white", "label": "白的"}], program=True)
+    go(desktop, muninn)
+    open_panel(desktop)
+    waiting(desktop, "Red or white roses?").first.click()
+    card = panel(desktop).locator(".box.item")
+    expect()(card.get_by_text("只有按下的選項會被執行", exact=False)).to_be_visible()
+    with desktop.expect_response(lambda r: "/api/project-questions/q1/answer" in r.url):
+        card.get_by_role("button", name="白的", exact=True).click()
+    [h] = [x for x in e.handoffs(status=None) if x.get("reply_to") == "q1"]
+    assert (h["fact"], h["option"]) == ("白的", "white")

@@ -67,6 +67,8 @@ export const cards: Words["cards"] = {
   projectAsks: (project: string) => `${project} asks you`,
   reply: "Reply",
   skipNoAnswer: "Skip, no answer needed",
+  programActsOnOptions: "A program is asking: only the option you tap is carried out. If you write an answer, it asks you again.",
+  programActsOnClose: "A program asked for this: it acts only on done or not needed.",
   // ── Tasks and ideas ──
   dueBy: (date: string) => `by ${date}`,
   listSeparator: ", ",

@@ -147,6 +147,15 @@ async function answerQuestion(q: ProjectQuestion, box: HTMLTextAreaElement): Pro
   render();
 }
 
+// one of the answers it offers: its label is the answer, word for word
+async function chooseOption(q: ProjectQuestion, option: string): Promise<void> {
+  try {
+    await api(`/api/project-questions/${encodeURIComponent(q.id)}/answer`, { option });
+    toast(w.cards.forwarded(q.project));
+  } catch (err) { handleError(err); }
+  render();
+}
+
 // what a deep-talk left open, together: answer one, let one go, or reread the conversation
 // what a deep talk left undecided: asked in the talk, so the way there is the one thing to do here
 export function talkQuestionsCard(wt: Waiting): HTMLElement {
@@ -169,6 +178,9 @@ export function projectQuestionCard(q: ProjectQuestion): HTMLElement {
     el("p", { class: "hero-text keep-lines" }, q.text),
     q.note ? el("p", { class: "sub" }, q.note) : null,
     afterTalk(q.talk, about, title),
+    q.options.length ? el("div", { class: "options" }, q.options.map((o, i) =>
+      el("button", { type: "button", class: i === 0 ? "suggested" : "", onclick: () => chooseOption(q, o.id) }, o.label))) : null,
+    q.program ? el("p", { class: "sub" }, w.cards.programActsOnOptions) : null,
     box,
     el("button", { type: "button", class: "btn primary block", onclick: () => answerQuestion(q, box) }, w.cards.reply),
     q.talk ? null : el("button", { type: "button", class: "btn block", onclick: () => openTalk(about, title) }, w.cards.discuss),
@@ -189,7 +201,8 @@ export function taskRow(t: Task): HTMLElement {
       el("span", { class: "meta" }, [t.due ? w.cards.dueBy(fmtDue(t.due)) : null, t.projects.length ? t.projects.join(w.cards.listSeparator) : "Muninn", `T-${t.n}`]
         .filter(Boolean).join(" · ")),
       // what the project says around it (a review list's lines): a few lines, the rest on a tap
-      t.context ? el("p", { class: "sub clamp keep-lines context", onclick: (ev: Event) => (ev.currentTarget as Element).classList.toggle("clamp") }, t.context) : null),
+      t.context ? el("p", { class: "sub clamp keep-lines context", onclick: (ev: Event) => (ev.currentTarget as Element).classList.toggle("clamp") }, t.context) : null,
+      t.program ? el("p", { class: "sub" }, w.cards.programActsOnClose) : null),
     afterTalk(t.talk, about, t.title),
     el("div", { class: "options" },
       t.mail ? el("a", { class: "btn", href: `#mail/${encodeURIComponent(t.mail)}` }, w.cards.readMail) : null,

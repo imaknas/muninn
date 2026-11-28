@@ -4,7 +4,7 @@ import os
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Any
+from typing import Any, Sequence
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -182,7 +182,7 @@ class Harness:
 
 
 def make_harness(now: datetime, plans: list[DomainPlan] | None = None, sources=(), composer_cfg: ComposerConfig | None = None,
-                 confirm_all: bool = True, lang: str = "zh-TW") -> Harness:
+                 confirm_all: bool = True, lang: str = "zh-TW", programs: Sequence[str] = ()) -> Harness:
     store = SqliteStore(":memory:")
     clock = FakeClock(now)
     channel = FakeChannel()
@@ -197,6 +197,7 @@ def make_harness(now: datetime, plans: list[DomainPlan] | None = None, sources=(
     from muninn.core.classify import LocalDomainClassifier
 
     engine = Muninn(
+        programs=programs,
         words=language(lang),
         store=store,
         plans=repo,

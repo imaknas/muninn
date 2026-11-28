@@ -222,6 +222,7 @@ class SqliteStore:
             self._db.execute(statement)
         self._add_column("project_messages", "context", "TEXT")
         self._add_column("project_messages", "claim", "TEXT")
+        self._add_column("project_messages", "terms", "TEXT")  # {options, program}: how a question is answered
         self._add_column("eval_cases", "ms", "INTEGER")
         self._add_column("eval_cases", "verdict", "TEXT")
         self._add_column("eval_cases", "input_tokens", "INTEGER")  # what the provider said the request took
@@ -884,8 +885,10 @@ class SqliteStore:
 
     @staticmethod
     def _project_message(r: sqlite3.Row) -> dict[str, Any]:
+        terms = json.loads(r["terms"]) if r["terms"] else {}
         return {**{k: r[k] for k in ("id", "ts", "project", "type", "text", "handoff_id", "status", "answer", "context")},
-                "claim": json.loads(r["claim"]) if r["claim"] else None}
+                "claim": json.loads(r["claim"]) if r["claim"] else None,
+                "options": terms.get("options") or [], "program": bool(terms.get("program"))}
 
     def add_project_message(self, m: dict[str, Any], at: datetime) -> bool:
         status = "open" if m["type"] == "question" else "received"
@@ -917,6 +920,11 @@ class SqliteStore:
     def amend_project_message(self, mid: str, text: str, at: datetime) -> bool:
         return bool(self._x("UPDATE project_messages SET text = ?, changed = ? WHERE id = ? AND type = 'question' AND status = 'open'",
                             (text, _ts(at), mid)).rowcount)
+
+    def offer_project_message(self, mid: str, options: Sequence[dict[str, str]], program: bool, at: datetime) -> bool:
+        terms = json.dumps({"options": [dict(o) for o in options], "program": program}, ensure_ascii=False)
+        return bool(self._x("UPDATE project_messages SET terms = ?, changed = ? WHERE id = ? AND type = 'question'",
+                            (terms, _ts(at), mid)).rowcount)
 
     def claim_project_message(self, mid: str, claim: dict[str, Any], at: datetime) -> dict[str, Any] | None:
         with self._write() as db:

@@ -51,8 +51,11 @@ CLAIMS_MANDATE = "mandate:project-claims"
 
 class TaskRegistry:
     def __init__(self, store: TaskStorage, clock: Clock, handoffs: Handoffs, match: MatchTasks, gate: ActionGate,
-                 on_close: Callable[[dict[str, Any]], None] | None = None, *, words: Language):
+                 on_close: Callable[[dict[str, Any]], None] | None = None,
+                 program: Callable[[dict[str, Any]], bool] = lambda t: False, *, words: Language):
+        """`program(task)`: a program asks for it, and acts only on the user's own word or his yes."""
         self.words = words
+        self._program = program
         self._store = store
         self._clock = clock
         self._handoffs = handoffs
@@ -276,6 +279,9 @@ class TaskRegistry:
         `by` only guessed it is done, so the user is asked first. `claims`: (the project's key for its item, its
         claim) it settles on; `mandate`: the user's standing permission it is settled under. Undoable."""
         limit = tuple(sorted(only_to)) if only_to is not None else None
+        if by != "user" and (t := self._store.task(key)) is not None and self._program(t):
+            # a program acts only on his own word or his yes: never on Muninn's reading or the standing permission
+            inferred, mandate = True, None
         return self._gate.run(TaskClose(key, status, why, by, limit, mandate=mandate, claims=tuple(claims)),
                               DecidedBy.INFERRED_UNSURE if inferred else decided_by(by))
 
