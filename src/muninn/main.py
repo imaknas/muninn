@@ -1312,8 +1312,22 @@ def main(argv: list[str] | None = None) -> int:
             scheduler.Schedule(jobs, app.config.tz, e.clock.now,
                                lambda job, a: subprocess.run([sys.executable, "-m", "muninn", "--data", data, *a]).returncode,
                                e.store.get_state, e.store.set_state).start()
-        uvicorn.run(web, host=app.config["host"], port=app.config.port, log_level="info", proxy_headers=False,
-                    access_log=False)  # a line per request: nearly all of the log, and read by no one
+        from muninn.adapters.web.transport import SOCKET, unix_listener
+
+        server = uvicorn.Config(web, host=app.config["host"], port=app.config.port, log_level="info", proxy_headers=False,
+                                access_log=False)  # a line per request: nearly all of the log, and read by no one
+        socket_path = app.config.data_dir / SOCKET  # the Principal Handoff transport, for clients on this computer
+        sockets = [server.bind_socket()]
+        try:
+            sockets.append(unix_listener(socket_path))
+        except OSError as err:  # Muninn itself still serves; the clients on this computer cannot reach the transport
+            log.error("the Principal Handoff transport's socket %s could not be made (%s): served at the tailnet address"
+                      " only", socket_path, err)
+        try:
+            uvicorn.Server(server).run(sockets=sockets)
+        finally:
+            if len(sockets) > 1:
+                socket_path.unlink(missing_ok=True)
         return 0
     return 2
 

@@ -9,6 +9,8 @@ the transport; then records.v2 is retired.
 
 - Over the tailnet: `<public_url>/ph/`, through `tailscale serve`, which gives HTTPS (its certificate names the
   tailnet address). The server checks `Host` against it.
+- On the same computer: the Unix socket `transport.sock` in Muninn's data folder, which only Muninn's user can open;
+  its base URL is `http://localhost/ph/`.
 
 Plain HTTP to the loopback port is not a base URL (it authenticates no server): a request there names another `Host`
 and is answered `421` `misdirected`. No CORS headers are sent.

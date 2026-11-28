@@ -7,6 +7,9 @@ from __future__ import annotations
 import asyncio
 import hmac
 import logging
+import os
+import socket
+from pathlib import Path
 from typing import Any, Awaitable, Callable, Mapping, Sequence
 from urllib.parse import parse_qsl, urlsplit
 
@@ -27,9 +30,28 @@ POLL_S = 0.5
 FETCH = {"project", "after", "as", "limit", "wait"}
 
 
+SOCKET = "transport.sock"  # in Muninn's data folder
+
+
 def via_socket(request: Request) -> bool:
-    """Over the Unix socket: a connection with no peer or local address (on TCP there is always one)."""
-    return request.client is None and request.scope.get("server") is None
+    """Over the Unix socket: no peer address, and a local address that is a path with no port (on TCP there are
+    both)."""
+    server = request.scope.get("server")
+    return request.client is None and (server is None or server[1] is None)
+
+
+def unix_listener(path: Path) -> socket.socket:
+    """The transport's socket on this computer: only Muninn's own user may connect (mode 0600, made so before anyone
+    could connect); one an earlier run left is replaced."""
+    path.unlink(missing_ok=True)
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    mask = os.umask(0o177)
+    try:
+        sock.bind(str(path))
+    finally:
+        os.umask(mask)
+    os.chmod(path, 0o600)
+    return sock
 
 
 def transport_routes(transport: Transport, credentials: Mapping[str, Credential], hosts: Sequence[str],

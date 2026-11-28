@@ -240,3 +240,42 @@ def test_http_a_fetch_with_wait_holds_until_the_time_passes(web):
     began = time.monotonic()
     got = web.get(f"/ph/records?project={P}&as={AGENT}&after={cursor}&wait=1").json()
     assert got["records"] == [] and got["cursor"] == cursor and time.monotonic() - began >= 0.9
+
+
+def test_on_this_computer_the_transport_is_a_unix_socket_only_its_user_opens(h, tmp_path):
+    import os
+    import stat
+    import tempfile
+    import threading
+    from pathlib import Path
+
+    import httpx
+    import uvicorn
+
+    from muninn.adapters.channels.webpush import VapidKeys
+    from muninn.adapters.web.app import create_app
+    from muninn.adapters.web.devices import DeviceRegistry
+    from muninn.adapters.web.transport import SOCKET, unix_listener
+
+    keys = VapidKeys(tmp_path / "secrets" / "vapid.pem")
+    keys.ensure()
+    app = create_app(h.engine, keys, "tok", DeviceRegistry(tmp_path / "dev.db"), public_url="https://muninn.example:8444")
+    path = Path(tempfile.mkdtemp()) / SOCKET  # short enough for a socket's path
+    path.write_text("left by an earlier run")
+    sock = unix_listener(path)
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
+    server = uvicorn.Server(uvicorn.Config(app, log_level="warning"))
+    thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 10
+        while not server.started and time.monotonic() < deadline:
+            time.sleep(0.02)
+        with httpx.Client(transport=httpx.HTTPTransport(uds=str(path)), base_url="http://localhost/ph/",
+                          headers={"Authorization": "Bearer tok"}) as c:
+            assert c.post("records", json={"records": [raised("task-pots-1", "買陶盆")]}).json()["results"][0]["status"] == "accepted"
+            assert [r["id"] for r in c.get("records", params={"project": P, "as": AGENT}).json()["records"]] == ["r:task-pots-1"]
+            assert c.get("records", params={"project": P, "as": AGENT}, headers={"Host": "elsewhere"}).status_code == 421
+    finally:
+        server.should_exit = True
+        thread.join(10)
