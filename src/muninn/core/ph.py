@@ -325,8 +325,8 @@ def _blank(v: Any, schema: dict[str, Any], base: Path, member: str = "") -> bool
     return False
 
 
-def _common(r: dict[str, Any], parties: Parties) -> list[str]:
-    """What every record is checked for, a module's too (core sections 4, 11 and R6)."""
+def ijson(r: Any) -> list[str]:
+    """What makes a value no I-JSON (RFC 7493) as these records read it."""
     errs = []
     if _twice(r):
         errs.append("a member name appears twice (not I-JSON)")
@@ -334,6 +334,34 @@ def _common(r: dict[str, Any], parties: Parties) -> list[str]:
         errs.append("a string has an unpaired surrogate (not I-JSON)")
     if not _bounded(r):
         errs.append("numbers are integers within 2^53 - 1")
+    return errs
+
+
+EXT = re.compile(r"[a-z][a-z0-9-]*/[^/\s]+")  # an ext label: the extension's name, its version (core section 4)
+
+
+def keepable(r: dict[str, Any]) -> list[str]:
+    """What a record of a version or extension Muninn does not implement is judged by: I-JSON, with the members a
+    transport reads (Transport sections 2 and 4)."""
+    errs = ijson(r)
+    for member in ("project", "ext", "origin", "id", "by"):
+        if not isinstance(r.get(member), str) or not r[member]:
+            errs.append(f"{member} is a non-empty string")
+    if isinstance(r.get("ext"), str) and not EXT.fullmatch(r["ext"]):
+        errs.append("ext is an extension's name and version")
+    if isinstance(r.get("project"), str) and not PROJECT.fullmatch(r["project"]):
+        errs.append("project is 1 to 128 characters without whitespace")
+    return errs
+
+
+def digest(r: Any) -> str:
+    """A record's identity in a log: its RFC 8785 serialisation, hashed."""
+    return hashlib.sha256(canonical(r).encode()).hexdigest()
+
+
+def _common(r: dict[str, Any], parties: Parties) -> list[str]:
+    """What every record is checked for, a module's too (core sections 4, 11 and R6)."""
+    errs = ijson(r)
     if isinstance(r.get("ts"), str) and moment(r["ts"]) is None:
         errs.append("ts is not an RFC 3339 date-time")
     if r.get("by") == parties.principal:  # R6: the principal's decisions are recorded by the principal side

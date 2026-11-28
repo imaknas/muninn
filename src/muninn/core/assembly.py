@@ -51,6 +51,7 @@ from .topic_memory import TopicMemory
 from .topics import OPEN, Topics
 from . import waiting
 from . import handoff_records, ph
+from .transport import Roles, Transport
 from .questions import Questions
 from .tools import ToolRegistry
 from .tools.blocks import BlockTools
@@ -188,6 +189,9 @@ class Muninn:
         self.handoff_versions = handoff_records.Versions(store)
         self.records_in = handoff_records.Inbox(store, clock, self.parties, exts, self.messages, self.tasks, self.handoff_versions, words=words)
         self.records_out = handoff_records.Outbox(store, clock, self.parties, exts, self.handoff_versions, words=words)
+        self.transport = Transport(store, clock, self.parties, self.records_in, self.records_out, Roles(self.parties))
+        self.handoff_log.on_added(self.transport.catch_up)  # a settlement not held for an undo is sent as it is made
+        self.transport.backfill()  # once: what was held before the log existed
         self.open_items = open_items or OpenItems([
             DeadlineItems(self.understanding_plans, lambda: self.store.completed(), self.review_decisions),
             TrackerItems(self.understanding_plans),

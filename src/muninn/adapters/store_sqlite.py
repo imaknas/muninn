@@ -98,6 +98,15 @@ CREATE TABLE IF NOT EXISTS ph_records (
   UNIQUE (ext, project, origin, type, id)
 );
 CREATE INDEX IF NOT EXISTS ph_records_by_item ON ph_records(project, key);
+CREATE TABLE IF NOT EXISTS ph_log (
+  pos INTEGER PRIMARY KEY AUTOINCREMENT, project TEXT NOT NULL, record TEXT NOT NULL, digest TEXT NOT NULL,
+  own INTEGER NOT NULL, handoff INTEGER, appended TEXT NOT NULL, UNIQUE (project, digest)
+);
+CREATE INDEX IF NOT EXISTS ph_log_by_project ON ph_log(project, pos);
+CREATE INDEX IF NOT EXISTS ph_log_by_handoff ON ph_log(handoff);
+CREATE TABLE IF NOT EXISTS ph_log_acks (
+  project TEXT NOT NULL, party TEXT NOT NULL, pos INTEGER NOT NULL, PRIMARY KEY (project, party)
+);
 CREATE TABLE IF NOT EXISTS tasks (
   key TEXT PRIMARY KEY, n INTEGER NOT NULL UNIQUE, title TEXT NOT NULL, due TEXT, status TEXT NOT NULL,
   context TEXT, links TEXT NOT NULL, created TEXT NOT NULL, closed TEXT, closed_by TEXT, why TEXT
@@ -734,16 +743,18 @@ class SqliteStore:
         with self._write() as db:
             same = db.execute(
                 "SELECT * FROM handoffs WHERE status = 'pending' AND project IS ? AND item IS ? AND (item IS NOT NULL OR fact IS ?)"
-                " AND json_extract(data, '$.reply_to') IS ? ORDER BY id LIMIT 1",
+                " AND json_extract(data, '$.reply_to') IS ? ORDER BY id DESC LIMIT 1",
                 (project, item, fact, data.get("reply_to"))).fetchone()
             if same:
                 old = self._handoff(same)
                 if not replaces(data, old):
                     return old
-                merged = {**{k: v for k, v in old.items() if k not in self.HANDOFF_COLUMNS}, **data}
-                db.execute("UPDATE handoffs SET project = ?, item = ?, fact = ?, data = ?, changed = ? WHERE id = ?",
-                           (project, item, fact, json.dumps(merged, ensure_ascii=False), _ts(at), same["id"]))
-                return {"id": same["id"], "ts": same["ts"], "status": same["status"], **merged}
+                sent = db.execute("SELECT 1 FROM ph_log WHERE handoff = ? LIMIT 1", (same["id"],)).fetchone()
+                if not sent:  # one already told as a record stays as it was told: what replaces it is told after it
+                    merged = {**{k: v for k, v in old.items() if k not in self.HANDOFF_COLUMNS}, **data}
+                    db.execute("UPDATE handoffs SET project = ?, item = ?, fact = ?, data = ?, changed = ? WHERE id = ?",
+                               (project, item, fact, json.dumps(merged, ensure_ascii=False), _ts(at), same["id"]))
+                    return {"id": same["id"], "ts": same["ts"], "status": same["status"], **merged}
             # a later handoff is told later: its time is after the last one's by at least two microseconds (the records it
             # stands for take one each), whichever process adds it (core section 4: the principal side's times only rise)
             last = db.execute("SELECT ts FROM handoffs ORDER BY id DESC LIMIT 1").fetchone()
@@ -763,14 +774,15 @@ class SqliteStore:
     def add_record(self, ext: str, record: dict[str, Any], at: datetime, canonical: Callable[[dict[str, Any]], str]) -> str:
         """Kept under the `ext` label it came with; the same record is the same (ext name, project, origin, type, id),
         whichever version it came in (core section 10)."""
-        scope = (record["project"], record["origin"], record["type"], record["id"], ext)
+        # a record of a version Muninn does not implement may lack a type or a key: kept all the same (Transport section 4)
+        scope = (record["project"], record["origin"], str(record.get("type") or ""), record["id"], ext)
         text = json.dumps(record, ensure_ascii=False)
         with self._write() as db:
             old = db.execute("SELECT seq, record FROM ph_records WHERE project = ? AND origin = ? AND type = ? AND id = ?"
                              " AND ext LIKE ? || '/%'", scope).fetchone()
             if old is None:
                 db.execute("INSERT INTO ph_records (ext, project, origin, type, id, key, record, received) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                           (record["ext"], *scope[:4], record["key"], text, _ts(at)))
+                           (record["ext"], *scope[:4], str(record.get("key") or ""), text, _ts(at)))
                 return "new"
             mine, held = canonical(record), canonical(json.loads(old["record"]))
             if mine == held:
@@ -796,6 +808,49 @@ class SqliteStore:
                              f" project, {origin}, COALESCE(json_extract(record, '$.type'), ''), id, key, record, received FROM ph_records_before")
             self._db.execute("DROP TABLE ph_records_before")
         self._db.execute("UPDATE ph_records SET type = COALESCE(json_extract(record, '$.type'), '') WHERE type = ''")
+
+    def records_received(self) -> list[tuple[datetime, dict[str, Any]]]:
+        return [(_parse_ts(r["received"]) or datetime.min.replace(tzinfo=timezone.utc), json.loads(r["record"]))
+                for r in self._q("SELECT record, received FROM ph_records ORDER BY seq")]
+
+    # each project's log of records (the Principal Handoff transport)
+
+    def log_append(self, project: str, record: dict[str, Any], digest: str, at: datetime, *, own: bool,
+                   handoff: int | None = None) -> int | None:
+        with self._write() as db:
+            cur = db.execute("INSERT OR IGNORE INTO ph_log (project, record, digest, own, handoff, appended) VALUES (?, ?, ?, ?, ?, ?)",
+                             (project, json.dumps(record, ensure_ascii=False), digest, int(own), handoff, _ts(at)))
+            return int(cur.lastrowid) if cur.rowcount else None
+
+    def log_has(self, project: str, digest: str) -> bool:
+        return bool(self._q("SELECT 1 FROM ph_log WHERE project = ? AND digest = ?", (project, digest)))
+
+    def log_after(self, project: str, after: int, limit: int) -> list[dict[str, Any]]:
+        return [{"pos": r["pos"], "record": json.loads(r["record"]), "own": bool(r["own"])}
+                for r in self._q("SELECT pos, record, own FROM ph_log WHERE project = ? AND pos > ? ORDER BY pos LIMIT ?",
+                                 (project, after, limit))]
+
+    def log_holds(self, project: str, pos: int) -> bool:
+        return bool(self._q("SELECT 1 FROM ph_log WHERE project = ? AND pos = ?", (project, pos)))
+
+    def log_sent(self, handoff: int) -> bool:
+        return bool(self._q("SELECT 1 FROM ph_log WHERE handoff = ? LIMIT 1", (handoff,)))
+
+    def log_handoffs(self, since: int) -> set[int]:
+        return {r["handoff"] for r in self._q("SELECT DISTINCT handoff FROM ph_log WHERE handoff > ?", (since,))}
+
+    def log_ack(self, project: str, party: str, pos: int) -> int:
+        with self._write() as db:
+            db.execute("INSERT INTO ph_log_acks (project, party, pos) VALUES (?, ?, ?) ON CONFLICT (project, party)"
+                       " DO UPDATE SET pos = MAX(pos, excluded.pos)", (project, party, pos))
+            return int(db.execute("SELECT pos FROM ph_log_acks WHERE project = ? AND party = ?", (project, party)).fetchone()["pos"])
+
+    def log_acked(self, project: str, party: str) -> int | None:
+        rows = self._q("SELECT pos FROM ph_log_acks WHERE project = ? AND party = ?", (project, party))
+        return int(rows[0]["pos"]) if rows else None
+
+    def log_forget_acks(self) -> None:
+        self._x("DELETE FROM ph_log_acks")
 
     def records_of(self, ext: str, project: str, key: str) -> list[dict[str, Any]]:
         return [json.loads(r["record"]) for r in self._q("SELECT record FROM ph_records WHERE ext LIKE ? || '/%' AND project = ? AND key = ?"

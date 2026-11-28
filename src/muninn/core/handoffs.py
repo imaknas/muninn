@@ -9,10 +9,10 @@ Settled ones are kept for a while, then pruned.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any
+from typing import Any, Callable, Protocol
 
 from .cases import CaseFeedback
-from .ports import Clock, HandoffStore
+from .ports import Clock, HandoffStore, RecordLogStore
 
 EFFECT_STRENGTH = {"relevant": 1, "changes": 2, "resolves": 3}
 RECORDED = "recorded"  # told only as a Principal Handoff record (never listed as a contracts v1 handoff)
@@ -20,14 +20,36 @@ KEEP = timedelta(days=60)  # delivered and cancelled handoffs, after their last 
 
 
 def stronger(new: dict[str, Any], old: dict[str, Any]) -> bool:
-    return EFFECT_STRENGTH.get(new.get("effect"), 0) > EFFECT_STRENGTH.get(old.get("effect"), 0)
+    """`new` says more than `old` about the same to-do: a stronger effect, or (a settlement, a reopening) another one."""
+    a, b = new.get("effect"), old.get("effect")
+    if a in EFFECT_STRENGTH and b in EFFECT_STRENGTH:
+        return EFFECT_STRENGTH[a] > EFFECT_STRENGTH[b]
+    return a != b
+
+
+class SentStore(HandoffStore, RecordLogStore, Protocol):
+    """The handoffs, and the logs that say which were sent as records."""
 
 
 class Handoffs:
-    def __init__(self, store: HandoffStore, clock: Clock, cases: CaseFeedback):
+    def __init__(self, store: SentStore, clock: Clock, cases: CaseFeedback):
         self._store = store
         self._clock = clock
         self._cases = cases
+        self._added: list[Callable[[dict[str, Any]], None]] = []
+
+    def on_added(self, fn: Callable[[dict[str, Any]], None]) -> None:
+        """`fn(handoff)` after each handoff is added (the transport's log takes what is due)."""
+        self._added.append(fn)
+
+    def _tell(self, h: dict[str, Any]) -> dict[str, Any]:
+        for fn in self._added:
+            fn(h)
+        return h
+
+    def sent(self, hid: int) -> bool:
+        """Told as a record (it is in a project's log): no longer taken back, only followed by another."""
+        return self._store.log_sent(hid)
 
     def pending(self, *, status: str | None = "pending", since: int = 0, include_held: bool = False) -> list[dict[str, Any]]:
         """Held ones (`not_before` in the future: a close Muninn inferred,
@@ -53,12 +75,12 @@ class Handoffs:
         it)."""
         h = self._store.add_handoff({**fields, "ts": self._clock.now().isoformat()}, self._clock.now(), replaces=lambda new, old: False)
         self._store.set_handoff_status(h["id"], RECORDED, self._clock.now())
-        return {**h, "status": RECORDED}
+        return self._tell({**h, "status": RECORDED})
 
     def add(self, **fields: Any) -> dict[str, Any]:
         """Told once is enough: the same pending handoff is returned, and a
-        stronger effect replaces a weaker one."""
-        return self._store.add_handoff(fields, self._clock.now(), replaces=stronger)
+        stronger effect replaces a weaker one (until it is sent as a record)."""
+        return self._tell(self._store.add_handoff(fields, self._clock.now(), replaces=stronger))
 
     def renamed(self, old: str, new: str) -> None:
         """What was handed to a project, under its new name."""

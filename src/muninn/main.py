@@ -968,6 +968,9 @@ def main(argv: list[str] | None = None) -> int:
     p_ver = sub.add_parser("handoff-version", help="which Principal Handoff version each project is told its records in "
                            "(with PROJECT EXT VERSION: set it; PROJECT * is every project, those to come too)")
     p_ver.add_argument("setting", nargs="*", metavar="PROJECT EXT VERSION")
+    p_log = sub.add_parser("records-log", help="the Principal Handoff transport's log (its generation; --new-generation"
+                           " after restoring an older copy of the database: every client reads again from the beginning)")
+    p_log.add_argument("--new-generation", action="store_true")
     p_dig = sub.add_parser("digests", help="one week's conversation digests (summaries, never conversation text)")
     p_dig.add_argument("--week", help="ISO week, e.g. 2026-W42 (default: the last complete week)")
     p_dig.add_argument("--json", action="store_true")
@@ -1210,6 +1213,9 @@ def main(argv: list[str] | None = None) -> int:
             except ValueError as err:
                 parser.error(str(err))
         print(json.dumps(e.handoff_versions.table(), ensure_ascii=False, indent=1))
+        return 0
+    if args.cmd == "records-log":
+        print(f"generation {e.transport.new_generation() if args.new_generation else e.transport.generation()}")
         return 0
     if args.cmd == "digests":
         week = args.week or iso_week(e.clock.now() - timedelta(days=7))

@@ -63,9 +63,10 @@ an item.
 the cursor to read from next. A record is the same on every read (its id derives from what it stands for), and the
 times of Muninn's records only rise, so each settlement or reopening is later than every one Muninn holds for its
 item (core section 6; Muninn holds no other principal side's settlements). A settlement held for the user's undo window is not returned until it comes due,
-and one taken back in that window never is. `POST /api/records/ack` with `{"project", "through": <cursor>}` says the
-project has them (durably): from then on an undo is told as a new record (`reopened`, or a settlement that supersedes)
-instead of being taken back. A reader that starts on v2 after reading v1 should start from the cursor of its first
+and one taken back in that window never is. A settlement is sent once it is in the transport's log
+(`ph-transport.md`): one not held for an undo as it is made, a held one when it comes due. An undo after that is told
+as a new record (`reopened`, or a settlement that supersedes), whether or not the project has read it.
+`POST /api/records/ack` with `{"project", "through": <cursor>}` says the project has them (durably). A reader that starts on v2 after reading v1 should start from the cursor of its first
 read, not 0, so as not to receive again what v1 already delivered.
 
 | What Muninn tells | Record |

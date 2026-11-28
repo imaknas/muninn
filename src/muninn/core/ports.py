@@ -680,6 +680,47 @@ class RecordStore(Protocol):
         ...
 
 
+class RecordLogStore(Protocol):
+    """Each project's log of Principal Handoff records (Transport section 5.1): append-only, a position never reused.
+    A record is held once per project (by `digest`, its RFC 8785 serialisation's hash); Muninn's own (`own`) name the
+    handoff they stand for, which makes that handoff sent."""
+
+    def log_append(self, project: str, record: dict[str, Any], digest: str, at: datetime, *, own: bool,
+                   handoff: int | None = None) -> int | None:
+        """Its position; None when the project's log already holds it."""
+        ...
+
+    def log_has(self, project: str, digest: str) -> bool: ...
+
+    def log_after(self, project: str, after: int, limit: int) -> list[dict[str, Any]]:
+        """Up to `limit` entries {pos, record, own} after position `after`, in log order."""
+        ...
+
+    def log_holds(self, project: str, pos: int) -> bool:
+        """`pos` is a position of this project's log."""
+        ...
+
+    def log_sent(self, handoff: int) -> bool:
+        """A record standing for that handoff is in a log."""
+        ...
+
+    def log_handoffs(self, since: int) -> set[int]:
+        """The handoffs above id `since` that records in the logs stand for."""
+        ...
+
+    def log_ack(self, project: str, party: str, pos: int) -> int:
+        """Keeps the greater of `pos` and the position already acknowledged; returns it."""
+        ...
+
+    def log_acked(self, project: str, party: str) -> int | None: ...
+
+    def log_forget_acks(self) -> None: ...
+
+    def records_received(self) -> list[tuple[datetime, dict[str, Any]]]:
+        """Every record the projects sent that is kept, with when it came, in arrival order."""
+        ...
+
+
 class HandoffStore(Protocol):
     """Handoffs: {id, ts, status, **fields}, status pending | delivered | done | cancelled."""
 
@@ -688,7 +729,8 @@ class HandoffStore(Protocol):
         """Adds a pending handoff, atomically, unless one is already pending
         for the same project, to-do `item` (or, without an item, the same
         `fact`) and `reply_to`. That one is returned instead, updated with
-        `fields` when `replaces(fields, existing)`."""
+        `fields` when `replaces(fields, existing)`; one already sent as a record
+        (`RecordLogStore.log_sent`) is never changed: a new one is added."""
         ...
 
     def handoffs(self, *, status: str | None = "pending", since: int = 0) -> list[dict[str, Any]]:

@@ -25,7 +25,7 @@ import threading
 import time
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from starlette.applications import Starlette
 from starlette.background import BackgroundTask
@@ -60,6 +60,8 @@ from muninn.core.push_health import last_shown_key
 from muninn.core.project_messages import VERSION as MESSAGES_VERSION, ProjectMessages
 from muninn.core.sidecar import Sidecar, aside
 from muninn.core.timewin import local_date
+from muninn.core.transport import Credential
+from muninn.adapters.web.transport import transport_routes
 
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -133,6 +135,7 @@ def create_app(
     port: int = 18795,
     form_filling: FormFilling | None = None,
     local_peers: Sequence[str] = LOCAL_PEERS,
+    transport_credentials: Mapping[str, Credential] | None = None,
 ) -> Starlette:
     """`settings_view`: read-only facts about notification rules for the PWA.
     `messages`: what the projects post for the user; without it the
@@ -145,7 +148,9 @@ def create_app(
     to the one-time token printed at start until a device is paired, then to paired devices only. `tailscale`: what
     gives Muninn (on `port`) an HTTPS address for the phone from the settings page (adapters/tailscale.py).
     `form_filling`: adds the browser that fills in application forms, from the settings page (form_filling.py).
-    `local_peers`: where a browser on this computer connects from (see local_browser)."""
+    `local_peers`: where a browser on this computer connects from (see local_browser). `transport_credentials`: by
+    token, whom each client of the Principal Handoff transport speaks for (unset: the ingest token, for a platform that
+    relays every project's agents and registrar); it is reached at `public_url`'s `/ph/`, or on the Unix socket."""
     settings_view = settings_view or {}
     words = engine.words  # what the server says itself (errors, the pages a sign-in returns to)
     lock = threading.RLock()  # engine calls touch YAML files; serialize them (re-entrant: a lease's thread
@@ -1529,6 +1534,8 @@ def create_app(
         Route("/api/records", records_post, methods=["POST"]),
         Route("/api/records", records_get, methods=["GET"]),
         Route("/api/records/ack", records_ack, methods=["POST"]),
+        *transport_routes(engine.transport, transport_credentials or {ingest_token: Credential("projects")},
+                          [urlsplit(public_url).netloc] if public_url else [], call),
         Mount("/static", RevalidatedStatic(directory=STATIC)),
     ]
     if messages is not None:

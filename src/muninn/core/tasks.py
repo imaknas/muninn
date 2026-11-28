@@ -379,7 +379,8 @@ class TaskRegistry:
         pending = {h.get("reply_to"): h for h in self._handoffs.pending(include_held=True) if h.get("effect") in ("done", "dropped")}
         extra = {"not_before": (self._clock.now() + hold).isoformat()} if hold else {}
         for o in t["origins"]:
-            if effect == "reopened" and o["ref"] in pending:  # the close never left: withdraw it instead
+            if effect == "reopened" and o["ref"] in pending and not self._handoffs.sent(pending[o["ref"]]["id"]):
+                # the close never left (held for an undo, or not yet a record): withdraw it instead
                 self._handoffs.set_status(pending[o["ref"]]["id"], "cancelled")
                 continue
             said = why if only_to is None or o["project"] in only_to else ""  # outside it: that it happened, not why

@@ -26,11 +26,11 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Protocol, Sequence
 
 from . import ph
-from .ports import Clock, HandoffStore, RecordStore, StateStore
+from .ports import Clock, HandoffStore, RecordLogStore, RecordStore, StateStore
 from .language import Language
 
 log = logging.getLogger(__name__)
@@ -117,8 +117,8 @@ class Versions:
         return self._all()
 
 
-class InStore(RecordStore, StateStore, Protocol):
-    """The projects' records, and which version each project speaks."""
+class InStore(RecordStore, RecordLogStore, StateStore, Protocol):
+    """The projects' records, the logs they enter, and which version each project speaks."""
 
 
 class Inbox:
@@ -134,48 +134,71 @@ class Inbox:
         self._tasks = tasks
 
     def receive(self, raw: Sequence[Any]) -> list[dict[str, Any]]:
-        """Each record checked on its own (a bad one never blocks the rest): accepted, duplicate, unsupported (an
-        extension Muninn does not implement: consumed, not acted on) or invalid, with why."""
+        """records.v2's answer: each record checked on its own (a bad one never blocks the rest): accepted,
+        duplicate (its id already held), unsupported (kept, never acted on) or invalid, with why."""
         out = []
         for r in raw:
-            if not isinstance(r, dict):
-                out.append({"id": None, "status": "invalid", "errors": ["not an object"]})
+            got = self.take(r)
+            if got.get("unknown"):
+                out.append({"id": got["id"], "status": "unsupported"})
                 continue
-            spoke, r = r.get("ph"), ph.upgraded(r)  # 0.3 reads as 0.4
-            if not isinstance(r.get("ext"), str):  # a record names its extension (core section 4)
-                out.append({"id": r.get("id"), "status": "invalid", "errors": ["no ext"]})
-                continue
-            e = self._exts.get(r["ext"])
-            if e is None:  # a version or extension Muninn does not implement: kept (core section 6), never acted on
-                if all(isinstance(r.get(k), str) for k in ("ext", "project", "origin", "type", "id", "key")):
-                    self._store.add_record(ph.name(r["ext"]), r, self._clock.now(), _rank)
-                out.append({"id": r.get("id"), "status": "unsupported"})
-                continue
-            _, errs = ph.validate(r, e, self._parties)  # under the version it came in
-            if r.get("origin") == "principal" or r.get("by") == self._parties.side:  # only Muninn records his settlements
-                errs.append("the principal side's records are Muninn's own")
-            if errs:
-                out.append({"id": r.get("id"), "status": "invalid", "errors": errs})
-                continue
-            ext = ph.name(r["ext"])
-            before = self._store.records_of(ext, r["project"], r["key"])
-            form = ph.converted(r, ph.PH, before)
-            same = [x for x in before if (x.get("origin"), x.get("type"), x.get("id")) == (r["origin"], r["type"], r["id"])]
-            got = self._store.add_record(ext, r, self._clock.now(), _rank)
-            if form is None:  # valid in its version, with no 0.6 form (a relation 0.6 cannot name): kept, not held
-                out.append({"id": r["id"], "status": "unsupported", "errors": ["no 0.6 form (core section 14)"]})
-                continue
-            if got != "duplicate":
-                self._versions.heard(r["project"], ext, str(spoke))
-            if got in ("replaced", "kept") and same and _differs(same[0], r):
-                log.warning("%s sent record %s (%s, %s) again with other content: the greater form is kept (core section"
-                            " 10), %s", r["project"], r["id"], r["type"], r["origin"], "this one" if got == "replaced" else "the one held")
-            if got == "new" or (got == "replaced" and same and ph.converted(same[0]) is None):  # first held
-                self._apply(form)
-            elif got == "replaced" and r["type"] in ("raised", "amended") and self._current_terms(ext, form):
-                self._terms(form)  # what is shown follows the record kept, not the one that came first
-            out.append({"id": r["id"], "status": "accepted" if got in ("new", "replaced") else "duplicate"})
+            status = {"kept": "unsupported", "invalid": "invalid", "duplicate": "duplicate"}.get(got["status"]) \
+                or ("accepted" if got["held"] in ("new", "replaced") else "duplicate")
+            out.append({"id": got["id"], "status": status, **({"errors": got["errors"]} if got.get("errors") else {})})
         return out
+
+    def take(self, r: Any) -> dict[str, Any]:
+        """One record, as a transport answers it (Transport section 4): {id, status, reason?, errors?, held}, status
+        duplicate (the log holds it already), kept (of a version Muninn does not implement, `not_implemented`, or with no
+        0.6 form, `no_form`: stored, not acted on), invalid (with why) or accepted; `held` is what the store made of it
+        (new, replaced, duplicate, kept). What is stored enters its project's log, as it came."""
+        if not isinstance(r, dict):
+            return {"id": None, "status": "invalid", "errors": ["not an object"], "held": None}
+        sent, rid = r, r.get("id") if isinstance(r.get("id"), str) else None
+        if isinstance(r.get("project"), str) and self._store.log_has(r["project"], ph.digest(sent)):
+            return {"id": rid, "status": "duplicate", "held": "duplicate"}
+        spoke, r = r.get("ph"), ph.upgraded(r)  # 0.3 reads as 0.4
+        if not isinstance(r.get("ext"), str):  # a record names its extension (core section 4)
+            return {"id": rid, "status": "invalid", "errors": ["no ext"], "held": None}
+        e = self._exts.get(r["ext"])
+        if e is None:  # a version or extension Muninn does not implement: kept (core section 6), never acted on
+            if errs := ph.keepable(r):  # records.v2 said unsupported, keeping nothing
+                return {"id": rid, "status": "invalid", "errors": errs, "held": None, "unknown": True}
+            if r.get("origin") == "principal" or r.get("by") in (self._parties.side, self._parties.principal):
+                return {"id": rid, "status": "invalid", "errors": ["the principal side's records are Muninn's own"], "held": None}
+            held = self._store.add_record(ph.name(r["ext"]), r, self._clock.now(), _rank)
+            self._logged(sent)
+            return {"id": rid, "status": "kept", "reason": "not_implemented", "held": held}
+        _, errs = ph.validate(r, e, self._parties)  # under the version it came in
+        if r.get("origin") == "principal" or r.get("by") == self._parties.side:  # only Muninn records his settlements
+            errs.append("the principal side's records are Muninn's own")
+        if errs:
+            return {"id": rid, "status": "invalid", "errors": errs, "held": None}
+        ext = ph.name(r["ext"])
+        before = self._store.records_of(ext, r["project"], r["key"])
+        form = ph.converted(r, ph.PH, before)
+        same = [x for x in before if (x.get("origin"), x.get("type"), x.get("id")) == (r["origin"], r["type"], r["id"])]
+        got = self._store.add_record(ext, r, self._clock.now(), _rank)
+        self._logged(sent)
+        if form is None:  # valid in its version, with no 0.6 form (a relation 0.6 cannot name): kept, not held
+            return {"id": r["id"], "status": "kept", "reason": "no_form", "errors": ["no 0.6 form (core section 14)"], "held": got}
+        if got != "duplicate":
+            self._versions.heard(r["project"], ext, str(spoke))
+        if got in ("replaced", "kept") and same and _differs(same[0], r):
+            log.warning("%s sent record %s (%s, %s) again with other content: the greater form is kept (core section"
+                        " 10), %s", r["project"], r["id"], r["type"], r["origin"], "this one" if got == "replaced" else "the one held")
+        if same and same[0].get("by") != r.get("by"):  # one party's id taken by another (Transport section 10)
+            log.warning("%s: record %s (%s, %s) came from %s, and before from %s", r["project"], r["id"], r["type"],
+                        r["origin"], r.get("by"), same[0].get("by"))
+        if got == "new" or (got == "replaced" and same and ph.converted(same[0]) is None):  # first held
+            self._apply(form)
+        elif got == "replaced" and r["type"] in ("raised", "amended") and self._current_terms(ext, form):
+            self._terms(form)  # what is shown follows the record kept, not the one that came first
+        return {"id": r["id"], "status": "accepted", "held": got}
+
+    def _logged(self, sent: dict[str, Any]) -> None:
+        """A record stored enters its project's log as it came, unknown members and all (Transport section 5.1)."""
+        self._store.log_append(sent["project"], sent, ph.digest(sent), self._clock.now(), own=False)
 
     def _apply(self, r: dict[str, Any]) -> None:
         key, project, terms = r["key"], r["project"], r.get("terms") or {}
@@ -265,8 +288,12 @@ def _differs(held: dict[str, Any], new: dict[str, Any]) -> bool:
     return bare(held) != bare(new)
 
 
-class OutStore(HandoffStore, RecordStore, StateStore, Protocol):
-    """The handoffs the records are read from, the projects' records (their terms), and the version each speaks."""
+class OutStore(HandoffStore, RecordStore, RecordLogStore, StateStore, Protocol):
+    """The handoffs the records are made from, the projects' records (their terms), the logs, and the version each
+    speaks."""
+
+
+LOGGED_THROUGH = "ph:log:handoffs"  # state: every handoff up to this id is in the logs, taken back, or makes no record
 
 
 class Outbox:
@@ -299,6 +326,43 @@ class Outbox:
             if len(out) >= limit:
                 break
         return out, cursor
+
+    def due(self) -> list[tuple[datetime, int, dict[str, Any]]]:
+        """Muninn's records that may enter the logs now and have not: (when it came due, handoff id, record in its 0.6
+        form), oldest handoff first. A handoff held for an undo enters once it comes due, and one taken back never
+        (Transport section 5.1); a later handoff about an item waits for an earlier one still held, so that what
+        supersedes never enters before what it supersedes."""
+        now, mark = self._clock.now(), int(self._store.get_state(LOGGED_THROUGH) or 0)
+        sent, waiting, out = self._store.log_handoffs(mark), set(), []
+        for h in self._store.handoffs(status=None, since=mark):
+            if h["status"] == "cancelled" or h["id"] in sent:
+                continue
+            item = (h.get("project"), h.get("reply_to"))
+            if (h.get("not_before") and h["not_before"] > now.isoformat()) or item in waiting:
+                waiting.add(item)
+                continue
+            when = max([t for t in (ph.instant(str(h[k])) for k in ("ts", "not_before") if h.get(k)) if t] or [now])
+            for r in self.records(h):
+                if errs := ph.validate(r, self._exts[r["ext"]], self._parties)[1]:  # never told: core sections 12, 14
+                    log.warning("handoff %s makes no valid record (%s): not told", h["id"], "; ".join(errs))
+                    continue
+                out.append((when, h["id"], r))
+        return out
+
+    def logged(self, handoff: int, r: dict[str, Any]) -> None:
+        """Muninn's record, in its 0.6 form, is in its project's log: sent (an undo after this is a new record)."""
+        self._store.log_append(r["project"], r, ph.digest(r), self._clock.now(), own=True, handoff=handoff)
+
+    def caught_up(self) -> None:
+        """Every handoff before the first still held is in the logs, taken back, or makes no record: the next look
+        starts there."""
+        now, mark = self._clock.now().isoformat(), int(self._store.get_state(LOGGED_THROUGH) or 0)
+        hs = self._store.handoffs(status=None, since=mark)
+        held = [h["id"] for h in hs if h["status"] != "cancelled" and h.get("not_before") and h["not_before"] > now
+                and not self._store.log_sent(h["id"])]
+        through = min(held) - 1 if held else (hs[-1]["id"] if hs else mark)
+        if through > mark:
+            self._store.update_state(LOGGED_THROUGH, lambda was: max(int(was or 0), through))
 
     def told(self, r: dict[str, Any]) -> dict[str, Any]:
         """A record Muninn made, as its project is told it: in the version it is configured for of that extension
